@@ -73,20 +73,19 @@ export const LandingHero: React.FC = () => {
           {/* Dual CTA Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/dashboard"
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black text-base shadow-xl shadow-orange-500/30 transition-all flex items-center justify-center gap-2"
+              href="/tutor"
+              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-base shadow-xl shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-5 h-5 text-amber-200" />
-              <span>Start 3-Day Free Trial</span>
+              <Sparkles className="w-5 h-5 text-indigo-200" />
+              <span>Launch Video Online Teacher</span>
             </Link>
 
-            <a
-              href="#demo"
-              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-white hover:bg-slate-50 border-2 border-slate-200 text-slate-800 font-bold text-base shadow-sm transition-all flex items-center justify-center gap-2"
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-base shadow-lg shadow-orange-500/25 transition-all flex items-center justify-center gap-2"
             >
-              <Play className="w-4 h-4 text-indigo-600 fill-indigo-600" />
-              <span>Watch 1-Min Live Demo</span>
-            </a>
+              <span>Start 3-Day Free Trial</span>
+            </Link>
           </div>
 
           {/* Micro Trust Banner */}

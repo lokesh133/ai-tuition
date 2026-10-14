@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mic, Sparkles, Volume2, CheckCircle2, AlertTriangle, ArrowRight, Camera } from 'lucide-react';
+import Link from 'next/link';
+import { Mic, Sparkles, Volume2, CheckCircle2, AlertTriangle, ArrowRight, Camera, Video, Target } from 'lucide-react';
 
 export const InteractiveDemoWidget: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'voice' | 'scanner'>('voice');
+  const [activeTab, setActiveTab] = useState<'video' | 'voice' | 'scanner'>('video');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   const toggleAudio = () => {
@@ -32,31 +33,117 @@ export const InteractiveDemoWidget: React.FC = () => {
         {/* Tab Switcher */}
         <div className="flex bg-slate-800/80 p-1 rounded-xl border border-slate-700/60 text-xs font-semibold">
           <button
+            onClick={() => setActiveTab('video')}
+            className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 ${
+              activeTab === 'video'
+                ? 'bg-rose-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5" />
+            <span>Video Teacher & Pointer</span>
+          </button>
+          <button
             onClick={() => setActiveTab('voice')}
-            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+            className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 ${
               activeTab === 'voice'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Mic className="w-3.5 h-3.5" />
-            Voice Doubt Demo
+            Voice Doubt
           </button>
           <button
             onClick={() => setActiveTab('scanner')}
-            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+            className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 ${
               activeTab === 'scanner'
                 ? 'bg-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
-            Homework Scanner
+            Scanner
           </button>
         </div>
       </div>
 
-      {/* Tab 1: Voice Doubt Demo */}
+      {/* Tab 1: Video Teacher & Pointer Demo */}
+      {activeTab === 'video' && (
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+          {/* Left: Video Stream Simulator */}
+          <div className="md:col-span-6 bg-slate-950/80 rounded-2xl p-4 border border-indigo-500/30 flex flex-col items-center relative overflow-hidden shadow-xl">
+            {/* Live Indicator */}
+            <div className="w-full flex items-center justify-between mb-3 text-xs">
+              <span className="flex items-center gap-1.5 bg-red-600/90 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                <span>LIVE VIDEO CAM</span>
+              </span>
+              <span className="text-indigo-400 font-semibold text-[11px]">Sharma Sir • Math Class</span>
+            </div>
+
+            {/* Video Frame */}
+            <div className="w-full aspect-video rounded-xl bg-slate-900 border border-slate-800 flex flex-col items-center justify-center relative p-4">
+              <div className="w-20 h-20 rounded-full bg-indigo-600/20 border-2 border-indigo-400 flex items-center justify-center text-4xl shadow-lg animate-pulse mb-2">
+                👨‍🏫
+              </div>
+              <p className="text-xs font-bold text-white">Sharma Sir is teaching live</p>
+              <p className="text-[11px] text-emerald-400 font-mono mt-1">Lip-Sync Active • Pointer Sync: ON</p>
+
+              {/* Laser Pointer simulation rod */}
+              <div className="absolute right-4 bottom-4 flex items-center gap-1 bg-rose-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-rose-600/40">
+                <Target className="w-3 h-3 text-white animate-spin" />
+                <span>Chalk Pointer</span>
+              </div>
+            </div>
+
+            <Link
+              href="/tutor"
+              className="mt-4 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs text-center shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2"
+            >
+              <Video className="w-4 h-4" />
+              <span>Open Full Live Video Classroom</span>
+            </Link>
+          </div>
+
+          {/* Right: Smart Whiteboard with Teacher Pointer Sync */}
+          <div className="md:col-span-6 space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+              <span className="flex items-center gap-1.5 text-rose-400">
+                <Target className="w-3.5 h-3.5" />
+                <span>Teacher Live Pointer Target</span>
+              </span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono">
+                Real-Time
+              </span>
+            </div>
+
+            {/* Step 1 with Pointer Target */}
+            <div className="p-3.5 rounded-xl bg-slate-950 border-2 border-rose-500/80 shadow-lg shadow-rose-500/10 space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-rose-400">
+                <span>Step 1: NCERT Method</span>
+                <span className="text-[10px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-mono">Pointer Here 🎯</span>
+              </div>
+              <p className="text-base font-black font-mono text-amber-300">1/2 + 1/4 = 2/4 + 1/4</p>
+              <p className="text-xs text-slate-300 font-sans">Sharma Sir: &quot;Dono denominators ka LCM 4 lete hain.&quot;</p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700 space-y-1">
+              <div className="text-[11px] font-bold text-indigo-400">Step 2: Final Sum</div>
+              <p className="text-base font-black font-mono text-cyan-300">2/4 + 1/4 = 3/4</p>
+              <p className="text-xs text-slate-400 font-sans">Final Answer: 3/4 (Pona hissa)</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-center justify-between">
+              <span>Supports Built-in Avatar + HeyGen/D-ID/Simli</span>
+              <span className="font-bold text-emerald-400">0 Setup Needed</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Voice Doubt Demo */}
       {activeTab === 'voice' && (
         <div className="mt-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
           {/* Left: Teacher Profile & Waveform */}

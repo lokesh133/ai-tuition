@@ -8,5 +8,8 @@ export const config = {
   geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
   redisUrl: process.env.REDIS_URL || '',
   deepgramApiKey: process.env.DEEPGRAM_API_KEY || '',
+  heygenApiKey: process.env.HEYGEN_API_KEY || '',
+  didApiKey: process.env.DID_API_KEY || '',
+  simliApiKey: process.env.SIMLI_API_KEY || '',
   clientOrigin: process.env.CLIENT_ORIGIN ? process.env.CLIENT_ORIGIN.split(',') : ['*'],
 };
