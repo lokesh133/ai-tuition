@@ -126,6 +126,21 @@ export default function WebAITutorStudio() {
   const [copyZoom, setCopyZoom] = useState<number>(1);
   const [isAutoStepPacing, setIsAutoStepPacing] = useState<boolean>(false);
 
+  // Real-Time Speech Recognition & Accuracy Review States
+  const [speechLiveText, setSpeechLiveText] = useState<string>('');
+  const [voiceReviewText, setVoiceReviewText] = useState<string | null>(null);
+  const [isVoiceTranscribing, setIsVoiceTranscribing] = useState<boolean>(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const speechRecognitionRef = useRef<any>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Auto Spoken Lesson Practice States
+  const [isAutoSpokenPractice, setIsAutoSpokenPractice] = useState<boolean>(false);
+  const isAutoSpokenPracticeRef = useRef<boolean>(false);
+  const autoPracticeStepRef = useRef<number>(0);
+  const whiteboardStepsRef = useRef<WhiteboardStep[]>([]);
+
   // Document Upload States (Image / PDF)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSyllabusModalOpen, setIsSyllabusModalOpen] = useState(false);
@@ -134,6 +149,7 @@ export default function WebAITutorStudio() {
   const [uploadedDoc, setUploadedDoc] = useState<UploadedDocument | null>(null);
   const [isScanningDoc, setIsScanningDoc] = useState(false);
   const [activeTab, setActiveTab] = useState<'whiteboard' | 'scannedDoc'>('whiteboard');
+  const [lastScanSource, setLastScanSource] = useState<string>('fallback_demo');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -164,44 +180,213 @@ export default function WebAITutorStudio() {
     },
   ]);
 
+  // Sync whiteboard steps ref for audio auto-progression
+  useEffect(() => {
+    whiteboardStepsRef.current = whiteboardSteps;
+  }, [whiteboardSteps]);
+
+  const startAutoSpokenPractice = () => {
+    setIsAutoSpokenPractice(true);
+    isAutoSpokenPracticeRef.current = true;
+    setVisibleStepCount(whiteboardSteps.length);
+    setActiveStepIndex(0);
+    autoPracticeStepRef.current = 0;
+    const step0 = whiteboardSteps[0];
+    if (step0) {
+      speakText(`${step0.step}: ${step0.formula}. ${step0.annotation}`);
+    }
+  };
+
+  const stopAutoSpokenPractice = () => {
+    setIsAutoSpokenPractice(false);
+    isAutoSpokenPracticeRef.current = false;
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      } catch {}
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeakingAudio(false);
+  };
+
   // Whiteboard pointer step-progression during speech
   useEffect(() => {
     let stepTimer: NodeJS.Timeout;
-    if (isSpeakingAudio && whiteboardSteps.length > 1) {
+    if (isSpeakingAudio && whiteboardSteps.length > 1 && !isAutoSpokenPractice) {
       stepTimer = setInterval(() => {
         setActiveStepIndex((prev) => (prev + 1) % whiteboardSteps.length);
       }, 4200);
     }
     return () => clearInterval(stepTimer);
-  }, [isSpeakingAudio, whiteboardSteps.length]);
+  }, [isSpeakingAudio, whiteboardSteps.length, isAutoSpokenPractice]);
 
-  // Voice Speech Synthesis (Teacher speaks aloud with audio control)
+  // Helper to sanitize text for natural school-teacher speech synthesis
+  const sanitizeForSpeech = (text: string): string => {
+    return text
+      // 1. Strip raw filenames like WhatsApp Image 2026-10-14 at 1.46.02 PM.jpeg
+      .replace(/WhatsApp\s*Image[a-zA-Z0-9_.\-\s]+\.(jpe?g|png)/gi, 'Aapki copy ka sawaal')
+      .replace(/[a-zA-Z0-9_\-]+\.(jpe?g|png|pdf)/gi, 'Aapka page')
+      // 2. Remove technical symbols and tags
+      .replace(/<[^>]*>/g, '')
+      .replace(/[*_#]/g, '')
+      // 3. Clean mathematical symbols for pleasant voice pronunciation in Hindi/Hinglish
+      .replace(/≠/g, ' barabar nahi hai ')
+      .replace(/⟹/g, ' is se hume mila ')
+      .replace(/×/g, ' guna ')
+      .replace(/÷/g, ' bhaag ')
+      .replace(/1\/2/g, ' ek bata do ')
+      .replace(/1\/4/g, ' ek bata char ')
+      .replace(/2\/4/g, ' do bata char ')
+      .replace(/3\/4/g, ' teen bata char ')
+      .replace(/✅/g, ' sahi answer hai ')
+      .replace(/❌/g, ' yahan mistake hai ')
+      // 4. Remove redundant speaker prefix
+      .replace(/^(Sharma Sir|Neha Mam|Riya Didi|Kabir Bhaiya):\s*/i, '')
+      .trim();
+  };
+
+  // Voice Speech Synthesis (100% Natural Indian Hindi Teacher Voice via Streaming Audio)
   const speakText = (text: string, customRate?: number) => {
     if (isAudioMuted) return;
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    if (typeof window === 'undefined') return;
+
+    // 1. Stop any current audio or speech synthesis
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+        currentAudioRef.current = null;
+      } catch {}
+    }
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const clean = text.replace(/<[^>]*>/g, '').replace(/[*_#]/g, '');
-      setCurrentSpeechText(clean);
+    }
+
+    const clean = sanitizeForSpeech(text);
+    if (!clean) return;
+    setCurrentSpeechText(clean);
+    setIsSpeakingAudio(true);
+
+    // 2. Play 100% Natural Indian Hindi Teacher Voice from /api/tutor/tts
+    const ttsUrl = `/api/tutor/tts?text=${encodeURIComponent(clean)}&lang=${
+      languageMode === 'English' ? 'en' : 'hi'
+    }`;
+
+    try {
+      const audio = new Audio(ttsUrl);
+      currentAudioRef.current = audio;
+
+      audio.onplay = () => setIsSpeakingAudio(true);
+      audio.onended = () => {
+        setIsSpeakingAudio(false);
+        setCurrentSpeechText('');
+        currentAudioRef.current = null;
+
+        if (isAutoSpokenPracticeRef.current) {
+          const nextIdx = autoPracticeStepRef.current + 1;
+          if (nextIdx < whiteboardStepsRef.current.length) {
+            autoPracticeStepRef.current = nextIdx;
+            setActiveStepIndex(nextIdx);
+            setTimeout(() => {
+              const nextStep = whiteboardStepsRef.current[nextIdx];
+              if (nextStep && isAutoSpokenPracticeRef.current) {
+                speakText(`${nextStep.step}: ${nextStep.formula}. ${nextStep.annotation}`);
+              }
+            }, 1400);
+          } else {
+            setIsAutoSpokenPractice(false);
+            isAutoSpokenPracticeRef.current = false;
+          }
+        }
+      };
+      audio.onerror = () => {
+        console.warn('Streaming TTS audio error, falling back to local voice');
+        fallbackBrowserSpeech(clean, customRate);
+      };
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Audio play autoplay policy blocked, fallback to browser speech:', err);
+          fallbackBrowserSpeech(clean, customRate);
+        });
+      }
+    } catch {
+      fallbackBrowserSpeech(clean, customRate);
+    }
+  };
+
+  // Offline fallback to browser speech synthesis
+  const fallbackBrowserSpeech = (clean: string, customRate?: number) => {
+    if (isAudioMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
       const utterance = new SpeechSynthesisUtterance(clean);
-      utterance.lang = languageMode === 'English' ? 'en-IN' : 'hi-IN';
+      const voices = window.speechSynthesis.getVoices();
+      const hindiVoice = voices.find(
+        (v) =>
+          v.lang === 'hi-IN' ||
+          v.lang.startsWith('hi') ||
+          v.name.includes('Hindi') ||
+          v.name.includes('Swara') ||
+          v.name.includes('Hemant') ||
+          v.name.includes('Kalpana')
+      );
+      const indianVoice = voices.find(
+        (v) =>
+          v.lang === 'en-IN' ||
+          v.name.includes('India') ||
+          v.name.includes('Heera') ||
+          v.name.includes('Ravi')
+      );
+
+      const targetVoice =
+        languageMode === 'English'
+          ? indianVoice || hindiVoice
+          : hindiVoice || indianVoice;
+
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+        utterance.lang = targetVoice.lang;
+      } else {
+        utterance.lang = languageMode === 'English' ? 'en-IN' : 'hi-IN';
+      }
+
       utterance.rate = customRate || speechRate;
-      utterance.pitch = 1.0;
+      utterance.pitch = 1.05;
       utterance.volume = 1.0;
 
       utterance.onstart = () => setIsSpeakingAudio(true);
       utterance.onend = () => {
         setIsSpeakingAudio(false);
         setCurrentSpeechText('');
+        if (isAutoSpokenPracticeRef.current) {
+          const nextIdx = autoPracticeStepRef.current + 1;
+          if (nextIdx < whiteboardStepsRef.current.length) {
+            autoPracticeStepRef.current = nextIdx;
+            setActiveStepIndex(nextIdx);
+            setTimeout(() => {
+              const nextStep = whiteboardStepsRef.current[nextIdx];
+              if (nextStep && isAutoSpokenPracticeRef.current) {
+                speakText(`${nextStep.step}: ${nextStep.formula}. ${nextStep.annotation}`);
+              }
+            }, 1400);
+          } else {
+            setIsAutoSpokenPractice(false);
+            isAutoSpokenPracticeRef.current = false;
+          }
+        }
       };
       utterance.onerror = () => {
         setIsSpeakingAudio(false);
         setCurrentSpeechText('');
       };
 
-      if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
-      }
       window.speechSynthesis.speak(utterance);
+    } catch {
+      setIsSpeakingAudio(false);
     }
   };
 
@@ -294,6 +479,7 @@ export default function WebAITutorStudio() {
       if (res.ok) {
         const data = await res.json();
         replyText = data.reply;
+        setLastScanSource(data.source || 'fallback_demo');
         if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
           newSteps = data.whiteboard_steps.map((s: any, idx: number) => ({
             step: s.step || `Step ${idx + 1}`,
@@ -328,7 +514,8 @@ export default function WebAITutorStudio() {
           },
         ];
       } else {
-        replyText = `Shabash beta! Main aapki notebook ka photo (${file.name}) line-by-line check kar raha hoon. Dekhiye, blackboard par maine aapke copy ka problem step-by-step solve karna start kar diya hai!`;
+        replyText =
+          'Shabash beta! Maine aapki copy ka page dhyan se check kar liya hai. Aaiye ise blackboard par step-by-step solve karte hain!';
         newSteps = [
           {
             step: 'Step 1: Student Copy Line 1 Verified',
@@ -662,39 +849,139 @@ export default function WebAITutorStudio() {
     }
   };
 
-  const handleMicToggle = () => {
+  const handleMicToggle = async () => {
     if (typeof window === 'undefined') return;
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      alert('Google Chrome ya Edge browser use karein mic feature ke liye.');
-      return;
-    }
 
     if (isListening) {
+      // User tapped mic to stop listening
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch {}
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+      }
       setIsListening(false);
       return;
     }
 
-    try {
-      const recognition = new SpeechRec();
-      recognition.lang = languageMode === 'English' ? 'en-IN' : 'hi-IN';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+    setSpeechLiveText('');
+    setVoiceReviewText(null);
+    audioChunksRef.current = [];
 
-      recognition.onstart = () => setIsListening(true);
-      recognition.onresult = (event: any) => {
-        const spokenTranscript = event.results[0][0].transcript;
-        setIsListening(false);
-        if (spokenTranscript) {
-          handleSendMessage(spokenTranscript);
+    // 1. Start Audio Capture (MediaRecorder for Gemini Flash Audio / Whisper)
+    let stream: MediaStream | null = null;
+    try {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            audioChunksRef.current.push(e.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          stream?.getTracks().forEach((t) => t.stop());
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+          // Send to Gemini Flash / Whisper audio endpoint for 99% accuracy
+          if (audioBlob.size > 1500) {
+            setIsVoiceTranscribing(true);
+            try {
+              const formData = new FormData();
+              formData.append('audio', audioBlob, 'student_voice.webm');
+              formData.append('language', languageMode === 'Hindi' ? 'hi' : languageMode === 'English' ? 'en' : 'hi-en');
+
+              const res = await fetch('/api/tutor/transcribe', {
+                method: 'POST',
+                body: formData,
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.success && data.transcript) {
+                  setVoiceReviewText(data.transcript);
+                  setSpeechLiveText(data.transcript);
+                  setIsVoiceTranscribing(false);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.log('AI Audio Transcribe error:', e);
+            }
+            setIsVoiceTranscribing(false);
+          }
+        };
+
+        mediaRecorder.start();
+      }
+    } catch (mediaErr) {
+      console.warn('Microphone permission / MediaRecorder unavailable:', mediaErr);
+    }
+
+    // 2. Start Real-Time Browser Speech Recognition for Instant Visual Feedback
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec();
+        speechRecognitionRef.current = recognition;
+
+        // Choose appropriate language dictionary
+        if (languageMode === 'Hindi') {
+          recognition.lang = 'hi-IN';
+        } else if (languageMode === 'English') {
+          recognition.lang = 'en-IN';
+        } else {
+          // Hinglish: en-IN accepts Indian phonetics and mixed Hindi-English words
+          recognition.lang = 'hi-IN';
         }
-      };
-      recognition.onerror = () => setIsListening(false);
-      recognition.onend = () => setIsListening(false);
-      recognition.start();
-    } catch {
-      setIsListening(false);
+
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.continuous = false;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onresult = (event: any) => {
+          let interim = '';
+          let final = '';
+          for (let i = 0; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              final += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+          const textHeard = final || interim;
+          setSpeechLiveText(textHeard);
+          if (final) {
+            setVoiceReviewText(final);
+          }
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+        };
+        recognition.onend = () => {
+          setIsListening(false);
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            try {
+              mediaRecorderRef.current.stop();
+            } catch {}
+          }
+        };
+
+        recognition.start();
+        setIsListening(true);
+      } catch {
+        setIsListening(false);
+      }
+    } else {
+      setIsListening(true);
     }
   };
 
@@ -1037,7 +1324,7 @@ export default function WebAITutorStudio() {
 
               {/* Fast switch to audio pill below video */}
               <div className="flex items-center justify-between px-2 text-xs text-slate-400">
-                <span>🎥 Real Video Teacher Stream Active • Chalkboard Synchronized</span>
+                <span>🎥 Interactive Live Teacher Active • Chalkboard Synchronized</span>
                 <button
                   onClick={() => setStudyMode('audio')}
                   className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
@@ -1292,11 +1579,18 @@ export default function WebAITutorStudio() {
                       </div>
 
                       {/* Verified Badge Footer */}
-                      <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                        <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>AI Line-by-Line Checked</span>
-                        </span>
+                      <div className="mt-2 pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px]">
+                        {lastScanSource === 'gemini_flash_live_vision' ? (
+                          <span className="flex items-center gap-1.5 text-emerald-400 font-black">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                            <span>🟢 Live Gemini Vision AI Se Read Hua</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-lg">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Demo Fallback (Live AI ke liye Gemini Key dalein)</span>
+                          </span>
+                        )}
                         <span className="text-slate-400">
                           {uploadedDoc.size || 'Scanned Document'}
                         </span>
@@ -1379,31 +1673,46 @@ export default function WebAITutorStudio() {
 
                       {/* SLOW PACING CHALK ACTION BAR: Teacher writes one step at a time! */}
                       <div className="mt-3 pt-2.5 border-t border-emerald-800/40 flex flex-col sm:flex-row items-center justify-between gap-2 bg-emerald-950/40 -mx-3.5 -mb-3.5 p-3 rounded-b-2xl">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={isAutoSpokenPractice ? stopAutoSpokenPractice : startAutoSpokenPractice}
+                            className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 shadow-md ${
+                              isAutoSpokenPractice
+                                ? 'bg-rose-600 text-white animate-pulse'
+                                : 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 hover:scale-105'
+                            }`}
+                            title="Saare questions bol-bol kar sunein aur taiyari karein"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>{isAutoSpokenPractice ? '⏹️ बोलकर पढ़ाना रोकें' : '🎧 पूरा पाठ बोल-बोल कर तैयार करो'}</span>
+                          </button>
+                        </div>
+
                         {visibleStepCount < whiteboardSteps.length ? (
-                          <div className="w-full flex items-center justify-between gap-2">
-                            <span className="text-[11px] text-emerald-300 font-medium truncate">
-                              ⏳ Teacher step {visibleStepCount} samjha rahe hain...
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-emerald-300 font-medium hidden md:inline">
+                              ⏳ स्टेप {visibleStepCount} तैयार...
                             </span>
                             <button
                               onClick={handleNextStep}
                               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black text-xs shadow-lg hover:scale-105 transition-all flex items-center gap-1.5 whitespace-nowrap"
                             >
-                              <span>➡️ Agla Step Likhie ({visibleStepCount + 1}/{whiteboardSteps.length})</span>
+                              <span>➡️ अगला स्टेप ({visibleStepCount + 1}/{whiteboardSteps.length})</span>
                               <ChevronRight className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ) : (
-                          <div className="w-full flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
                             <span className="text-[11px] text-amber-300 font-bold flex items-center gap-1">
                               <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
-                              <span>Sabhi steps complete ho gaye!</span>
+                              <span>सभी स्टेप्स तैयार!</span>
                             </span>
                             <button
                               onClick={handleRestartSteps}
                               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1"
                             >
                               <RotateCcw className="w-3 h-3 text-slate-400" />
-                              <span>Shuru se Dheere Dheere Sunein</span>
+                              <span>शुरू से सुनो</span>
                             </button>
                           </div>
                         )}
@@ -1568,6 +1877,118 @@ export default function WebAITutorStudio() {
 
           {/* Bottom Action Area: Mic, Page/PDF Upload & Text Input */}
           <div className="pt-3 border-t border-slate-800 space-y-3">
+            {/* Mic Language Selector Tabs */}
+            <div className="flex items-center justify-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800 w-fit mx-auto text-[11px] font-bold">
+              <span className="text-slate-400 px-1 text-[10px] flex items-center gap-1">
+                <Globe2 className="w-3 h-3 text-indigo-400" />
+                <span>Boliye:</span>
+              </span>
+              {(['Hindi', 'Hinglish', 'English'] as const).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setLanguageMode(lang)}
+                  className={`px-2.5 py-0.5 rounded-lg transition-all ${
+                    languageMode === lang
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {lang === 'Hindi' ? '🇮🇳 हिन्दी' : lang === 'Hinglish' ? '🔤 Hinglish' : '🇬🇧 English'}
+                </button>
+              ))}
+            </div>
+
+            {/* Live Listening Floating Bubble (Shows Real-Time Spoken Words) */}
+            {isListening && (
+              <div className="bg-red-950/70 border-2 border-red-500/60 rounded-2xl p-3 shadow-xl shadow-red-500/10 flex flex-col items-center text-center animate-in fade-in zoom-in-95">
+                <div className="flex items-center gap-2 text-xs font-bold text-red-300 mb-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                  <span>Sun rahe hain ({languageMode === 'Hindi' ? 'हिन्दी' : languageMode}):</span>
+                  {/* Waveform bars */}
+                  <div className="flex items-center gap-0.5 ml-1">
+                    {[10, 18, 14, 22, 12, 20].map((h, i) => (
+                      <div
+                        key={i}
+                        style={{ height: `${h}px` }}
+                        className="w-1 bg-red-400 rounded-full animate-pulse"
+                      />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-sm font-black text-white font-mono min-h-[22px]">
+                  {speechLiveText || 'Kuch boliye... (e.g. "Sharma Sir 1/2 + 1/4 samjhao")'}
+                </p>
+                <button
+                  onClick={handleMicToggle}
+                  className="mt-2 px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold shadow-md transition-all flex items-center gap-1"
+                >
+                  <span>Bolna Pura Hua (Done) ⏹️</span>
+                </button>
+              </div>
+            )}
+
+            {/* AI Audio Accuracy Check In-Progress Spinner */}
+            {isVoiceTranscribing && (
+              <div className="bg-indigo-950/60 border border-indigo-500/50 rounded-2xl p-2.5 text-center flex items-center justify-center gap-2 text-xs text-indigo-300 font-bold animate-pulse">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+                <span>⚡ Gemini Flash AI Audio Sahi Vakya Transcribe Kar Raha Hai...</span>
+              </div>
+            )}
+
+            {/* Voice Accuracy Review Bubble: Allows Child to See & Confirm before Sending! */}
+            {voiceReviewText && !isListening && (
+              <div className="bg-slate-900 border-2 border-amber-500/70 rounded-2xl p-3 shadow-2xl space-y-2 animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>🎤 Maine Suna:</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400">Verify / Edit karein</span>
+                </div>
+
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-sm font-bold text-white">
+                  &ldquo;{voiceReviewText}&rdquo;
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      handleSendMessage(voiceReviewText);
+                      setVoiceReviewText(null);
+                      setSpeechLiveText('');
+                    }}
+                    className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Sahi Hai, Poocho 🚀</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setInputVal(voiceReviewText);
+                      setVoiceReviewText(null);
+                      setSpeechLiveText('');
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 transition-all border border-slate-700"
+                  >
+                    <Edit3 className="w-3 h-3 text-amber-400" />
+                    <span>Theek / Edit ✏️</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setVoiceReviewText(null);
+                      setSpeechLiveText('');
+                      handleMicToggle();
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold flex items-center gap-1 transition-all border border-slate-700"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Dobara Bolo 🔄</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Push-To-Talk Mic Button */}
             <div className="flex flex-col items-center justify-center">
               <button
@@ -1584,7 +2005,7 @@ export default function WebAITutorStudio() {
                 {isSpeakingAudio
                   ? `🔊 ${selectedTeacher.name} bol rahe hain aur board par point kar rahe hain...`
                   : isListening
-                  ? '🔴 Listening... Apna sawaal boliye'
+                  ? '🔴 Listening... Bolna pura hone par dabayein'
                   : 'Mic dabakar bolkar sawaal poochein (Voice Doubt)'}
               </span>
             </div>

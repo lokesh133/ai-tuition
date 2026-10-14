@@ -136,8 +136,8 @@ export const InteractiveDemoWidget: React.FC = () => {
             </div>
 
             <div className="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200 flex items-center justify-between">
-              <span>Supports Built-in Avatar + HeyGen/D-ID/Simli</span>
-              <span className="font-bold text-emerald-400">0 Setup Needed</span>
+              <span>Interactive AI Teacher • Live Chalk Whiteboard</span>
+              <span className="font-bold text-emerald-400">100% Kid-Friendly (₹0 API Cost)</span>
             </div>
           </div>
         </div>
