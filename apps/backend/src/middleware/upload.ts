@@ -1,4 +1,5 @@
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
+import type { Request } from 'express';
 
 // In-Memory Storage for fast processing and sending to Gemini Vision API without disk I/O
 const storage = multer.memoryStorage();
@@ -8,11 +9,16 @@ export const uploadHomework = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5 Megabytes maximum
   },
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+  fileFilter: (
+    _req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback
+  ) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Only JPEG, PNG, and WebP image files are supported for homework scans!'));
+      cb(new Error('Only JPEG, PNG, WebP images and PDF documents are supported!'));
     }
   },
 });
+

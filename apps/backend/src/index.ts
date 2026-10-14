@@ -6,6 +6,7 @@ import { config } from './config';
 import tutorRoutes from './routes/tutor';
 import parentRoutes from './routes/parent';
 import healthRoutes from './routes/health';
+import syllabusRoutes from './routes/syllabus';
 import { errorHandler } from './middleware/errorHandler';
 import { aiService } from './services/aiService';
 
@@ -29,6 +30,7 @@ if (config.nodeEnv === 'development') {
 app.use('/api/health', healthRoutes);
 app.use('/api/tutor', tutorRoutes);
 app.use('/api/parent', parentRoutes);
+app.use('/api/syllabus', syllabusRoutes);
 
 // 4. WebSocket Server for Real-Time Low-Latency Voice Streaming
 const wss = new WebSocketServer({ server, path: '/ws/voice' });
