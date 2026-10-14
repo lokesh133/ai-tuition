@@ -26,40 +26,173 @@ const TEACHERS = [
 export default function WebAITutorStudio() {
   const [selectedTeacher, setSelectedTeacher] = useState(TEACHERS[1]); // Sharma Sir
   const [isListening, setIsListening] = useState(false);
+  const [isSpeakingAudio, setIsSpeakingAudio] = useState(false);
   const [languageMode, setLanguageMode] = useState<'Hinglish' | 'Hindi' | 'English'>('Hinglish');
   const [messages, setMessages] = useState([
     {
       sender: 'teacher',
-      text: 'Namaste Aarav! Main Sharma Sir hoon. Aaj Maths me Fractions & Decimals ka concept seekhenge. Kaho, kya sawaal hai?',
+      text: 'Namaste beta! Main Sharma Sir hoon. Aaj hum milkar seekhenge. Mic dabakar apna sawaal pucho!',
       time: '10:00 AM',
     },
   ]);
   const [inputVal, setInputVal] = useState('');
+  const [whiteboardSteps, setWhiteboardSteps] = useState([
+    {
+      step: 'Step 1: NCERT Method',
+      formula: '1/2 + 1/4 = ?',
+      annotation: 'Sharma Sir: "Dono denominators (2 aur 4) ka LCM lete hain: LCM(2, 4) = 4"',
+    },
+    {
+      step: 'Step 2: Final Sum',
+      formula: '2/4 + 1/4 = 3/4',
+      annotation: '✅ Final Answer: 3/4 (Pona hissa)',
+    },
+  ]);
 
-  const handleSendMessage = () => {
-    if (!inputVal.trim()) return;
-    const userMsg = inputVal;
+  // Voice Speech Synthesis (Teacher speaks aloud)
+  const speakText = (text: string) => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const clean = text.replace(/<[^>]*>/g, '').replace(/[*_#]/g, '');
+      const utterance = new SpeechSynthesisUtterance(clean);
+      utterance.lang = languageMode === 'English' ? 'en-IN' : 'hi-IN';
+      utterance.rate = 0.95; // Slightly slower, patient school pacing
+      utterance.onstart = () => setIsSpeakingAudio(true);
+      utterance.onend = () => setIsSpeakingAudio(false);
+      utterance.onerror = () => setIsSpeakingAudio(false);
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
+  const handleSendMessage = async (textToSend?: string) => {
+    const query = (textToSend || inputVal).trim();
+    if (!query) return;
     setInputVal('');
+
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     setMessages((prev) => [
       ...prev,
-      { sender: 'student', text: userMsg, time: '10:02 AM' },
+      { sender: 'student', text: query, time: currentTime },
     ]);
 
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: 'teacher',
-          text: `Bahut achha sawaal! "${userMsg}" ka solution maine whiteboard par note kar diya hai. Dekhiye!`,
-          time: '10:02 AM',
-        },
-      ]);
-    }, 1000);
+    // Try calling backend or intelligent localized responder
+    let replyText = '';
+    let newSteps = [];
+
+    try {
+      const res = await fetch('http://localhost:5000/api/tutor/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher_id: selectedTeacher.id === 'neha' ? 'neha_mam' : selectedTeacher.id === 'sharma' ? 'sharma_sir' : selectedTeacher.id === 'riya' ? 'riya_didi' : 'kabir_sir',
+          question: query,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        replyText = data.reply;
+        if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
+          newSteps = data.whiteboard_steps.map((s: any, idx: number) => ({
+            step: s.step || `Step ${idx + 1}`,
+            formula: s.formula || 'Concept Point',
+            annotation: s.annotation || s.formula || '',
+          }));
+        }
+      }
+    } catch {
+      // Offline smart fallback
+    }
+
+    if (!replyText) {
+      const qLower = query.toLowerCase();
+      if (selectedTeacher.id === 'neha' || qLower.includes('photo') || qLower.includes('plant') || qLower.includes('science')) {
+        replyText = `Shabash beta! Dhyan se suno. Jaise aapki mummy kitchen me khana banati hain, waise hi paudhe sooraj ki dhoop se apna khana banate hain. Pehle itna samajh aaya beta?`;
+        newSteps = [
+          {
+            step: 'Step 1: Photosynthesis Process',
+            formula: 'Sunlight + Water + CO2 ➔ Food (Glucose)',
+            annotation: 'Neha Mam: "Green leaves sunlight ko trap karke plants ke liye food prepare karti hain."',
+          },
+        ];
+      } else if (qLower.includes('table') || qLower.includes('pahada') || qLower.includes('multiply') || qLower.includes('fraction') || selectedTeacher.id === 'sharma') {
+        replyText = `Bahut achha sawaal pucha beta! Dhyan se dekho board par. Math me step-by-step calculate karte hain. Calculation dekho aur batao agla step kya hoga?`;
+        newSteps = [
+          {
+            step: 'Step 1: Step-by-Step Solving',
+            formula: query.replace(/[^\d+*/^.-]/g, '') || 'Equation Breakdown',
+            annotation: 'Sharma Sir: "Blackboard par dekho beta, pehle basic operations simplify karenge."',
+          },
+        ];
+      } else {
+        replyText = `Bahut pyara sawaal beta! "${query}" ko hum aasan Hinglish me seekhte hain. Whiteboard par note kar diya hai, dhyan se padho!`;
+        newSteps = [
+          {
+            step: 'Step 1: Key Concept',
+            formula: query,
+            annotation: `${selectedTeacher.name}: "Step-by-step samjhein aur doubts bina darein poochein!"`,
+          },
+        ];
+      }
+    }
+
+    setMessages((prev) => [
+      ...prev,
+      { sender: 'teacher', text: replyText, time: currentTime },
+    ]);
+
+    if (newSteps.length > 0) {
+      setWhiteboardSteps(newSteps);
+    }
+
+    speakText(replyText);
   };
 
   const handleMicToggle = () => {
-    setIsListening(!isListening);
+    if (typeof window === 'undefined') return;
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRec) {
+      alert('Aapke browser me mic recognition allow karein ya Google Chrome / Edge use karein.');
+      return;
+    }
+
+    if (isListening) {
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.lang = languageMode === 'English' ? 'en-IN' : 'hi-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const spokenTranscript = event.results[0][0].transcript;
+        setIsListening(false);
+        if (spokenTranscript) {
+          handleSendMessage(spokenTranscript);
+        }
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch {
+      setIsListening(false);
+    }
   };
 
   return (
@@ -142,28 +275,21 @@ export default function WebAITutorStudio() {
             </div>
 
             {/* Canvas steps */}
-            <div className="flex-1 space-y-4 font-mono">
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                <div className="flex items-center justify-between text-xs font-bold text-indigo-400 mb-1">
-                  <span>Step 1: NCERT Method</span>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <div className="flex-1 space-y-4 font-mono overflow-y-auto">
+              {whiteboardSteps.map((stepItem, idx) => (
+                <div key={idx} className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-bold text-indigo-400 mb-1">
+                    <span>{stepItem.step}</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <p className="text-xl font-black text-cyan-300 font-mono tracking-wide">{stepItem.formula}</p>
+                  {stepItem.annotation && (
+                    <p className="text-xs font-sans text-slate-300 mt-2 leading-relaxed">
+                      {stepItem.annotation}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xl font-black text-cyan-300">1/2 + 1/4 = ?</p>
-                <p className="text-xs font-sans text-slate-400 mt-2">
-                  Sharma Sir: <i>"Sabse pehle dono fractions ke denominators (2 aur 4) ka LCM lete hain: LCM(2, 4) = 4"</i>
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800">
-                <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-1">
-                  <span>Step 2: Equivalent Fraction & Final Sum</span>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                </div>
-                <p className="text-xl font-black text-emerald-300">2/4 + 1/4 = (2 + 1) / 4 = 3/4</p>
-                <p className="text-xs font-sans text-emerald-400/90 mt-2">
-                  ✅ <b>Final Answer:</b> 3/4 (Three-Fourths / Pona bhag)
-                </p>
-              </div>
+              ))}
             </div>
 
             {/* Sound Waveform Visualizer in Whiteboard */}
@@ -237,7 +363,11 @@ export default function WebAITutorStudio() {
                 <Mic className="w-7 h-7 text-white" />
               </button>
               <span className="text-xs font-bold text-slate-300 mt-2">
-                {isListening ? '🔴 Listening... Bolte rahiye' : 'Mic dabakar sawaal bolein'}
+                {isSpeakingAudio
+                  ? '🔊 ' + selectedTeacher.name + ' bol rahe hain...'
+                  : isListening
+                  ? '🔴 Listening... Bolte rahiye'
+                  : 'Mic dabakar bolkar sawaal poochein'}
               </span>
             </div>
 
@@ -252,7 +382,7 @@ export default function WebAITutorStudio() {
                 className="flex-1 bg-transparent px-3 text-xs text-white outline-none placeholder:text-slate-500"
               />
               <button
-                onClick={handleSendMessage}
+                onClick={() => handleSendMessage()}
                 className="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center"
               >
                 <Send className="w-3.5 h-3.5" />
