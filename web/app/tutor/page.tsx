@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   Mic,
@@ -71,8 +71,29 @@ export default function TuitionClassroomStudio() {
   const [className, setClassName] = useState<string>('Class 4th');
   const [medium, setMedium] = useState<'hindi' | 'english'>('hindi');
 
-  // Load All 4 Core Subjects
-  const allSubjects = getCurriculum(board, className, medium);
+  // Load All 4 Core Subjects with dynamic API sync capability
+  const [allSubjects, setAllSubjects] = useState<SubjectCurriculum[]>(() =>
+    getCurriculum(board, className, medium)
+  );
+
+  // Sync with live changes or board/class switch
+  useEffect(() => {
+    const localData = getCurriculum(board, className, medium);
+    setAllSubjects(localData);
+
+    fetch(`/api/admin/syllabus?board=${board}&class=${encodeURIComponent(className)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success && Array.isArray(d.subjects) && d.subjects.length > 0) {
+          setAllSubjects(d.subjects);
+          setSelectedSubject((prev) => {
+            if (!prev) return null;
+            return d.subjects.find((s: any) => s.id.toLowerCase() === prev.id.toLowerCase()) || prev;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [board, className, medium]);
 
   // Active Selected Subject & Chapter (Null by default so child chooses or asks!)
   const [selectedSubject, setSelectedSubject] = useState<SubjectCurriculum | null>(null);

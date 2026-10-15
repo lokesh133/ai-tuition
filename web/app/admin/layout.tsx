@@ -16,9 +16,10 @@ import {
 
 const ADMIN_NAV = [
   { name: 'Founder Overview', icon: LayoutDashboard, href: '/admin' },
+  { name: 'RBSE पाठ्यक्रम (Syllabus)', icon: BookOpen, href: '/admin/syllabus' },
   { name: 'Subscriptions & Revenue', icon: CreditCard, href: '/admin/subscriptions' },
   { name: 'Student Data & Doubts', icon: Users, href: '/admin/students' },
-  { name: 'School Courses & RAG', icon: BookOpen, href: '/admin/courses' },
+  { name: 'School Courses & RAG', icon: Sparkles, href: '/admin/courses' },
   { name: 'AI Teachers & Pacing', icon: GraduationCap, href: '/admin/teachers' },
 ];
 

@@ -1,0 +1,2236 @@
+const fs = require('fs');
+const path = require('path');
+
+const curriculum = {
+  RBSE: {
+    board: 'RBSE',
+    classes: {
+      'Class 1st': {
+        english: [
+          {
+            id: 'c1-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 1',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c1-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Shapes and Space (Inside, Outside, Bigger, Smaller)',
+                titleHindi: 'पाठ 1: आकृतियां और स्थान (अंदर-बाहर, छोटा-बड़ा)',
+                concepts: ['अंदर और बाहर की पहचान', 'छोटा और बड़ा', 'ऊपर और नीचे', 'पास और दूर'],
+                keyFormulas: ['बड़ी वस्तु vs छोटी वस्तु'],
+                term: 'half_yearly',
+                estimatedMinutes: 30,
+                sampleQuestions: [
+                  {
+                    question: 'चित्र में टोकरी के अंदर रखे फल को पहचानें:',
+                    type: 'mcq',
+                    options: ['अंदर (Inside)', 'बाहर (Outside)', 'ऊपर', 'नीचे'],
+                    correctAnswer: 'अंदर (Inside)',
+                    explanation: 'वस्तु जब किसी घेरे के भीतर होती है तो उसे "अंदर" कहते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c1-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Numbers from One to Nine (1 to 9 Counting)',
+                titleHindi: 'पाठ 2: एक से नौ तक की संख्याएं',
+                concepts: ['गिनती 1 से 9', 'वस्तुओं को गिनकर मिलाना', 'संख्या और संख्यांक'],
+                keyFormulas: ['1, 2, 3, 4, 5, 6, 7, 8, 9'],
+                term: 'half_yearly',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'हाथ में कुल कितनी उंगलियां हैं (एक हाथ)?',
+                    type: 'mcq',
+                    options: ['3', '4', '5', '6'],
+                    correctAnswer: '5',
+                    explanation: 'हमारे एक हाथ में 5 उंगलियां होती हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c1-m-3',
+                chapterNumber: 3,
+                titleEnglish: 'Addition (1 to 9)',
+                titleHindi: 'पाठ 3: जोड़ (मिलाना और गिनना)',
+                concepts: ['वस्तुओं को मिलाकर गिनना', 'जोड़ का चिह्न (+)', 'सरल जोड़'],
+                keyFormulas: ['2 + 3 = 5', '1 + 4 = 5'],
+                term: 'annual',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: '3 सेब + 2 सेब = कितने सेब हुए?',
+                    type: 'solve',
+                    correctAnswer: '5',
+                    explanation: '3 में 2 जोड़ने पर कुल 5 सेब बनते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c1-m-4',
+                chapterNumber: 4,
+                titleEnglish: 'Subtraction (Taking Away)',
+                titleHindi: 'पाठ 4: घटाव (कम करना)',
+                concepts: ['वस्तुओं को अलग करना', 'घटाव का चिह्न (-)', 'सरल घटाव'],
+                keyFormulas: ['5 - 2 = 3'],
+                term: 'annual',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'पेड़ पर 4 चिड़ियां थीं, 1 उड़ गई। अब कितनी बचीं?',
+                    type: 'solve',
+                    correctAnswer: '3',
+                    explanation: '4 में से 1 घटाने पर 3 चिड़ियां शेष बचती हैं।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c1-evs',
+            subject: 'EVS / Science',
+            subjectHindi: 'पर्यावरण (EVS)',
+            bookName: 'हमारा परिवेश - कक्षा 1',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c1-e-1',
+                chapterNumber: 1,
+                titleEnglish: 'My Body & Cleanliness',
+                titleHindi: 'पाठ 1: मेरा शरीर और स्वच्छता',
+                concepts: ['शरीर के अंग', 'हाथ धोना', 'दांत साफ करना', 'स्वच्छ आदतें'],
+                term: 'half_yearly',
+                estimatedMinutes: 30,
+                sampleQuestions: [
+                  {
+                    question: 'खाना खाने से पहले हमें क्या करना चाहिए?',
+                    type: 'mcq',
+                    options: ['साबुन से हाथ धोना', 'दौड़ना', 'सो जाना', 'खेलना'],
+                    correctAnswer: 'साबुन से हाथ धोना',
+                    explanation: 'कीटाणुओं से बचने के लिए भोजन से पहले हाथ धोना जरूरी है।'
+                  }
+                ]
+              },
+              {
+                id: 'c1-e-2',
+                chapterNumber: 2,
+                titleEnglish: 'My Sweet Family',
+                titleHindi: 'पाठ 2: मेरा प्यारा परिवार',
+                concepts: ['माता-पिता', 'भाई-बहन', 'दादा-दादी', 'परिवार का प्रेम'],
+                term: 'half_yearly',
+                estimatedMinutes: 30,
+                sampleQuestions: [
+                  {
+                    question: 'पिताजी के पिताजी को हम क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['मामाजी', 'दादाजी', 'चाचाजी', 'नानाजी'],
+                    correctAnswer: 'दादाजी',
+                    explanation: 'पिताजी के पिता दादाजी कहलाते हैं।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c1-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'हिंदी - पहली कक्षा',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c1-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Swar and Vyanjan (Varnamala)',
+                titleHindi: 'पाठ 1: वर्णमाला (स्वर और व्यंजन)',
+                concepts: ['अ से अः तक स्वर', 'क से ज्ञ तक व्यंजन', 'चित्र देखकर अक्षर पहचानना'],
+                term: 'half_yearly',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: '"अ" से क्या होता है?',
+                    type: 'mcq',
+                    options: ['अनार', 'आम', 'इमली', 'ईख'],
+                    correctAnswer: 'अनार',
+                    explanation: 'अ से अनार होता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c1-h-2',
+                chapterNumber: 2,
+                titleEnglish: 'Two and Three Letter Words without Matra',
+                titleHindi: 'पाठ 2: बिना मात्रा वाले सरल शब्द (दो व तीन अक्षर)',
+                concepts: ['दो अक्षर वाले शब्द (घर, फल, जल)', 'तीन अक्षर वाले शब्द (कमल, सड़क, मटर)'],
+                term: 'annual',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'घ + र मिलकर क्या बनता है?',
+                    type: 'solve',
+                    correctAnswer: 'घर',
+                    explanation: 'घ और र मिलकर "घर" बनता है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c1-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'English Reader - Class 1',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c1-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'Alphabet Song & Letters A to Z',
+                titleHindi: 'Chapter 1: Alphabet Fun (A to Z)',
+                concepts: ['Capital & Small letters', 'Phonics sounds', 'Letter matching'],
+                term: 'half_yearly',
+                estimatedMinutes: 30,
+                sampleQuestions: [
+                  {
+                    question: 'Which letter comes after letter B?',
+                    type: 'mcq',
+                    options: ['A', 'C', 'D', 'E'],
+                    correctAnswer: 'C',
+                    explanation: 'Letter C comes right after B (A, B, C).'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      'Class 2nd': {
+        english: [
+          {
+            id: 'c2-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 2',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c2-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Numbers up to 100 & Place Value',
+                titleHindi: 'पाठ 1: 100 तक संख्याएं और इकाई-दहाई',
+                concepts: ['गिनती 1 से 100', 'दहाई और इकाई की समझ', 'बंडल और खुली तीलियां'],
+                keyFormulas: ['1 दहाई = 10 इकाइयां', '24 = 2 दहाई + 4 इकाई'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'संख्या 35 में 3 का मान कितना है?',
+                    type: 'mcq',
+                    options: ['3', '30', '5', '35'],
+                    correctAnswer: '30',
+                    explanation: '3 दहाई के स्थान पर है, इसलिए इसका मान 30 है।'
+                  }
+                ]
+              },
+              {
+                id: 'c2-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Addition and Subtraction with Carry/Borrow',
+                titleHindi: 'पाठ 2: दो अंकों का जोड़ व घटाव',
+                concepts: ['दो अंकों में जोड़', 'हासिल वाला जोड़', 'सरल घटाव'],
+                keyFormulas: ['25 + 14 = 39'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: '26 + 13 = ?',
+                    type: 'solve',
+                    correctAnswer: '39',
+                    explanation: '6 + 3 = 9 और 2 + 1 = 3, अतः उत्तर 39 है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c2-evs',
+            subject: 'EVS / Science',
+            subjectHindi: 'पर्यावरण (EVS)',
+            bookName: 'हमारा परिवेश - कक्षा 2',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c2-e-1',
+                chapterNumber: 1,
+                titleEnglish: 'Our Neighborhood & Helpers',
+                titleHindi: 'पाठ 1: हमारा पड़ोस और हमारे मददगार',
+                concepts: ['डॉक्टर, डाकिया, पुलिस, शिक्षक', 'पड़ोस की जगहें: अस्पताल, डाकघर, स्कूल'],
+                term: 'half_yearly',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'हमारे पत्र और पार्सल घर कौन पहुंचाता है?',
+                    type: 'mcq',
+                    options: ['डाकिया (Postman)', 'डॉक्टर', 'दर्जी', 'कुम्हार'],
+                    correctAnswer: 'डाकिया (Postman)',
+                    explanation: 'डाकिया डाक और चिट्ठियां घर-घर पहुंचाता है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c2-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'हिंदी - कक्षा 2',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c2-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Matra Gyan & Sentences',
+                titleHindi: 'पाठ 1: मात्राओं का ज्ञान और वाक्य रचना',
+                concepts: ['आ, इ, ई, उ, ऊ की मात्राएं', 'सरल वाक्य पढ़ना व लिखना'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: '"क" पर "आ" की मात्रा लगाने पर क्या बनता है?',
+                    type: 'solve',
+                    correctAnswer: 'का',
+                    explanation: 'क + ा = का बनता है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c2-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'English Reader - Class 2',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c2-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'Naming Words (Nouns) & Animals',
+                titleHindi: 'Chapter 1: Naming Words (Nouns)',
+                concepts: ['Names of persons, places, animals, things', 'Domestic & Wild animals'],
+                term: 'half_yearly',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'Which of the following is a naming word (Noun)?',
+                    type: 'mcq',
+                    options: ['Cat', 'Run', 'Fast', 'In'],
+                    correctAnswer: 'Cat',
+                    explanation: 'Cat is an animal, so it is a naming word (Noun).'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      'Class 3rd': {
+        english: [
+          {
+            id: 'c3-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 3',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c3-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Numbers up to 999 & Place Value',
+                titleHindi: 'पाठ 1: 999 तक संख्याएं और विस्तारित रूप',
+                concepts: ['सैकड़ा, दहाई, इकाई', 'संख्याओं की तुलना', 'आरोही और अवरोही क्रम'],
+                keyFormulas: ['345 = 300 + 40 + 5'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '500 + 40 + 8 मिलकर कौन सी संख्या बनती है?',
+                    type: 'solve',
+                    correctAnswer: '548',
+                    explanation: '5 सैकड़ा (500), 4 दहाई (40), और 8 इकाई (8) मिलकर 548 बनती है।'
+                  }
+                ]
+              },
+              {
+                id: 'c3-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Multiplication Tables & Quick Math',
+                titleHindi: 'पाठ 2: गुणा और पहाड़े (Tables 2 to 10)',
+                concepts: ['गुणा बार-बार जोड़ना है', 'पहाड़े याद करना', 'गुणा के इबारती प्रश्न'],
+                keyFormulas: ['4 × 5 = 20'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'एक पेन 5 रुपये का है। 6 पेन का कुल मूल्य कितना होगा?',
+                    type: 'solve',
+                    correctAnswer: '30',
+                    explanation: '5 × 6 = 30 रुपये।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c3-evs',
+            subject: 'EVS / Science',
+            subjectHindi: 'पर्यावरण (EVS)',
+            bookName: 'अपना परिवेश - कक्षा 3',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c3-e-1',
+                chapterNumber: 1,
+                titleEnglish: 'Our Surrounding Plants and Trees',
+                titleHindi: 'पाठ 1: पेड़-पौधे और उनकी उपयोगिता',
+                concepts: ['पेड़ों से फल, फूल, छाया, लकड़ी', 'औषधीय पौधे: तुलसी, नीम', 'पेड़ों की देखभाल'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान का राज्य वृक्ष कौन सा है?',
+                    type: 'mcq',
+                    options: ['खेजड़ी (Khejri)', 'बरगद', 'नीम', 'पीपल'],
+                    correctAnswer: 'खेजड़ी (Khejri)',
+                    explanation: 'खेजड़ी राजस्थान का कल्पवृक्ष और राज्य वृक्ष है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c3-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'हिंदी - कक्षा 3',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c3-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Desh Ki Mitti (Patriotic Poem)',
+                titleHindi: 'पाठ 1: देश की माटी (देशभक्ति कविता)',
+                concepts: ['कविता वाचन', 'देश प्रेम', 'कठिन शब्दों के अर्थ'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: '"देश की माटी, देश का जल" कविता में क्या प्रार्थना की गई है?',
+                    type: 'mcq',
+                    options: ['सबके विमल और सुंदर होने की', 'युद्ध करने की', 'धन कमाने की', 'सोने की'],
+                    correctAnswer: 'सबके विमल और सुंदर होने की',
+                    explanation: 'रविंद्रनाथ ठाकुर ने देश के जल, हवा और लोगों के मन को विमल बनने की प्रार्थना की है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c3-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'English Reader - Class 3',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c3-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'Good Morning (Poem) & Nature',
+                titleHindi: 'Chapter 1: Good Morning (Poem)',
+                concepts: ['Greeting the sun, sky, birds, trees', 'Rhyming words', 'Vocabulary'],
+                term: 'half_yearly',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'Who does the child say "Good Morning" to in the poem?',
+                    type: 'mcq',
+                    options: ['Sky and Sun', 'Only bed', 'Television', 'Clock'],
+                    correctAnswer: 'Sky and Sun',
+                    explanation: 'The child greets the sky, sun, little winds, and birds.'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      // ==========================================
+      // CLASS 4TH: EXACT RBSE SYLLABUS FROM USER
+      // ==========================================
+      'Class 4th': {
+        english: [
+          // 1. EVS: अपना परिवेश (21 CHAPTERS)
+          {
+            id: 'evs',
+            subject: 'EVS / Science',
+            subjectHindi: 'पर्यावरण अध्ययन (EVS)',
+            bookName: 'अपना परिवेश (Apna Parivesh)',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c4-evs-1',
+                chapterNumber: 1,
+                titleEnglish: 'A Happy Family (Family & Relationships)',
+                titleHindi: 'अध्याय 1: एक सुखद परिवार (Family & Relationships)',
+                concepts: ['संयुक्त परिवार व एकल परिवार', 'पारिवारिक रिश्ते और सहयोग', 'परिवार के सदस्यों की भूमिका'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'जिस परिवार में माता-पिता और बच्चे साथ रहते हैं, उसे क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['एकल परिवार (Nuclear Family)', 'संयुक्त परिवार', 'बड़ा परिवार', 'विस्तृत परिवार'],
+                    correctAnswer: 'एकल परिवार (Nuclear Family)',
+                    explanation: 'माता-पिता और उनके अविवाहित बच्चों वाले परिवार को एकल परिवार कहते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-2',
+                chapterNumber: 2,
+                titleEnglish: 'Understanding Relationships',
+                titleHindi: 'अध्याय 2: रिश्तों की समझ (Understanding Relationships)',
+                concepts: ['नाना-नानी, दादा-दादी के रिश्ते', 'परिवार में नए सदस्य का आगमन', 'रिश्तों का आदर'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'मां की मां को हम क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['दादी जी', 'नानी जी', 'चाची जी', 'बुआ जी'],
+                    correctAnswer: 'नानी जी',
+                    explanation: 'माता जी की माता को नानी जी कहा जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-3',
+                chapterNumber: 3,
+                titleEnglish: 'How Do We Identify? (Sensory Organs)',
+                titleHindi: 'अध्याय 3: कैसे पहचानें? (Sensory Organs & Identification)',
+                concepts: ['ज्ञानेंद्रियां (आंख, कान, नाक, जीभ, त्वचा)', 'ब्रेल लिपि का परिचय', 'सूंघकर व छूकर पहचानना'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'जो लोग देख नहीं सकते, वे किस लिपि की सहायता से पढ़ते हैं?',
+                    type: 'mcq',
+                    options: ['देवनागरी', 'ब्रेल लिपि (Braille Script)', 'रोमन लिपि', 'गुरुमुखी'],
+                    correctAnswer: 'ब्रेल लिपि (Braille Script)',
+                    explanation: 'ब्रेल लिपि में उभरे हुए 6 बिंदुओं को छूकर दृष्टिबाधित लोग पढ़ते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-4',
+                chapterNumber: 4,
+                titleEnglish: 'Play and Games (Sports & Traditional Games)',
+                titleHindi: 'अध्याय 4: खेल-खेल में (Games & Sports)',
+                concepts: ['पारंपरिक राजस्थानी खेल: सितोलिया, चर-भर, कबड्डी', 'खेल भावना व नियम', 'योग व व्यायाम'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान का पारंपरिक खेल जिसमें 7 पत्थरों को गेंद से गिराया जाता है, क्या कहलाता है?',
+                    type: 'mcq',
+                    options: ['क्रिकेट', 'सितोलिया (Sitoliya)', 'खो-खो', 'शतरंज'],
+                    correctAnswer: 'सितोलिया (Sitoliya)',
+                    explanation: 'सितोलिया में सात चपटे पत्थरों को एक के ऊपर एक रखकर गेंद से मारा जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-5',
+                chapterNumber: 5,
+                titleEnglish: 'Flowers and More Flowers (Plants & Flowers)',
+                titleHindi: 'अध्याय 5: फूल ही फूल (Plants & Flowers)',
+                concepts: ['फूलों के रंग और सुगंध', 'इत्र व गुलदस्ते', 'फूलों का औषधीय व भोजन में उपयोग'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'गुलाब के फूलों से कौन सा खुशबूदार जल तैयार किया जाता है?',
+                    type: 'mcq',
+                    options: ['गुलाब जल (Rose Water)', 'केवड़ा जल', 'नींबू पानी', 'नारियल पानी'],
+                    correctAnswer: 'गुलाब जल (Rose Water)',
+                    explanation: 'गुलाब की पंखुड़ियों से सुगंधित गुलाब जल और इत्र बनाया जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-6',
+                chapterNumber: 6,
+                titleEnglish: 'Care of Plants and Trees',
+                titleHindi: 'अध्याय 6: पेड़-पौधों की देखभाल (Care of Plants)',
+                concepts: ['पौधों को पानी और खाद देना', 'जड़ों का कार्य', 'खेजड़ी और बरगद का महत्व'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'पौधे मिट्टी से जल और पोषक तत्व किसकी सहायता से खींचते हैं?',
+                    type: 'mcq',
+                    options: ['पत्तियों से', 'जड़ों से (Roots)', 'तने से', 'फूलों से'],
+                    correctAnswer: 'जड़ों से (Roots)',
+                    explanation: 'जड़ें पौधे को मिट्टी में बांधे रखती हैं और जल व खनिज लवण अवशोषित करती हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-7',
+                chapterNumber: 7,
+                titleEnglish: 'A Walk in the Forest (Forests & Wildlife)',
+                titleHindi: 'अध्याय 7: जंगल की सैर (Forests & Wildlife)',
+                concepts: ['रणथंभौर राष्ट्रीय उद्यान', 'वन्य जीव और उनकी सुरक्षा', 'जंगल का वातावरण'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान में बाघों (Tigers) के लिए प्रसिद्ध राष्ट्रीय उद्यान कौन सा है?',
+                    type: 'mcq',
+                    options: ['रणथंभौर राष्ट्रीय उद्यान', 'जिम कॉर्बेट', 'गिर राष्ट्रीय उद्यान', 'काजीरंगा'],
+                    correctAnswer: 'रणथंभौर राष्ट्रीय उद्यान',
+                    explanation: 'सवाई माधोपुर स्थित रणथंभौर राष्ट्रीय उद्यान बाघों के संरक्षण के लिए विश्व प्रसिद्ध है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-8',
+                chapterNumber: 8,
+                titleEnglish: 'Animal Shelters (Habitats of Animals)',
+                titleHindi: 'अध्याय 8: जीव-जंतुओं की आवास व्यवस्था (Animal Shelters)',
+                concepts: ['जंगली पशु और पालतू पशुओं के घर', 'घोंसले, बिल, मांद', 'पशुओं की सुरक्षा'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'शेर जंगल में कहाँ रहता है?',
+                    type: 'mcq',
+                    options: ['मांद (Den)', 'घोंसले में', 'बिल में', 'पेड़ की शाखा पर'],
+                    correctAnswer: 'मांद (Den)',
+                    explanation: 'शेर गुफा या मांद में रहता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-9',
+                chapterNumber: 9,
+                titleEnglish: 'Beaks and Feathers of Birds',
+                titleHindi: 'अध्याय 9: चोंच और पंख (Birds, Beaks & Feathers)',
+                concepts: ['विभिन्न पक्षियों की चोंच की बनावट', 'भोजन के अनुसार चोंच', 'पक्षियों के पंख और उड़ान'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'तोते की चोंच का रंग और आकार कैसा होता है?',
+                    type: 'mcq',
+                    options: ['लाल और मुड़ी हुई', 'पीली और सीधी', 'काली और नुकीली', 'सफेद और चौड़ी'],
+                    correctAnswer: 'लाल और मुड़ी हुई',
+                    explanation: 'तोते की चोंच लाल रंग की और घुमावदार मुड़ी हुई होती है जिससे वह फल और बीज कुतर सके।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-10',
+                chapterNumber: 10,
+                titleEnglish: 'Water is Life (Sources & Conservation)',
+                titleHindi: 'अध्याय 10: जल ही जीवन का आधार (Water Sources & Conservation)',
+                concepts: ['जल के स्रोत: कुआं, बावड़ी, तालाब, नदी', 'राजस्थान में वर्षा जल संचयन (टांका)', 'जल संरक्षण'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान में घरों के आंगन में वर्षा जल एकत्र करने वाले गड्ढे को क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['टांका (Tanka)', 'नहर', 'झील', 'बावड़ी'],
+                    correctAnswer: 'टांका (Tanka)',
+                    explanation: 'राजस्थान में छत का बरसाती पानी आंगन के भूमिगत टांके में एकत्र किया जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-11',
+                chapterNumber: 11,
+                titleEnglish: 'How Water Flows',
+                titleHindi: 'अध्याय 11: जल बहता कैसे-कैसे (Flow of Water)',
+                concepts: ['ऊंचाई से ढलान की ओर जल का बहाव', 'फसलों की सिंचाई: रहट, फव्वारा पद्धति', 'नहरें'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'पानी हमेशा किस दिशा में बहता है?',
+                    type: 'mcq',
+                    options: ['ऊंचाई से नीचे ढलान की ओर', 'नीचे से ऊपर की ओर', 'स्थिर रहता है', 'हवा की उल्टी दिशा में'],
+                    correctAnswer: 'ऊंचाई से नीचे ढलान की ओर',
+                    explanation: 'गुरुत्वाकर्षण के कारण पानी हमेशा ऊंचाई से निचले धरातल की ओर बहता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-12',
+                chapterNumber: 12,
+                titleEnglish: 'Dirty Water Spreads Diseases (Sanitation)',
+                titleHindi: 'अध्याय 12: गंदा पानी फैलाए बीमारी (Water-borne Diseases & Sanitation)',
+                concepts: ['ठहरे पानी में मच्छरों का पनपना (मलेरिया, डेंगू)', 'गंदा पानी पीने से होने वाले रोग', 'क्लोरीनेशन व पानी उबालना'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'ठहरे हुए गंदे पानी में किस कीट के पनपने से मलेरिया फैलता है?',
+                    type: 'mcq',
+                    options: ['मादा एनाफिलीज़ मच्छर', 'मधुमक्खी', 'तितली', 'चींटी'],
+                    correctAnswer: 'मादा एनाफिलीज़ मच्छर',
+                    explanation: 'ठहरे पानी में मच्छर अंडे देते हैं और मादा एनाफिलीज़ के काटने से मलेरिया होता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-13',
+                chapterNumber: 13,
+                titleEnglish: 'Chew and Eat Well (Food & Digestion)',
+                titleHindi: 'अध्याय 13: चबा-चबाकर खाओ (Food & Digestion)',
+                concepts: ['दांतों के प्रकार और कार्य', 'चबाकर खाने का महत्व व लार', 'पाचन क्रिया'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'रोटी को देर तक चबाने पर वह मीठी क्यों लगने लगती है?',
+                    type: 'mcq',
+                    options: ['मुंह की लार स्टार्च को शर्करा में बदल देती है', 'रोटी में चीनी होती है', 'दांत मीठे होते हैं', 'पानी के कारण'],
+                    correctAnswer: 'मुंह की लार स्टार्च को शर्करा में बदल देती है',
+                    explanation: 'लार में टायलिन एंजाइम होता है जो भोजन के स्टार्च को ग्लूकोज में परिवर्तित करता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-14',
+                chapterNumber: 14,
+                titleEnglish: 'Cook and Eat Food (Cooking & Food Habits)',
+                titleHindi: 'अध्याय 14: भोजन पकाएं और खाएं (Cooking & Food Habits)',
+                concepts: ['पकाने के तरीके: उबालना, भूनना, तलना, भाप में पकाना', 'सौर चूल्हा और गैस चूल्हा', 'संतुलित आहार'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'दाल-बाटी-चूरमा को किस विधि द्वारा तैयार किया जाता है?',
+                    type: 'mcq',
+                    options: ['कंडों की आंच पर सेककर/भूनकर', 'केवल उबालकर', 'कच्चा काटकर', 'धूप में सुखाकर'],
+                    correctAnswer: 'कंडों की आंच पर सेककर/भूनकर',
+                    explanation: 'राजस्थान में पारम्परिक बाटी को कंडे/उपलों की अंगीठी पर भूनकर सेका जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-15',
+                chapterNumber: 15,
+                titleEnglish: 'Cleanliness and Decoration of Home',
+                titleHindi: 'अध्याय 15: घर की सफाई और सजावट (Cleanliness of Home)',
+                concepts: ['कचरा प्रबंधन: गीला कचरा व सूखा कचरा', 'डस्टबिन का प्रयोग', 'मांडणा व रंगोली से सजावट'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'गीले कचरे (सब्जी के छिलके) के लिए किस रंग का कूड़ेदान उपयोग करना चाहिए?',
+                    type: 'mcq',
+                    options: ['हरा कूड़ेदान (Green Bin)', 'नीला कूड़ेदान', 'लाल कूड़ेदान', 'काला कूड़ेदान'],
+                    correctAnswer: 'हरा कूड़ेदान (Green Bin)',
+                    explanation: 'गीले जैविक कचरे के लिए हरे रंग का कूड़ेदान इस्तेमाल किया जाता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-16',
+                chapterNumber: 16,
+                titleEnglish: 'Our Homes (Types of Houses)',
+                titleHindi: 'अध्याय 16: हमारे घर (Types of Houses)',
+                concepts: ['कच्चे घर (मिट्टी व छप्पर वाले)', 'पक्के मकान, बहुमंजिला इमारतें', 'इग्लू व तंबू'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान के ग्रामीण क्षेत्रों में घरों की दीवारों को किससे लीपा जाता है?',
+                    type: 'mcq',
+                    options: ['मिट्टी और गोबर के लेप से', 'प्लास्टिक से', 'कांच से', 'कागज से'],
+                    correctAnswer: 'मिट्टी और गोबर के लेप से',
+                    explanation: 'मिट्टी और गोबर से लीपने पर घर गर्मियों में ठंडे और कीटों से सुरक्षित रहते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-17',
+                chapterNumber: 17,
+                titleEnglish: 'Dresses of Rajasthan',
+                titleHindi: 'अध्याय 17: राजस्थानी पोशाकें (Dresses of Rajasthan)',
+                concepts: ['धोती-कुर्ता और साफा (पगड़ी)', 'घाघरा-चोली व ओढ़नी', 'बंधेज व लहरिया'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'राजस्थान में सिर पर बांधे जाने वाले वस्त्र को क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['साफा / पगड़ी (Turban)', 'गमछा', 'दुपट्टा', 'शॉल'],
+                    correctAnswer: 'साफा / पगड़ी (Turban)',
+                    explanation: 'राजस्थान में साफा या पगड़ी मान-सम्मान का प्रतीक है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-18',
+                chapterNumber: 18,
+                titleEnglish: 'Occupations and Industries of Rajasthan',
+                titleHindi: 'अध्याय 18: राजस्थान के उद्योग-धंधे (Occupations & Industries)',
+                concepts: ['हस्तशिल्प, मार्बल उद्योग (मकराना)', 'ऊन उद्योग व कपड़ा छपाई (सांगानेरी प्रिंट)', 'खेती व पशुपालन'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'विश्व प्रसिद्ध सफेद संगमरमर (White Marble) राजस्थान के किस क्षेत्र से निकलता है?',
+                    type: 'mcq',
+                    options: ['मकराना (Makrana)', 'कोटा', 'बीकानेर', 'बाड़मेर'],
+                    correctAnswer: 'मकराना (Makrana)',
+                    explanation: 'मकराना का सफेद संगमरमर ताजमहल में भी लगाया गया है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-19',
+                chapterNumber: 19,
+                titleEnglish: 'Our National Symbols',
+                titleHindi: 'अध्याय 19: हमारे राष्ट्रीय प्रतीक (National Symbols)',
+                concepts: ['तिरंगा झंडा, राष्ट्रीय गान', 'राष्ट्रीय पशु (बाघ), राष्ट्रीय पक्षी (मोर)', 'राष्ट्रीय फूल (कमल)'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'भारत का राष्ट्रीय पक्षी कौन सा है?',
+                    type: 'mcq',
+                    options: ['मोर (Peacock)', 'तोता', 'कबूतर', 'बाज'],
+                    correctAnswer: 'मोर (Peacock)',
+                    explanation: 'सुंदर पंखों वाला मोर भारत का राष्ट्रीय पक्षी है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-20',
+                chapterNumber: 20,
+                titleEnglish: 'Our Heritage (Monuments & Forts of Rajasthan)',
+                titleHindi: 'अध्याय 20: हमारी धरोहर (Monuments & Forts of Rajasthan)',
+                concepts: ['चित्तौड़गढ़ किला, मेहरानगढ़ (जोधपुर), आमेर (जयपुर)', 'हवामहल व विजय स्तंभ', 'धरोहर का संरक्षण'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'हवामहल किस ऐतिहासिक शहर में स्थित है?',
+                    type: 'mcq',
+                    options: ['जयपुर (Jaipur)', 'उदयपुर', 'अजमेर', 'जैसलमेर'],
+                    correctAnswer: 'जयपुर (Jaipur)',
+                    explanation: 'हवामहल गुलाबी नगरी जयपुर में स्थित एक प्रसिद्ध पांच मंजिला महल है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-evs-21',
+                chapterNumber: 21,
+                titleEnglish: 'Means of Transport and Traffic Rules',
+                titleHindi: 'अध्याय 21: यातायात के साधन और नियम (Traffic Rules & Transport)',
+                concepts: ['सड़क, रेल, जल और वायु परिवहन', 'ट्रैफिक लाइट (लाल, पीली, हरी)', 'जेब्रा क्रॉसिंग व हेलमेट'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'ट्रैफिक सिग्नल पर लाल बत्ती (Red Light) का क्या अर्थ होता है?',
+                    type: 'mcq',
+                    options: ['रुकिए (Stop)', 'चलिए (Go)', 'तैयार रहिए', 'तेज चलाइए'],
+                    correctAnswer: 'रुकिए (Stop)',
+                    explanation: 'लाल बत्ती वाहन को रुकने का संकेत देती है।'
+                  }
+                ]
+              }
+            ]
+          },
+
+          // 2. MATHEMATICS: गणित (14 CHAPTERS)
+          {
+            id: 'math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित (Maths - Class 4)',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c4-math-1',
+                chapterNumber: 1,
+                titleEnglish: 'Numbers (Up to 4-digit numbers, Place Value, Face Value)',
+                titleHindi: 'अध्याय 1: संख्याएं (Numbers - Up to 4-digit, Place & Face Value)',
+                concepts: ['4 अंकों तक की संख्याएं (9999 तक)', 'स्थानीय मान और जातीय मान', 'विस्तारित रूप व देवनागरी अंक'],
+                keyFormulas: ['3842 = 3000 + 800 + 40 + 2', 'इकाई, दहाई, सैकड़ा, हजार'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'संख्या 4825 में अंक 8 का स्थानीय मान क्या होगा?',
+                    type: 'solve',
+                    correctAnswer: '800',
+                    explanation: '8 सैकड़े के स्थान पर है, अतः 8 × 100 = 800।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-2',
+                chapterNumber: 2,
+                titleEnglish: 'Addition and Subtraction (With Carry & Borrow)',
+                titleHindi: 'अध्याय 2: जोड़-घटाव (Addition & Subtraction)',
+                concepts: ['4 अंकों की संख्याओं का जोड़', 'हासिल वाले जोड़ और घटाव', 'इबारती प्रश्न व दैनिक जीवन में हिसाब'],
+                keyFormulas: ['योगफल = पहली संख्या + दूसरी संख्या', 'शेष = कुल - खर्च'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'रमेश ने 4560 रुपये की साइकिल और 1280 रुपये का सामान खरीदा। उसने कुल कितने रुपये खर्च किए?',
+                    type: 'solve',
+                    correctAnswer: '5840',
+                    explanation: '4560 + 1280 = 5840 रुपये।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-3',
+                chapterNumber: 3,
+                titleEnglish: 'Multiplication (Single & Double Digit)',
+                titleHindi: 'अध्याय 3: गुणा (Multiplication)',
+                concepts: ['गुणनफल की अवधारणा', 'दो व तीन अंकों की संख्या का गुणा', 'शून्य से गुणा का नियम'],
+                keyFormulas: ['गुणनफल = गुण्य × गुणक', 'किसी संख्या × 0 = 0'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'एक पेटी में 45 आम हैं। ऐसी 12 पेटियों में कुल कितने आम होंगे?',
+                    type: 'solve',
+                    correctAnswer: '540',
+                    explanation: '45 × 12 = 540 आम।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-4',
+                chapterNumber: 4,
+                titleEnglish: 'Division (Sharing & Remainders)',
+                titleHindi: 'अध्याय 4: भाग (Division)',
+                concepts: ['समान बांटना (Equal Distribution)', 'भाज्य, भाजक, भागफल और शेषफल', 'जांच सूत्र'],
+                keyFormulas: ['भाज्य = (भाजक × भागफल) + शेषफल'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: '72 कॉपियों को 8 बच्चों में बराबर-बराबर बांटने पर प्रत्येक को कितनी कॉपियां मिलेंगी?',
+                    type: 'solve',
+                    correctAnswer: '9',
+                    explanation: '72 ÷ 8 = 9 कॉपियां।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-5',
+                chapterNumber: 5,
+                titleEnglish: 'Vedic Math Basics (Ekadhikena Purvena)',
+                titleHindi: 'अध्याय 5: वैदिक गणित (Vedic Math Basics)',
+                concepts: ['एकाधिक और एकन्यून की समझ', 'परम मित्र अंक (योग = 10)', 'एकाधिकेन पूर्वेण विधि से जोड़'],
+                keyFormulas: ['7 का परम मित्र अंक = 3 (7+3=10)', '4 का एकाधिक = 5'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'वैदिक गणित में अंक 6 का परम मित्र अंक क्या है?',
+                    type: 'mcq',
+                    options: ['2', '3', '4', '5'],
+                    correctAnswer: '4',
+                    explanation: 'जिन दो अंकों का योग 10 होता है वे परम मित्र कहलाते हैं (6 + 4 = 10)।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-6',
+                chapterNumber: 6,
+                titleEnglish: 'Fractions (Simple Fractions, Numerator & Denominator)',
+                titleHindi: 'अध्याय 6: भिन्न (Fractions - Numerator & Denominator)',
+                concepts: ['आधा (1/2), एक-चौथाई (1/4), तीन-चौथाई (3/4)', 'अंश और हर की पहचान', 'चित्रों में छायांकित भिन्न'],
+                keyFormulas: ['भिन्न = अंश / हर (Numerator / Denominator)'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'भिन्न 3/4 में अंश (Numerator) कौन सा अंक है?',
+                    type: 'mcq',
+                    options: ['3', '4', '7', '1'],
+                    correctAnswer: '3',
+                    explanation: 'ऊपर वाली संख्या को अंश कहते हैं, इसलिए 3 अंश है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-7',
+                chapterNumber: 7,
+                titleEnglish: 'Measurement (Length: Meter, Centimeter)',
+                titleHindi: 'अध्याय 7: मापन (Measurement - Length: Meter, Centimeter)',
+                concepts: ['सेंटीमीटर (cm) और मीटर (m) की समझ', 'स्केल (पैमाने) से रेखाखंड मापना', 'इकाइयों का रूपांतरण'],
+                keyFormulas: ['1 मीटर = 100 सेंटीमीटर (1 m = 100 cm)', '1 किलोमीटर = 1000 मीटर'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '4 मीटर में कितने सेंटीमीटर होते हैं?',
+                    type: 'solve',
+                    correctAnswer: '400',
+                    explanation: '1 मीटर = 100 सेमी, अतः 4 मीटर = 4 × 100 = 400 सेमी।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-8',
+                chapterNumber: 8,
+                titleEnglish: 'Weight / Measurement of Mass (Gram, Kilogram)',
+                titleHindi: 'अध्याय 8: भार / तौल (Weight - Gram, Kilogram)',
+                concepts: ['ग्राम (g) और किलोग्राम (kg)', 'तराजू और बांट (100g, 200g, 500g, 1kg)', 'भार का जोड़-घटाव'],
+                keyFormulas: ['1 किलोग्राम = 1000 ग्राम (1 kg = 1000 g)'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '2 किलोग्राम में कितने ग्राम होते हैं?',
+                    type: 'solve',
+                    correctAnswer: '2000',
+                    explanation: '1 किग्रा = 1000 ग्राम, इसलिए 2 किग्रा = 2000 ग्राम।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-9',
+                chapterNumber: 9,
+                titleEnglish: 'Capacity / Volume (Liter, Milliliter)',
+                titleHindi: 'अध्याय 9: धारिता / आयतन (Capacity - Liter, Milliliter)',
+                concepts: ['लीटर (L) और मिलीलीटर (mL)', 'तरल पदार्थों का मापन (दूध, तेल, पानी)', 'मापक बर्तन'],
+                keyFormulas: ['1 लीटर = 1000 मिलीलीटर (1 L = 1000 mL)'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: '500 मिलीलीटर के कितने माप मिलकर 1 लीटर बनाएंगे?',
+                    type: 'mcq',
+                    options: ['2 माप', '3 माप', '4 माप', '5 माप'],
+                    correctAnswer: '2 माप',
+                    explanation: '500 mL + 500 mL = 1000 mL = 1 Liter।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-10',
+                chapterNumber: 10,
+                titleEnglish: 'Time (Clock Reading, Calendar, Days & Months)',
+                titleHindi: 'अध्याय 10: समय (Time - Clock Reading, Calendar, Days & Months)',
+                concepts: ['घड़ी देखना (घंटे व मिनट की सुई)', 'AM और PM', 'कैलेंडर: दिन, सप्ताह और महीने'],
+                keyFormulas: ['1 घंटा = 60 मिनट', '1 दिन = 24 घंटे', '1 वर्ष = 12 महीने'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'यदि घड़ी में छोटी सुई 3 पर और बड़ी सुई 12 पर हो, तो कितना समय हुआ?',
+                    type: 'mcq',
+                    options: ['3:00 बजे', '12:15 बजे', '3:30 बजे', '6:00 बजे'],
+                    correctAnswer: '3:00 बजे',
+                    explanation: 'छोटी सुई घंटे दर्शाती है और बड़ी 12 पर होने से पूरे 3:00 बजे हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-11',
+                chapterNumber: 11,
+                titleEnglish: 'Money (Currency & Simple Shopping Calculations)',
+                titleHindi: 'अध्याय 11: मुद्रा (Money - Currency & Simple Shopping Calculations)',
+                concepts: ['भारतीय रुपये और पैसे के नोट/सिक्के', 'पैसे को रुपये में बदलना', 'दुकानदार का बिल बनाना'],
+                keyFormulas: ['1 रुपया = 100 पैसे'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'रवि 50 रुपये लेकर बाजार गया। उसने 35 रुपये की किताब खरीदी। उसके पास कितने रुपये बचे?',
+                    type: 'solve',
+                    correctAnswer: '15',
+                    explanation: '50 - 35 = 15 रुपये।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-12',
+                chapterNumber: 12,
+                titleEnglish: 'Geometry (Shapes, Lines, Angles, Perimeter)',
+                titleHindi: 'अध्याय 12: ज्यामिति (Geometry - Shapes, Lines, Angles, Perimeter)',
+                concepts: ['बिंदु, रेखा, रेखाखंड और किरण', 'आयत, वर्ग, त्रिभुज और वृत्त', 'परिमाप की सरल गणना'],
+                keyFormulas: ['आयत का परिमाप = 2 × (लंबाई + चौड़ाई)', 'वर्ग का परिमाप = 4 × भुजा'],
+                term: 'annual',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'एक वर्ग की एक भुजा 5 सेमी है। उसका परिमाप कितना होगा?',
+                    type: 'solve',
+                    correctAnswer: '20',
+                    explanation: 'वर्ग का परिमाप = 4 × भुजा = 4 × 5 = 20 सेमी।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-13',
+                chapterNumber: 13,
+                titleEnglish: 'Patterns (Symmetry & Sequences)',
+                titleHindi: 'अध्याय 13: पैटर्न (Patterns)',
+                concepts: ['आकृतियों के पैटर्न (घुमाव 1/4, 1/2)', 'संख्यात्मक पैटर्न और सममिति'],
+                keyFormulas: ['क्रमबद्धता नियम (Rule of Sequence)'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'पैटर्न को पूरा करें: 5, 10, 15, 20, [ ... ]',
+                    type: 'solve',
+                    correctAnswer: '25',
+                    explanation: 'हर बार 5 जुड़ रहा है, अतः 20 + 5 = 25।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-math-14',
+                chapterNumber: 14,
+                titleEnglish: 'Data Handling (Simple Charts & Pictures)',
+                titleHindi: 'अध्याय 14: आंकड़े (Data Handling - Simple Charts & Pictures)',
+                concepts: ['आंकड़ों का संकलन', 'चित्र आलेख (Pictograph)', 'तालिका पढ़ना और उत्तर देना'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'यदि एक 🍎 चिन्ह = 5 सेब दर्शाता है, तो 3 🍎 चिन्ह कितने सेब दर्शाएंगे?',
+                    type: 'solve',
+                    correctAnswer: '15',
+                    explanation: '3 × 5 = 15 सेब।'
+                  }
+                ]
+              }
+            ]
+          },
+
+          // 3. HINDI: हिंदी (10 CHAPTERS + व्याकरण)
+          {
+            id: 'hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'हिंदी (Class 4)',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c4-hin-1',
+                chapterNumber: 1,
+                titleEnglish: 'Sukhdham (Poem)',
+                titleHindi: 'पाठ 1: सुखधाम (कविता)',
+                concepts: ['कविता का सस्वर पाठ', 'सुखधाम अर्थात भारत देश का गुणगान', 'कठिन शब्दार्थ'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'कविता में "सुखधाम" किसे कहा गया है?',
+                    type: 'mcq',
+                    options: ['हमारे भारत देश को', 'विद्यालय को', 'घर को', 'बगीचे को'],
+                    correctAnswer: 'हमारे भारत देश को',
+                    explanation: 'कवि ने अपनी पावन मातृभूमि भारत देश को सुखों का धाम कहा है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-2',
+                chapterNumber: 2,
+                titleEnglish: 'Buddhiman Hans (Story)',
+                titleHindi: 'पाठ 2: बुद्धिमान हंस (कहानी)',
+                concepts: ['बुद्धि और एकता की सीख', 'वृद्ध हंस की समझदारी', 'शिकारी का जाल'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'बुद्धिमान हंस ने पेड़ की लता को काटने की सलाह क्यों दी थी?',
+                    type: 'mcq',
+                    options: ['ताकि कोई शिकारी उस पर चढ़कर जाल न बिछा सके', 'लता अच्छी नहीं थी', 'पेड़ गिर रहा था', 'हवा के लिए'],
+                    correctAnswer: 'ताकि कोई शिकारी उस पर चढ़कर जाल न बिछा सके',
+                    explanation: 'वृद्ध हंस जानता था कि लता बड़ी होकर शिकारी के लिए सीढ़ी का काम करेगी।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-3',
+                chapterNumber: 3,
+                titleEnglish: 'Hamari Shakti (Patriotism)',
+                titleHindi: 'पाठ 3: हमारी शक्ति (देशभक्ति)',
+                concepts: ['एकता में बल', 'देश सेवा की भावना', 'नागरिक कर्तव्य'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'हमारे देश की सबसे बड़ी ताकत क्या है?',
+                    type: 'mcq',
+                    options: ['अनेकता में एकता', 'पैसा', 'हथियार', 'बड़ी इमारतें'],
+                    correctAnswer: 'अनेकता में एकता',
+                    explanation: 'विविधता और आपसी एकता ही भारत की सबसे बड़ी शक्ति है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-4',
+                chapterNumber: 4,
+                titleEnglish: 'Ped-Poudhon Mein Jeevan (Environment)',
+                titleHindi: 'पाठ 4: पेड़-पौधों में जीवन (पर्यावरण)',
+                concepts: ['जगदीश चंद्र बसु की खोज', 'पौधों में सुख-दुख का अनुभव', 'पेड़ों की रक्षा'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'किस भारतीय वैज्ञानिक ने सिद्ध किया कि पौधों में भी जीवन होता है?',
+                    type: 'mcq',
+                    options: ['डॉ. जगदीश चंद्र बसु', 'डॉ. कलाम', 'सी. वी. रमन', 'रामानुजन'],
+                    correctAnswer: 'डॉ. जगदीश चंद्र बसु',
+                    explanation: 'आचार्य जगदीश चंद्र बसु ने क्रैस्कोग्राफ यंत्र से पौधों में संवेदनशीलता सिद्ध की।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-5',
+                chapterNumber: 5,
+                titleEnglish: 'Saccha Mitra (Moral Story)',
+                titleHindi: 'पाठ 5: सच्चा मित्र (नैतिक मूल्य)',
+                concepts: ['मित्रता का महत्व', 'मुसीबत में काम आने वाला ही सच्चा मित्र है', 'निस्वार्थ भाव'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'सच्चा मित्र कौन कहलाता है?',
+                    type: 'mcq',
+                    options: ['जो विपत्ति में साथ दे', 'जो केवल खेलने आए', 'जो पैसे मांगे', 'जो दूर भाग जाए'],
+                    correctAnswer: 'जो विपत्ति में साथ दे',
+                    explanation: '"विपत्ति कसौटी जे कसे, तेई सांचे मीत।" विपत्ति में साथ देने वाला ही सच्चा मित्र है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-6',
+                chapterNumber: 6,
+                titleEnglish: 'Main Gandhak Bol Raha Hun (Science in Story)',
+                titleHindi: 'पाठ 6: मैं गंधक बोल रहा हूं',
+                concepts: ['गंधक (Sulphur) की आत्मकथा', 'औषधि व बारूद में उपयोग', 'विज्ञान का परिचय'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'गंधक का रंग साधारणतया कैसा होता है?',
+                    type: 'mcq',
+                    options: ['पीला (Yellow)', 'नीला', 'लाल', 'काला'],
+                    correctAnswer: 'पीला (Yellow)',
+                    explanation: 'गंधक हल्के पीले रंग का एक ठोस खनिज तत्व होता है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-7',
+                chapterNumber: 7,
+                titleEnglish: 'Veer Balak (Bravery Story)',
+                titleHindi: 'पाठ 7: वीर बालक (साहस की कहानी)',
+                concepts: ['साहस और वीरता', 'समय पर सूझबूझ का परिचय', 'पुरस्कार व सम्मान'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'वीर बालक ने बहादुरी दिखाकर किसकी जान बचाई?',
+                    type: 'mcq',
+                    options: ['अपने डूबते हुए मित्र की', 'बिल्ली की', 'चिड़िया की', 'चोर की'],
+                    correctAnswer: 'अपने डूबते हुए मित्र की',
+                    explanation: 'बालक ने अपनी जान की परवाह न करते हुए नदी में कूदकर मित्र को बचाया।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-8',
+                chapterNumber: 8,
+                titleEnglish: 'Hamare Tyohar (Festivals of India)',
+                titleHindi: 'पाठ 8: हमारे त्यौहार (दीपावली, होली, ईद, आदि)',
+                concepts: ['दीपावली, होली, ईद, क्रिसमस', 'त्यौहारों का सामाजिक व सांस्कृतिक महत्व', 'भाईचारा'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'दीपों और प्रकाश का पावन पर्व कौन सा है?',
+                    type: 'mcq',
+                    options: ['दीपावली (Diwali)', 'होली', 'दशहरा', 'रक्षाबंधन'],
+                    correctAnswer: 'दीपावली (Diwali)',
+                    explanation: 'दीपावली अंधकार पर प्रकाश की विजय का प्रतीक है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-9',
+                chapterNumber: 9,
+                titleEnglish: 'Swatantrata Ka Mahatva',
+                titleHindi: 'पाठ 9: स्वतंत्रता का महत्व',
+                concepts: ['गुलामी का दुख और आजादी का सुख', 'स्वतंत्रता सेनानियों का योगदान', 'तिरंगे का सम्मान'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'भारत का स्वतंत्रता दिवस किस तारीख को मनाया जाता है?',
+                    type: 'mcq',
+                    options: ['15 अगस्त', '26 जनवरी', '2 अक्टूबर', '14 नवंबर'],
+                    correctAnswer: '15 अगस्त',
+                    explanation: '15 अगस्त 1947 को हमारा देश स्वतंत्र हुआ था।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-10',
+                chapterNumber: 10,
+                titleEnglish: 'Chatur Lomdi (Clever Fox Story)',
+                titleHindi: 'पाठ 10: चतुर लोमड़ी',
+                concepts: ['लोमड़ी की चालाकी', 'झूठी प्रशंसा से बचना', 'कौआ और रोटी की कहानी'],
+                term: 'annual',
+                estimatedMinutes: 35,
+                sampleQuestions: [
+                  {
+                    question: 'कौए के मुंह से रोटी का टुकड़ा नीचे क्यों गिर गया?',
+                    type: 'mcq',
+                    options: ['जैसे ही उसने गाने के लिए मुंह खोला', 'वह उड़ गया था', 'हवा से', 'रोटी भारी थी'],
+                    correctAnswer: 'जैसे ही उसने गाने के लिए मुंह खोला',
+                    explanation: 'लोमड़ी की झूठी प्रशंसा में आकर कौए ने कांव-कांव करने के लिए मुंह खोला और रोटी गिर गई।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-11',
+                chapterNumber: 11,
+                titleEnglish: 'Hindi Grammar: Sangya, Sarvanam, Visheshan',
+                titleHindi: 'व्याकरण: संज्ञा, सर्वनाम और विशेषण (Grammar Basics)',
+                concepts: ['संज्ञा की परिभाषा व भेद', 'सर्वनाम (मैं, तुम, वह)', 'विशेषण (गुण, दोष, संख्या, परिमाण)'],
+                keyFormulas: ['संज्ञा = नाम', 'सर्वनाम = संज्ञा के स्थान पर आने वाले शब्द', 'विशेषण = विशेषता बताने वाले शब्द'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '"जयपुर एक सुंदर शहर है।" इस वाक्य में विशेषण शब्द कौन सा है?',
+                    type: 'mcq',
+                    options: ['सुंदर', 'जयपुर', 'शहर', 'है'],
+                    correctAnswer: 'सुंदर',
+                    explanation: '"सुंदर" शब्द शहर की विशेषता बता रहा है, अतः यह विशेषण है।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-12',
+                chapterNumber: 12,
+                titleEnglish: 'Hindi Grammar: Vilom, Paryayvachi, Vachan aur Ling',
+                titleHindi: 'व्याकरण: विलोम, पर्यायवाची, वचन और लिंग',
+                concepts: ['विलोम शब्द (उल्टा अर्थ)', 'पर्यायवाची (समानार्थी शब्द)', 'एकवचन/बहुवचन', 'पुल्लिंग/स्त्रीलिंग'],
+                keyFormulas: ['दिन का विलोम = रात', 'जल का पर्यायवाची = पानी, नीर'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '"सूर्य" का पर्यायवाची शब्द कौन सा है?',
+                    type: 'mcq',
+                    options: ['दिनकर / रवि', 'शशि', 'पवन', 'वारिद'],
+                    correctAnswer: 'दिनकर / रवि',
+                    explanation: 'सूर्य के पर्यायवाची दिनकर, रवि, भानु और भास्कर हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c4-hin-13',
+                chapterNumber: 13,
+                titleEnglish: 'Hindi Grammar: Shuddh-Ashuddh, Nibandh aur Patra Lekhan',
+                titleHindi: 'व्याकरण: शुद्ध-अशुद्ध शब्द, निबंध और पत्र लेखन',
+                concepts: ['वर्तनी की शुद्धता', 'पत्र लेखन का प्रारूप (प्रार्थना पत्र)', 'सरल निबंध लेखन (मेरा प्रिय मित्र, गाय, दीपावली)'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'विद्यालय के प्रधानाध्यापक जी को अवकाश के लिए लिखे जाने वाले पत्र को क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['प्रार्थना-पत्र (Application)', 'बधाई पत्र', 'निमंत्रण पत्र', 'व्यापारिक पत्र'],
+                    correctAnswer: 'प्रार्थना-पत्र (Application)',
+                    explanation: 'अवकाश या जरूरी काम के लिए स्कूल में प्रार्थना-पत्र दिया जाता है।'
+                  }
+                ]
+              }
+            ]
+          },
+
+          // 4. ENGLISH: My Picture Book / English Reader (7 CHAPTERS + GRAMMAR)
+          {
+            id: 'english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'My Picture Book / English Reader (Class 4)',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c4-eng-1',
+                chapterNumber: 1,
+                titleEnglish: 'Chapter 1: Clean India (Poem/Lesson on Hygiene)',
+                titleHindi: 'Chapter 1: Clean India (स्वच्छ भारत अभियान)',
+                concepts: ['Cleanliness and Hygiene', 'Dustbins usage', 'Rhyming poem reading', 'New vocabulary'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'Where should we always throw dry garbage and wrappers?',
+                    type: 'mcq',
+                    options: ['In the dustbin', 'On the road', 'In the park lawn', 'Under the bench'],
+                    correctAnswer: 'In the dustbin',
+                    explanation: 'To keep our India clean, we must always throw garbage into dustbins.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-2',
+                chapterNumber: 2,
+                titleEnglish: 'Chapter 2: The Lion and the Mouse (Classic Story)',
+                titleHindi: 'Chapter 2: The Lion and the Mouse (शेर और चूहे की कहानी)',
+                concepts: ['Moral story reading', 'Kindness rewarded', 'Simple past tense verbs (roared, caught, freed)'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'How did the little mouse help the mighty lion?',
+                    type: 'mcq',
+                    options: ['By chewing the hunter’s net with sharp teeth', 'By bringing water', 'By roaring loudly', 'By calling an elephant'],
+                    correctAnswer: 'By chewing the hunter’s net with sharp teeth',
+                    explanation: 'The tiny mouse cut the strong ropes of the net with its sharp teeth to free the lion.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-3',
+                chapterNumber: 3,
+                titleEnglish: 'Chapter 3: My Native Land (Our Country)',
+                titleHindi: 'Chapter 3: My Native Land (हमारी मातृभूमि)',
+                concepts: ['Love for motherland India', 'National pride', 'Describing words (brave, beautiful, free)'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'What is the name of our great motherland country?',
+                    type: 'mcq',
+                    options: ['India (Bharat)', 'America', 'England', 'Japan'],
+                    correctAnswer: 'India (Bharat)',
+                    explanation: 'India is our beloved native land.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-4',
+                chapterNumber: 4,
+                titleEnglish: 'Chapter 4: Trees are Our Friends',
+                titleHindi: 'Chapter 4: Trees are Our Friends (पेड़ हमारे सच्चे मित्र)',
+                concepts: ['Gifts of trees: shade, oxygen, fruits, wood', 'Saving trees from cutting', 'Vocabulary'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'Which essential gas do trees give us to breathe?',
+                    type: 'mcq',
+                    options: ['Oxygen', 'Carbon dioxide', 'Nitrogen', 'Helium'],
+                    correctAnswer: 'Oxygen',
+                    explanation: 'Trees absorb carbon dioxide and release life-giving oxygen.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-5',
+                chapterNumber: 5,
+                titleEnglish: 'Chapter 5: Festivals of Rajasthan',
+                titleHindi: 'Chapter 5: Festivals of Rajasthan (राजस्थान के रंग-बिरंगे उत्सव)',
+                concepts: ['Teej, Gangaur, Pushkar Fair, Desert Festival Jaisalmer', 'Traditional costumes and folk music'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'Which famous festival is celebrated in Rajasthan with swings and green clothes during monsoon?',
+                    type: 'mcq',
+                    options: ['Teej Festival', 'Christmas', 'Baisakhi', 'Pongal'],
+                    correctAnswer: 'Teej Festival',
+                    explanation: 'Teej is celebrated with great joy in Rajasthan with swings and traditional songs during rainy season.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-6',
+                chapterNumber: 6,
+                titleEnglish: 'Chapter 6: The Honest Woodcutter',
+                titleHindi: 'Chapter 6: The Honest Woodcutter (ईमानदार लकड़हारा)',
+                concepts: ['Honesty is the best policy', 'Golden axe, silver axe, iron axe', 'Story moral comprehension'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'Which axe did the honest woodcutter claim as his own real axe?',
+                    type: 'mcq',
+                    options: ['The simple Iron axe', 'The Golden axe', 'The Silver axe', 'The Diamond axe'],
+                    correctAnswer: 'The simple Iron axe',
+                    explanation: 'Because he was honest, he refused the gold and silver axes and accepted only his own iron axe.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-7',
+                chapterNumber: 7,
+                titleEnglish: 'Chapter 7: Good Habits and Manners',
+                titleHindi: 'Chapter 7: Good Habits and Manners (अच्छी आदतें और शिष्टाचार)',
+                concepts: ['Magic words: Please, Thank You, Sorry, Excuse Me', 'Waking up early, respecting elders'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'What polite word should you say when someone gives you a gift or helps you?',
+                    type: 'mcq',
+                    options: ['Thank You', 'Go away', 'Give more', 'Nothing'],
+                    correctAnswer: 'Thank You',
+                    explanation: 'Saying "Thank You" shows gratitude and good manners.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-8',
+                chapterNumber: 8,
+                titleEnglish: 'Grammar: Articles (a, an, the)',
+                titleHindi: 'Grammar: Articles (a, an, the)',
+                concepts: ['Use of "a" before consonants', 'Use of "an" before vowel sounds (a, e, i, o, u)', 'Use of "the" for specific things'],
+                keyFormulas: ['an apple, an umbrella, an orange', 'a book, a cat, a dog', 'the sun, the moon, the Ganga'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'Fill in the blank with correct article: "Rohan is eating [ ... ] apple."',
+                    type: 'mcq',
+                    options: ['an', 'a', 'the', 'no article'],
+                    correctAnswer: 'an',
+                    explanation: '"Apple" begins with a vowel sound "a", so "an" is used.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-9',
+                chapterNumber: 9,
+                titleEnglish: 'Grammar: Prepositions (in, on, under, at)',
+                titleHindi: 'Grammar: Prepositions (in, on, under, at)',
+                concepts: ['Position words: In (अंदर), On (ऊपर), Under (नीचे), At (पर)', 'Picture reading for location'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'Fill in the blank: "The cat is sleeping [ ... ] the table."',
+                    type: 'mcq',
+                    options: ['under', 'between', 'out', 'across'],
+                    correctAnswer: 'under',
+                    explanation: 'The cat rests below the surface, so "under" the table is correct.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-10',
+                chapterNumber: 10,
+                titleEnglish: 'Grammar: Pronouns & Action Words (Verbs)',
+                titleHindi: 'Grammar: Pronouns & Action Words (Verbs)',
+                concepts: ['Pronouns: He, She, It, They, We, I', 'Verbs (Doing words): Run, Eat, Play, Read, Sing'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'Which of the following is an Action Word (Verb)?',
+                    type: 'mcq',
+                    options: ['Jump', 'Table', 'Blue', 'Slowly'],
+                    correctAnswer: 'Jump',
+                    explanation: 'Jump is an action you can do, so it is a verb.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-11',
+                chapterNumber: 11,
+                titleEnglish: 'Grammar: Plurals & Opposites',
+                titleHindi: 'Grammar: Plurals & Opposites (वचन व विलोम)',
+                concepts: ['Adding -s and -es (cat -> cats, box -> boxes)', 'Opposites: Hot/Cold, Big/Small, Up/Down, Happy/Sad'],
+                term: 'annual',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'What is the opposite of the word "Happy"?',
+                    type: 'mcq',
+                    options: ['Sad', 'Glad', 'Smile', 'Play'],
+                    correctAnswer: 'Sad',
+                    explanation: 'The opposite of Happy is Sad.'
+                  }
+                ]
+              },
+              {
+                id: 'c4-eng-12',
+                chapterNumber: 12,
+                titleEnglish: 'Grammar: Simple Sentence Making & Picture Reading',
+                titleHindi: 'Grammar: Simple Sentence Making & Picture Reading',
+                concepts: ['Subject + Verb + Object structure', 'Capital letters and full stops', 'Describing pictures in English'],
+                term: 'annual',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'Rearrange into a correct English sentence: "is / boy / Rohan / a / good"',
+                    type: 'solve',
+                    correctAnswer: 'Rohan is a good boy.',
+                    explanation: 'Proper sentence order starts with the subject "Rohan is a good boy."'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      // ==========================================
+      // CLASS 5TH (BOARD CLASS IN RBSE)
+      // ==========================================
+      'Class 5th': {
+        english: [
+          {
+            id: 'c5-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 5 (RBSE)',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c5-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Numbers (Up to 1,00,000 & Devanagari Digits)',
+                titleHindi: 'अध्याय 1: संख्याएं (1,00,000 तक और देवनागरी अंक)',
+                concepts: ['5 अंकों की संख्याएं', 'देवनागरी अंक (१, २, ३, ४, ५, ६, ७, ८, ९, ०)', 'स्थानीय मान'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'देवनागरी अंक ५ को अंतरराष्ट्रीय अंक में क्या लिखते हैं?',
+                    type: 'solve',
+                    correctAnswer: '5',
+                    explanation: 'देवनागरी अंक ५ = 5।'
+                  }
+                ]
+              },
+              {
+                id: 'c5-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Addition and Subtraction of 5-Digit Numbers',
+                titleHindi: 'अध्याय 2: जोड़-घटाव (5 अंकों की संख्याएं)',
+                concepts: ['हासिल वाले जोड़ और घटाव', 'इबारती सवाल'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: '15420 + 23150 = ?',
+                    type: 'solve',
+                    correctAnswer: '38570',
+                    explanation: '15420 + 23150 = 38570।'
+                  }
+                ]
+              },
+              {
+                id: 'c5-m-5',
+                chapterNumber: 5,
+                titleEnglish: 'Multiples and Factors (L.C.M. & H.C.F.)',
+                titleHindi: 'अध्याय 5: गुणज एवं गुणनखंड (ल.स. और म.स.)',
+                concepts: ['गुणज (Multiples)', 'गुणनखंड (Factors)', 'सबसे छोटा समान गुणज (LCM)'],
+                term: 'annual',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'संख्या 4 और 6 का सबसे छोटा समान गुणज (L.C.M.) क्या है?',
+                    type: 'solve',
+                    correctAnswer: '12',
+                    explanation: '4 के गुणज: 4, 8, 12, 16... और 6 के गुणज: 6, 12, 18... समान गुणज 12 है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c5-evs',
+            subject: 'EVS / Science',
+            subjectHindi: 'पर्यावरण अध्ययन (EVS)',
+            bookName: 'अपना परिवेश - कक्षा 5 (RBSE)',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c5-e-1',
+                chapterNumber: 1,
+                titleEnglish: 'Understanding Relations & Family Trees',
+                titleHindi: 'अध्याय 1: रिश्तों की समझ व वंश-वृक्ष',
+                concepts: ['एकल व संयुक्त परिवार में अंतर', 'वंश-वृक्ष (Family Tree)', 'गोद लेने की प्रक्रिया'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'परिवार की पीढ़ियों को दर्शाने वाले आरेख को क्या कहते हैं?',
+                    type: 'mcq',
+                    options: ['वंश-वृक्ष (Family Tree)', 'नक्शा', 'पैटर्न', 'कैलेंडर'],
+                    correctAnswer: 'वंश-वृक्ष (Family Tree)',
+                    explanation: 'परिवार की पीढ़ियों को एक पेड़ के रूप में दर्शाने को वंश-वृक्ष कहते हैं।'
+                  }
+                ]
+              },
+              {
+                id: 'c5-e-3',
+                chapterNumber: 3,
+                titleEnglish: 'We are Unique (Braille Script & Helen Keller)',
+                titleHindi: 'अध्याय 3: कुछ खास हैं हम (ब्रेल लिपि व लुई ब्रेल)',
+                concepts: ['लुई ब्रेल का आविष्कार', '6 बिंदुओं की लिपि', 'सेरेब्रल पाल्सी व विशेष आवश्यकता वाले बच्चे'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'ब्रेल लिपि का आविष्कार किसने किया था?',
+                    type: 'mcq',
+                    options: ['लुई ब्रेल', 'थॉमस एडिसन', 'न्यूटन', 'गैलीलियो'],
+                    correctAnswer: 'लुई ब्रेल',
+                    explanation: 'फ्रांस के लुई ब्रेल ने दृष्टिबाधित लोगों के लिए 6 बिंदुओं वाली ब्रेल लिपि बनाई।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c5-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'हिंदी - कक्षा 5 (RBSE)',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c5-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Hum Bharat Ke Bharat (Poem)',
+                titleHindi: 'पाठ 1: हम भारत के भरत (वीर रस कविता)',
+                concepts: ['मातृभूमि का गौरव', 'साहस और बलिदान', 'कठिन शब्दों के अर्थ'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: '"हम भारत के भरत खेलते शेरों की संतान से" कविता क्या संदेश देती है?',
+                    type: 'mcq',
+                    options: ['वीरता और निडरता का', 'आलस्य का', 'डरने का', 'झगड़ा करने का'],
+                    correctAnswer: 'वीरता और निडरता का',
+                    explanation: 'यह कविता भारतीय बच्चों के साहस और शौर्य की प्रेरणा देती है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c5-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'English - Class 5 (RBSE)',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c5-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'We Shall Overcome (Inspirational Poem)',
+                titleHindi: 'Chapter 1: We Shall Overcome (हम होंगे कामयाब)',
+                concepts: ['Inspiration and optimism', 'Singing together', 'Vocabulary and rhyming lines'],
+                term: 'half_yearly',
+                estimatedMinutes: 40,
+                sampleQuestions: [
+                  {
+                    question: 'What is the Hindi translation of "We Shall Overcome"?',
+                    type: 'mcq',
+                    options: ['हम होंगे कामयाब', 'हम हार जाएंगे', 'हम रुक जाएंगे', 'हम सोएंगे'],
+                    correctAnswer: 'हम होंगे कामयाब',
+                    explanation: '"We Shall Overcome" is translated into Hindi as "हम होंगे कामयाब एक दिन"।'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      // ==========================================
+      // CLASS 6TH
+      // ==========================================
+      'Class 6th': {
+        english: [
+          {
+            id: 'c6-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 6 (NCERT / RBSE)',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c6-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Knowing Our Numbers',
+                titleHindi: 'अध्याय 1: अपनी संख्याओं की जानकारी',
+                concepts: ['बड़ी संख्याएं', 'भारतीय और अंतरराष्ट्रीय संख्यांकन पद्धति', 'सन्निकटन (Estimation)'],
+                keyFormulas: ['1 लाख = 100 हजार', '1 मिलियन = 10 लाख'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: '1 मिलियन में कितने लाख होते हैं?',
+                    type: 'solve',
+                    correctAnswer: '10',
+                    explanation: '1 Million = 10,00,000 = 10 लाख।'
+                  }
+                ]
+              },
+              {
+                id: 'c6-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Whole Numbers',
+                titleHindi: 'अध्याय 2: पूर्ण संख्याएं',
+                concepts: ['पूर्ववर्ती और परवर्ती', 'संख्या रेखा पर संक्रियाएं', 'पूर्ण संख्याओं के गुण'],
+                keyFormulas: ['पूर्णांक 0 से शुरू होते हैं'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'सबसे छोटी पूर्ण संख्या कौन सी है?',
+                    type: 'solve',
+                    correctAnswer: '0',
+                    explanation: 'पूर्ण संख्याएं 0, 1, 2, 3... से शुरू होती हैं, अतः सबसे छोटी पूर्ण संख्या 0 है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c6-science',
+            subject: 'Science',
+            subjectHindi: 'विज्ञान (Science)',
+            bookName: 'विज्ञान - कक्षा 6 (NCERT / RBSE)',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c6-s-1',
+                chapterNumber: 1,
+                titleEnglish: 'Components of Food',
+                titleHindi: 'अध्याय 1: भोजन के घटक',
+                concepts: ['कार्बोहाइड्रेट, प्रोटीन, वसा, विटामिन और खनिज लवण', 'आहारी रेशे और जल', 'संतुलित आहार व अभावजन्य रोग'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'विटामिन सी की कमी से कौन सा रोग होता है?',
+                    type: 'mcq',
+                    options: ['स्कर्वी (Scurvy)', 'रतौंधी', 'बेरी-बेरी', 'रिकेट्स'],
+                    correctAnswer: 'स्कर्वी (Scurvy)',
+                    explanation: 'विटामिन सी की कमी से मसूड़ों से खून आना और स्कर्वी रोग होता है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c6-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'वसंत भाग-1 (Class 6)',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c6-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Vah Chidiya Jo (Poem - Kedarnath Agarwal)',
+                titleHindi: 'पाठ 1: वह चिड़िया जो (कविता - केदारनाथ अग्रवाल)',
+                concepts: ['नीले पंखों वाली नन्हीं चिड़िया', 'संतोषी स्वभाव', 'नदी और प्रकृति से प्रेम'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'चिड़िया रुचि से रस उड़ेलकर क्या खाती है?',
+                    type: 'mcq',
+                    options: ['जुंडी के दाने (ज्वार की बालियां)', 'फल', 'कीड़े', 'मिठाई'],
+                    correctAnswer: 'जुंडी के दाने (ज्वार की बालियां)',
+                    explanation: 'चिड़िया दूध भरे जुंडी के कच्चे दानों को बड़े चाव से खाती है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c6-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'Honeysuckle (Class 6)',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c6-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'Who Did Patricks Homework?',
+                titleHindi: 'Chapter 1: Who Did Patrick’s Homework?',
+                concepts: ['Patrick hates homework', 'The tiny elf / imaginary helper', 'Self-help and hard work lesson'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'Who actually did all of Patrick’s homework in the end?',
+                    type: 'mcq',
+                    options: ['Patrick himself', 'The little elf', 'His mother', 'His teacher'],
+                    correctAnswer: 'Patrick himself',
+                    explanation: 'In helping the tiny elf read and calculate, Patrick did all the study and homework himself.'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      // ==========================================
+      // CLASS 7TH
+      // ==========================================
+      'Class 7th': {
+        english: [
+          {
+            id: 'c7-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 7 (NCERT / RBSE)',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c7-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Integers',
+                titleHindi: 'अध्याय 1: पूर्णांक (Integers)',
+                concepts: ['धनात्मक और ऋणात्मक संख्याएं', 'पूर्णांकों के जोड़ और घटाव के नियम', 'गुणा और भाग'],
+                keyFormulas: ['(-) × (-) = (+)', '(-) × (+) = (-)'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: '(-5) × (-4) का मान क्या होगा?',
+                    type: 'solve',
+                    correctAnswer: '20',
+                    explanation: 'दो ऋणात्मक संख्याओं का गुणनफल हमेशा धनात्मक होता है: (-5) × (-4) = +20।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c7-science',
+            subject: 'Science',
+            subjectHindi: 'विज्ञान (Science)',
+            bookName: 'विज्ञान - कक्षा 7 (NCERT / RBSE)',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c7-s-1',
+                chapterNumber: 1,
+                titleEnglish: 'Nutrition in Plants (Photosynthesis)',
+                titleHindi: 'अध्याय 1: पादपों में पोषण (प्रकाश संश्लेषण)',
+                concepts: ['स्वपोषी व विषमपोषी', 'प्रकाश संश्लेषण: क्लोरोफिल, सूर्य का प्रकाश, CO2, जल', 'कीटभक्षी पौधे'],
+                keyFormulas: ['6CO2 + 6H2O + सूर्य का प्रकाश -> C6H12O6 + 6O2'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'पत्तियों में हरे रंग का वर्णक क्या कहलाता है?',
+                    type: 'mcq',
+                    options: ['क्लोरोफिल (Chlorophyll)', 'हीमोग्लोबिन', 'कैरोटीन', 'जेंथोफिल'],
+                    correctAnswer: 'क्लोरोफिल (Chlorophyll)',
+                    explanation: 'क्लोरोफिल सूर्य के प्रकाश की ऊर्जा को ग्रहण करता है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c7-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'वसंत भाग-2 (Class 7)',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c7-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Hum Panchhi Unmukt Gagan Ke (Poem)',
+                titleHindi: 'पाठ 1: हम पंछी उन्मुक्त गगन के (शिवमंगल सिंह सुमन)',
+                concepts: ['स्वतंत्रता का महत्व', 'पिंजरे में बंद पक्षी की व्यथा', 'उन्मुक्त उड़ान की चाह'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'पक्षी पिंजरे के सोने के कटोरी में रखे मैदे से अधिक किसे पसंद करते हैं?',
+                    type: 'mcq',
+                    options: ['नीम की कड़वी निंबौरी को', 'मिठाई को', 'दूध को', 'चावल को'],
+                    correctAnswer: 'नीम की कड़वी निंबौरी को',
+                    explanation: 'स्वतंत्र रहकर नीम की कड़वी निंबौरी खाना पिंजरे के पकवानों से लाख गुना बेहतर है।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c7-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'Honeycomb (Class 7)',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c7-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'Three Questions (Leo Tolstoy Story)',
+                titleHindi: 'Chapter 1: Three Questions',
+                concepts: ['The king seeks 3 answers', 'The wise hermit in the forest', 'The most important time is NOW'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'According to the wise hermit, what is the most important time?',
+                    type: 'mcq',
+                    options: ['The Present ("Now")', 'Tomorrow', 'Yesterday', 'Next year'],
+                    correctAnswer: 'The Present ("Now")',
+                    explanation: 'Now is the only time over which we have any power to act.'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+
+      // ==========================================
+      // CLASS 8TH (BOARD CLASS IN RBSE)
+      // ==========================================
+      'Class 8th': {
+        english: [
+          {
+            id: 'c8-math',
+            subject: 'Mathematics',
+            subjectHindi: 'गणित (Math)',
+            bookName: 'गणित - कक्षा 8 (NCERT / RBSE)',
+            teacherId: 'sharma',
+            teacherName: 'Sharma Sir',
+            emoji: '📐',
+            chapters: [
+              {
+                id: 'c8-m-1',
+                chapterNumber: 1,
+                titleEnglish: 'Rational Numbers',
+                titleHindi: 'अध्याय 1: परिमेय संख्याएं (Rational Numbers)',
+                concepts: ['p/q रूप में संख्याएं (q ≠ 0)', 'संवृत, क्रमविनिमेय और साहचर्य नियम', 'योज्य प्रतिलोम व गुणात्मक प्रतिलोम'],
+                keyFormulas: ['योज्य प्रतिलोम of a/b = -a/b', 'गुणात्मक प्रतिलोम of a/b = b/a'],
+                term: 'half_yearly',
+                estimatedMinutes: 55,
+                sampleQuestions: [
+                  {
+                    question: 'परिमेय संख्या 3/7 का गुणात्मक प्रतिलोम (Reciprocal) क्या होगा?',
+                    type: 'solve',
+                    correctAnswer: '7/3',
+                    explanation: '3/7 का गुणात्मक प्रतिलोम 7/3 होता है (क्योंकि 3/7 × 7/3 = 1)।'
+                  }
+                ]
+              },
+              {
+                id: 'c8-m-2',
+                chapterNumber: 2,
+                titleEnglish: 'Linear Equations in One Variable',
+                titleHindi: 'अध्याय 2: एक चर वाले रैखिक समीकरण',
+                concepts: ['चर और अचर पद', 'पक्षांतरण विधि', 'दैनिक जीवन में अनुप्रयोग'],
+                keyFormulas: ['2x + 3 = 11 => 2x = 8 => x = 4'],
+                term: 'half_yearly',
+                estimatedMinutes: 55,
+                sampleQuestions: [
+                  {
+                    question: 'समीकरण हल करें: 3x - 5 = 10',
+                    type: 'solve',
+                    correctAnswer: '5',
+                    explanation: '3x = 10 + 5 => 3x = 15 => x = 15 / 3 = 5।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c8-science',
+            subject: 'Science',
+            subjectHindi: 'विज्ञान (Science)',
+            bookName: 'विज्ञान - कक्षा 8 (NCERT / RBSE)',
+            teacherId: 'neha',
+            teacherName: 'Neha Mam',
+            emoji: '🔬',
+            chapters: [
+              {
+                id: 'c8-s-1',
+                chapterNumber: 1,
+                titleEnglish: 'Crop Production and Management',
+                titleHindi: 'अध्याय 1: फसल उत्पादन एवं प्रबंध',
+                concepts: ['खरीफ व रबी फसलें', 'कृषि पद्धतियां: मिट्टी तैयार करना, बुआई, सिंचाई, कटाई', 'खाद एवं उर्वरक में अंतर'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'रबी की फसल किस ऋतु में बोई जाती है?',
+                    type: 'mcq',
+                    options: ['शीत ऋतु (Winter - October to March)', 'वर्षा ऋतु', 'ग्रीष्म ऋतु', 'बसंत ऋतु'],
+                    correctAnswer: 'शीत ऋतु (Winter - October to March)',
+                    explanation: 'गेहूं, चना, सरसों रबी की फसलें हैं जो शीत ऋतु में उगाई जाती हैं।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c8-hindi',
+            subject: 'Hindi',
+            subjectHindi: 'हिंदी (Hindi)',
+            bookName: 'वसंत भाग-3 (Class 8)',
+            teacherId: 'pooja',
+            teacherName: 'Pooja Mam',
+            emoji: '✍️',
+            chapters: [
+              {
+                id: 'c8-h-1',
+                chapterNumber: 1,
+                titleEnglish: 'Lakh Ki Choodiyan (Story - Kamtanath)',
+                titleHindi: 'पाठ 1: लाख की चूड़ियां (कहानी - कामतानाथ)',
+                concepts: ['बदलू मनिहार की व्यथा', 'मशीनी युग का हस्तशिल्प पर प्रभाव', 'पारंपरिक कारीगरी का महत्व'],
+                term: 'half_yearly',
+                estimatedMinutes: 45,
+                sampleQuestions: [
+                  {
+                    question: 'कहानी में बदलू काका किस चीज की चूड़ियां बनाता था?',
+                    type: 'mcq',
+                    options: ['लाख की', 'कांच की', 'सोने की', 'चांदी की'],
+                    correctAnswer: 'लाख की',
+                    explanation: 'बदलू लाख को पिघलाकर सुंदर-सुंदर चूड़ियां बनाया करता था।'
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            id: 'c8-english',
+            subject: 'English',
+            subjectHindi: 'अंग्रेजी (English)',
+            bookName: 'Honeydew (Class 8)',
+            teacherId: 'riya',
+            teacherName: 'Riya Didi',
+            emoji: '📚',
+            chapters: [
+              {
+                id: 'c8-en-1',
+                chapterNumber: 1,
+                titleEnglish: 'The Best Christmas Present in the World',
+                titleHindi: 'Chapter 1: The Best Christmas Present in the World',
+                concepts: ['World War 1 Christmas truce', 'Jim Macpherson letter to Connie', 'Compassion and peace lesson'],
+                term: 'half_yearly',
+                estimatedMinutes: 50,
+                sampleQuestions: [
+                  {
+                    question: 'What game did the British and German soldiers play together on Christmas Day?',
+                    type: 'mcq',
+                    options: ['Football (Soccer)', 'Cricket', 'Chess', 'Cards'],
+                    correctAnswer: 'Football (Soccer)',
+                    explanation: 'Soldiers dropped their weapons and played friendly football in no-man’s land.'
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+};
+
+// Mirror english medium to hindi medium for full bilingual support
+for (const className in curriculum.RBSE.classes) {
+  curriculum.RBSE.classes[className].hindi = curriculum.RBSE.classes[className].english;
+}
+
+const targetPath = path.join(__dirname, '..', 'data', 'rbse-curriculum.json');
+fs.writeFileSync(targetPath, JSON.stringify(curriculum, null, 2), 'utf-8');
+console.log(`[Success] Seeded RBSE Curriculum for Classes 1st to 8th into: ${targetPath}`);
