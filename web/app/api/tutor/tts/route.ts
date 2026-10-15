@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 // Romanized Hinglish to natural Devanagari Hindi phonetic dictionary
 const HINGLISH_MAP: Record<string, string> = {
   shabash: 'शाबाश',

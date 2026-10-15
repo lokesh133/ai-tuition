@@ -99,7 +99,7 @@ export class AIService {
     if (this.genAI && config.geminiApiKey) {
       try {
         const model = this.genAI.getGenerativeModel({
-          model: config.geminiModel || 'gemini-1.5-flash',
+          model: config.geminiModel || 'gemini-3.5-flash',
           systemInstruction: `${teacherConfig.systemInstruction}\nCURRICULUM: Strictly follow RBSE Class 4th (English Medium) Rajasthan State Board syllabus.`,
           generationConfig: {
             maxOutputTokens: teacherConfig.maxOutputTokens,

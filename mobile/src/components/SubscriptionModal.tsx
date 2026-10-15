@@ -60,41 +60,42 @@ export const SubscriptionModal: React.FC<Props> = ({ visible, onClose }) => {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
             {/* Header Badge */}
             <View style={styles.badgePill}>
-              <Sparkles size={14} color="#D97706" />
-              <Text style={styles.badgePillText}>3-DAY FREE TRIAL AVAILABLE</Text>
+              <Sparkles size={14} color="#059669" />
+              <Text style={[styles.badgePillText, { color: '#059669' }]}>BETA TESTING PHASE • 100% FREE ACCESS</Text>
             </View>
 
-            <Text style={styles.title}>AI Tuition Pro Pass</Text>
+            <Text style={styles.title}>Free Beta Testing Pass 🎉</Text>
             <Text style={styles.subtitle}>
-              Class 1st se 8th tak ka complete personal AI tutor sirf ₹200/month me!
+              Abhi app testing mode me hai! Sabhi 5 AI Teachers, voice doubts aur homework scanner bilkul FREE hain.
             </Text>
 
             {/* Plan Selector Card */}
             <View style={styles.pricingCard}>
               <View style={styles.pricingHeader}>
                 <View>
-                  <Text style={styles.planName}>Monthly Unlimited</Text>
-                  <Text style={styles.planBilling}>Cancel anytime • No hidden charges</Text>
+                  <Text style={styles.planName}>Beta Early-Tester Access</Text>
+                  <Text style={styles.planBilling}>Commercial launch par ₹200/mo shuru hoga</Text>
                 </View>
                 <View style={styles.priceTagWrap}>
                   <Text style={styles.currencySymbol}>₹</Text>
-                  <Text style={styles.priceAmount}>200</Text>
-                  <Text style={styles.pricePeriod}>/mo</Text>
+                  <Text style={styles.priceAmount}>0</Text>
+                  <Text style={styles.pricePeriod}>/free</Text>
                 </View>
               </View>
 
-              {/* UPI Quick Logos */}
+              {/* Beta notice row */}
               <View style={styles.upiRow}>
-                <Text style={styles.upiLabel}>Pay via UPI:</Text>
-                <View style={styles.upiChip}><Text style={styles.upiText}>Google Pay</Text></View>
-                <View style={styles.upiChip}><Text style={styles.upiText}>PhonePe</Text></View>
-                <View style={styles.upiChip}><Text style={styles.upiText}>Paytm</Text></View>
+                <Text style={styles.upiLabel}>Testing Status:</Text>
+                <View style={[styles.upiChip, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                  <Text style={[styles.upiText, { color: '#166534' }]}>Free Beta Unlocked</Text>
+                </View>
+                <View style={styles.upiChip}><Text style={styles.upiText}>No Payment Needed</Text></View>
               </View>
             </View>
 
             {/* Perks List */}
             <View style={styles.perksSection}>
-              <Text style={styles.perksHeader}>WHAT'S INCLUDED:</Text>
+              <Text style={styles.perksHeader}>UNLOCKED IN BETA:</Text>
               {PERKS.map((perk, idx) => (
                 <View key={idx} style={styles.perkRow}>
                   <CheckCircle2 size={18} color="#059669" />
@@ -106,23 +107,26 @@ export const SubscriptionModal: React.FC<Props> = ({ visible, onClose }) => {
             {/* Trust Badges */}
             <View style={styles.trustRow}>
               <ShieldCheck size={16} color="#475569" />
-              <Text style={styles.trustText}>100% Safe • RBI & NPCI Compliant UPI Gateway</Text>
+              <Text style={styles.trustText}>Zero Charges • Pure Educational Testing Mode</Text>
             </View>
 
             {/* Action Button */}
             <TouchableOpacity
-              style={[styles.payButton, isProcessing && { opacity: 0.7 }]}
-              onPress={handlePayment}
-              disabled={isProcessing}
+              style={styles.payButton}
+              onPress={() => {
+                Alert.alert(
+                  'Beta Access Active! 🎉',
+                  'Aapka Free Beta Pass active hai! Abhi bina kisi fees ke sabhi features test karein.',
+                  [{ text: 'Padhai Shuru Karein', onPress: onClose }]
+                );
+              }}
             >
               <Zap size={20} color="#FFF" />
-              <Text style={styles.payButtonText}>
-                {isProcessing ? 'Processing UPI Gateway...' : 'Activate for ₹200 / Month'}
-              </Text>
+              <Text style={styles.payButtonText}>Start Learning Free in Beta</Text>
             </TouchableOpacity>
 
             <Text style={styles.footerNote}>
-              3 days free • Next billing on 17th Oct • Parent consent required
+              Testing ke baad production launch me ₹200/month UPI mandate shuru hoga.
             </Text>
           </ScrollView>
         </View>

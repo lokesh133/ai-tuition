@@ -14,18 +14,18 @@ export default function BillingPage() {
 
       <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm space-y-6">
         {/* Active plan card */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 gap-4">
           <div>
-            <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-500 text-white">
-              ACTIVE MEMBERSHIP
+            <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-600 text-white">
+              BETA TESTING PASS • 100% FREE
             </span>
             <h2 className="text-xl font-black text-slate-900 mt-2">All-in-One Pass (Classes 1–8)</h2>
-            <p className="text-xs text-slate-600 mt-1">Unlimited doubts with all 5 AI Teachers • Homework Scanner</p>
+            <p className="text-xs text-slate-600 mt-1">Unlimited doubts with all 5 AI Teachers • Homework Scanner Active</p>
           </div>
           <div className="text-left sm:text-right">
-            <span className="text-3xl font-black text-indigo-600">₹200</span>
-            <span className="text-xs text-slate-500"> / month</span>
-            <p className="text-[11px] text-slate-400 mt-1">Next auto-debit: Nov 10, 2026</p>
+            <span className="text-3xl font-black text-emerald-600">₹0</span>
+            <span className="text-xs text-slate-500"> / Free Beta</span>
+            <p className="text-[11px] text-amber-700 font-bold mt-1">Commercial Launch Plan: ₹200/mo</p>
           </div>
         </div>
 

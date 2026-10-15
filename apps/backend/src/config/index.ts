@@ -5,7 +5,7 @@ export const config = {
   port: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
   nodeEnv: process.env.NODE_ENV || 'development',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.5-flash',
   redisUrl: process.env.REDIS_URL || '',
   deepgramApiKey: process.env.DEEPGRAM_API_KEY || '',
   heygenApiKey: process.env.HEYGEN_API_KEY || '',
