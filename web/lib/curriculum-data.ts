@@ -24,6 +24,12 @@ export interface Chapter {
     explanation: string;
     whiteboardSteps?: { step: string; formula: string; annotation: string }[];
   }[];
+  bookPages?: {
+    pageNumber: number;
+    pageTitle: string;
+    summary: string;
+    concepts?: string[];
+  }[];
 }
 
 export interface SubjectCurriculum {

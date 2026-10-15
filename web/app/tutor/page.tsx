@@ -70,6 +70,7 @@ export default function TuitionClassroomStudio() {
   const [board, setBoard] = useState<'RBSE' | 'CBSE'>('RBSE');
   const [className, setClassName] = useState<string>('Class 4th');
   const [medium, setMedium] = useState<'hindi' | 'english'>('hindi');
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Load All 4 Core Subjects with dynamic API sync capability
   const [allSubjects, setAllSubjects] = useState<SubjectCurriculum[]>(() =>
@@ -131,6 +132,323 @@ export default function TuitionClassroomStudio() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
   const [chalkboardTheme, setChalkboardTheme] = useState<'slate' | 'green'>('slate');
   const [activeHintIndex, setActiveHintIndex] = useState<number | null>(null);
+  const [isTypewriterEnabled, setIsTypewriterEnabled] = useState<boolean>(true);
+
+  // Chalk / Dry-Erase Marker Typewriter Component with Realistic Handwriting Pacing
+  const ChalkTypewriter: React.FC<{
+    text: string;
+    speed?: number;
+    delay?: number;
+    enabled?: boolean;
+    onComplete?: () => void;
+    className?: string;
+    showCursor?: boolean;
+    isChalkboard?: boolean;
+  }> = ({
+    text,
+    speed = 22,
+    delay = 0,
+    enabled = true,
+    onComplete,
+    className = '',
+    showCursor = true,
+    isChalkboard = false,
+  }) => {
+    const [displayedText, setDisplayedText] = useState(enabled ? '' : text);
+    const [isDone, setIsDone] = useState(!enabled);
+
+    useEffect(() => {
+      if (!enabled) {
+        setDisplayedText(text);
+        setIsDone(true);
+        return;
+      }
+
+      const chars = Array.from(text || '');
+      if (chars.length === 0) {
+        setDisplayedText('');
+        setIsDone(true);
+        return;
+      }
+
+      setDisplayedText('');
+      setIsDone(false);
+
+      let currentIndex = 0;
+      let intervalId: any = null;
+
+      const timeoutId = setTimeout(() => {
+        intervalId = setInterval(() => {
+          currentIndex++;
+          if (currentIndex <= chars.length) {
+            setDisplayedText(chars.slice(0, currentIndex).join(''));
+          } else {
+            clearInterval(intervalId);
+            setIsDone(true);
+            if (onComplete) onComplete();
+          }
+        }, speed);
+      }, delay);
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (intervalId) clearInterval(intervalId);
+      };
+    }, [text, speed, delay, enabled]);
+
+    return (
+      <span className={`inline relative font-inherit ${className}`}>
+        {displayedText}
+        {!isDone && enabled && showCursor && (
+          <span className="inline-flex items-center ml-1 select-none animate-pulse align-middle">
+            <span
+              className={`inline-block w-1.5 h-4 rounded-xs ${
+                isChalkboard
+                  ? 'bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.9)]'
+                  : 'bg-indigo-600 shadow-[0_0_6px_rgba(99,102,241,0.6)]'
+              }`}
+            />
+            <span className="text-xs ml-0.5 opacity-90 inline-block transform -rotate-12">
+              ✏️
+            </span>
+          </span>
+        )}
+      </span>
+    );
+  };
+
+  // Structured Math Problem Solver (e.g. 10+10, 15*5, 50-20, 100/4)
+  const solveMathExpression = (
+    q: string,
+    teacherName: string
+  ): {
+    questionDisplay: string;
+    speechText: string;
+    heading: string;
+    steps: WhiteboardStepItem[];
+  } | null => {
+    if (!q) return null;
+
+    let clean = q
+      .toLowerCase()
+      .replace(/कितना\s*(होता\s*है|होगा|है)/gi, '')
+      .replace(/kya\s*hota\s*hai/gi, '')
+      .replace(/solve\s*(karke\s*dikhao|karo|please)?/gi, '')
+      .replace(/हल\s*(करके\s*दिखाओ|करो|कीजिए|करें)?/gi, '')
+      .replace(/का\s*मान/gi, '')
+      .replace(/batao/gi, '')
+      .replace(/बताओ/gi, '')
+      .replace(/में\s*(से)?/gi, ' ')
+      .replace(/me\s*(se)?/gi, ' ')
+      .replace(/jodo/gi, '+')
+      .replace(/जोड़ो|जोडो/gi, '+')
+      .replace(/[?=]/g, '')
+      .trim();
+
+    const mathRegex =
+      /^([0-9]+(?:\.[0-9]+)?)\s*([\+\-\*\/xX×÷]|plus|minus|times|into|divide|divided\s+by|aur|और|जोड़|जोड|कम|ghatao|घटाओ|guna|गुणा|bhag|भाग)\s*([0-9]+(?:\.[0-9]+)?)$/i;
+
+    let match = clean.match(mathRegex);
+
+    if (!match) {
+      const inlineMatch = q.match(/([0-9]+(?:\.[0-9]+)?)\s*([\+\-\*\/xX×÷])\s*([0-9]+(?:\.[0-9]+)?)/);
+      if (inlineMatch) {
+        match = inlineMatch;
+      }
+    }
+
+    if (!match) return null;
+
+    const num1 = parseFloat(match[1]);
+    const rawOp = match[2].toLowerCase();
+    const num2 = parseFloat(match[3]);
+
+    if (isNaN(num1) || isNaN(num2)) return null;
+
+    let op = '+';
+    let opWordHindi = 'जोड़ (Addition)';
+    let opSymbol = '+';
+
+    if (['+', 'plus', 'aur', 'और', 'जोड़', 'जोड'].includes(rawOp)) {
+      op = '+';
+      opSymbol = '+';
+      opWordHindi = 'जोड़ (Addition)';
+    } else if (['-', 'minus', 'कम', 'ghatao', 'घटाओ'].includes(rawOp)) {
+      op = '-';
+      opSymbol = '-';
+      opWordHindi = 'घटाव (Subtraction)';
+    } else if (['*', 'x', 'times', 'into', 'guna', 'गुणा', '×'].includes(rawOp)) {
+      op = '*';
+      opSymbol = '×';
+      opWordHindi = 'गुणा (Multiplication)';
+    } else if (['/', 'divide', 'divided by', 'bhag', 'भाग', '÷'].includes(rawOp)) {
+      op = '/';
+      opSymbol = '÷';
+      opWordHindi = 'भाग (Division)';
+    }
+
+    const questionDisplay = `${num1} ${opSymbol} ${num2} = ?`;
+    const heading = `गणित समाधान: ${num1} ${opSymbol} ${num2}`;
+
+    if (op === '+') {
+      const sum = num1 + num2;
+      const isInt1 = Number.isInteger(num1);
+      const isInt2 = Number.isInteger(num2);
+
+      let step2Formula = '';
+      let step2Annotation = '';
+
+      if (isInt1 && isInt2 && num1 >= 0 && num2 >= 0 && num1 < 1000 && num2 < 1000) {
+        const u1 = num1 % 10;
+        const t1 = Math.floor((num1 % 100) / 10);
+        const u2 = num2 % 10;
+        const t2 = Math.floor((num2 % 100) / 10);
+
+        const unitsSum = u1 + u2;
+        const tensSum = t1 + t2;
+
+        step2Formula = [
+          `1️⃣ इकाई (Ones / Units) जोड़ें: ${u1} + ${u2} = ${unitsSum}`,
+          num1 >= 10 || num2 >= 10 ? `2️⃣ दहाई (Tens) जोड़ें: ${t1} + ${t2} = ${tensSum}` : '',
+          `3️⃣ कुल योग (Total) = ${sum}`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        step2Annotation = `${teacherName}: "सबसे पहले दाईं तरफ इकाई के अंकों को जोड़ा (${u1} + ${u2} = ${unitsSum})। फिर दहाई के अंकों को जोड़ा (${t1} + ${t2} = ${tensSum})। दोनों मिलकर ${sum} बन गए!"`;
+      } else {
+        step2Formula = `गणना: ${num1} + ${num2} = ${sum}`;
+        step2Annotation = `${teacherName}: "दोनों मानों को आपस में जोड़ने पर ${sum} प्राप्त होता है।"`;
+      }
+
+      const speechText = `शाबाश बेटा! सवाल है ${num1} और ${num2} को जोड़ना। इकाई और दहाई के नियम से हल करने पर, ${num1} और ${num2} मिलकर ${sum} होते हैं।`;
+
+      return {
+        questionDisplay,
+        speechText,
+        heading,
+        steps: [
+          {
+            step: 'चरण 1: सवाल व संख्याओं की पहचान',
+            question: questionDisplay,
+            formula: `${num1} + ${num2} = ? (दो संख्याओं का ${opWordHindi})`,
+            annotation: `${teacherName}: "यहाँ हमें दी गई दो संख्याओं ${num1} और ${num2} को आपस में जोड़ना (Add) है।"`,
+          },
+          {
+            step: 'चरण 2: स्थानीय मान व चरणबद्ध जोड़',
+            question: questionDisplay,
+            formula: step2Formula,
+            annotation: step2Annotation,
+          },
+          {
+            step: 'चरण 3: अंतिम सही उत्तर',
+            question: questionDisplay,
+            formula: `✅ ${num1} + ${num2} = ${sum} (सही उत्तर)`,
+            annotation: `${teacherName}: "बहुत बढ़िया! सही उत्तर है ${sum}। आपका डाउट पूरी तरह हल हो गया है!"`,
+          },
+        ],
+      };
+    } else if (op === '-') {
+      const diff = num1 - num2;
+      const speechText = `बेटा, ${num1} में से ${num2} घटाने पर ${diff} बचता है।`;
+      return {
+        questionDisplay,
+        speechText,
+        heading,
+        steps: [
+          {
+            step: 'चरण 1: सवाल व संख्याओं की पहचान',
+            question: questionDisplay,
+            formula: `${num1} - ${num2} = ? (संख्याओं का ${opWordHindi})`,
+            annotation: `${teacherName}: "यहाँ हमें बड़ी संख्या ${num1} में से संख्या ${num2} को घटाना (Subtract) है।"`,
+          },
+          {
+            step: 'चरण 2: चरणबद्ध घटाव (Subtraction Steps)',
+            question: questionDisplay,
+            formula: `1️⃣ कुल संख्या = ${num1}\n2️⃣ घटाई गई संख्या = ${num2}\n3️⃣ शेष मान = ${diff}`,
+            annotation: `${teacherName}: "इकाई और दहाई के मान घटाने पर शेषफल ${diff} बचता है।"`,
+          },
+          {
+            step: 'चरण 3: अंतिम परिणाम',
+            question: questionDisplay,
+            formula: `✅ ${num1} - ${num2} = ${diff} (सही उत्तर)`,
+            annotation: `${teacherName}: "शाबाश! सही उत्तर ${diff} है।"`,
+          },
+        ],
+      };
+    } else if (op === '*') {
+      const prod = num1 * num2;
+      const speechText = `बेटा, ${num1} को ${num2} से गुणा करने पर ${prod} आता है।`;
+      return {
+        questionDisplay,
+        speechText,
+        heading,
+        steps: [
+          {
+            step: 'चरण 1: सवाल व गुणा का नियम',
+            question: questionDisplay,
+            formula: `${num1} × ${num2} = ? (गुणा / बार-बार जोड़)`,
+            annotation: `${teacherName}: "गुणा का अर्थ है किसी संख्या को बार-बार जोड़ना। यानी ${num1} को ${num2} बार जोड़ना।"`,
+          },
+          {
+            step: 'चरण 2: पहाड़ा व चरणबद्ध गणना',
+            question: questionDisplay,
+            formula: `1️⃣ पहाड़ा (Table): ${num1} × ${num2}\n2️⃣ गुणनफल: ${num1} × ${num2} = ${prod}`,
+            annotation: `${teacherName}: "पहाड़े के नियम से ${num1} × ${num2} = ${prod} होता है।"`,
+          },
+          {
+            step: 'चरण 3: अंतिम सही उत्तर',
+            question: questionDisplay,
+            formula: `✅ ${num1} × ${num2} = ${prod} (सही उत्तर)`,
+            annotation: `${teacherName}: "बहुत बढ़िया! सही गुणनफल ${prod} है।"`,
+          },
+        ],
+      };
+    } else {
+      if (num2 === 0) {
+        return {
+          questionDisplay,
+          speechText: 'बेटा, किसी भी संख्या को शून्य से भाग नहीं दिया जा सकता। यह अनिर्धारित है।',
+          heading,
+          steps: [
+            {
+              step: 'चरण 1: शून्य से भाग का नियम',
+              question: questionDisplay,
+              formula: `${num1} ÷ 0 = अनिर्धारित (Undefined)`,
+              annotation: `${teacherName}: "गणित में शून्य से भाग देना परिभाषित नहीं है।"`,
+            },
+          ],
+        };
+      }
+      const quot = Number((num1 / num2).toFixed(2));
+      const speechText = `बेटा, ${num1} को ${num2} से भाग देने पर भागफल ${quot} आता है।`;
+      return {
+        questionDisplay,
+        speechText,
+        heading,
+        steps: [
+          {
+            step: 'चरण 1: भाज्य व भाजक की पहचान',
+            question: questionDisplay,
+            formula: `भाज्य (Dividend) = ${num1}, भाजक (Divisor) = ${num2}`,
+            annotation: `${teacherName}: "यहाँ हमें ${num1} को ${num2} बराबर भागों में बांटना है।"`,
+          },
+          {
+            step: 'चरण 2: चरणबद्ध भाग (Division Step)',
+            question: questionDisplay,
+            formula: `1️⃣ भाग संक्रिया: ${num1} ÷ ${num2}\n2️⃣ भागफल (Quotient) = ${quot}`,
+            annotation: `${teacherName}: "${num2} का पहाड़ा पढ़ने पर भागफल ${quot} प्राप्त होता है।"`,
+          },
+          {
+            step: 'चरण 3: अंतिम सही उत्तर',
+            question: questionDisplay,
+            formula: `✅ ${num1} ÷ ${num2} = ${quot} (सही उत्तर)`,
+            annotation: `${teacherName}: "शाबाश! सही भागफल ${quot} है।"`,
+          },
+        ],
+      };
+    }
+  };
 
   const formatFormula = (f: string) => {
     if (!f) return '';
@@ -152,7 +470,7 @@ export default function TuitionClassroomStudio() {
 
     if (rawParts.length > 1) {
       return (
-        <div className="space-y-2 pt-1">
+        <div className="space-y-2 pt-1 font-mono text-sm sm:text-base">
           {rawParts.map((part, pIdx) => {
             const isFinal =
               part.includes('✅') ||
@@ -166,10 +484,10 @@ export default function TuitionClassroomStudio() {
                 key={pIdx}
                 className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-sm sm:text-base font-bold transition-all ${
                   isFinal
-                    ? isDarkMode
+                    ? isDarkMode || chalkboardTheme === 'green'
                       ? 'bg-emerald-950/60 border-emerald-500/50 text-emerald-300 shadow-sm'
                       : 'bg-emerald-50 border-emerald-200 text-emerald-800 shadow-sm'
-                    : isDarkMode
+                    : isDarkMode || chalkboardTheme === 'green'
                     ? 'bg-slate-900/80 border-slate-800 text-slate-200'
                     : 'bg-white border-slate-200 text-slate-800 shadow-xs'
                 }`}
@@ -180,10 +498,18 @@ export default function TuitionClassroomStudio() {
                       isFinal ? 'bg-emerald-500' : 'bg-indigo-500'
                     }`}
                   />
-                  <span className="leading-relaxed">{part.replace(/\[|\]/g, '')}</span>
+                  <div className="leading-relaxed">
+                    <ChalkTypewriter
+                      text={part.replace(/\[|\]/g, '')}
+                      speed={22}
+                      delay={isTypewriterEnabled ? pIdx * 350 : 0}
+                      enabled={isTypewriterEnabled}
+                      isChalkboard={chalkboardTheme === 'green'}
+                    />
+                  </div>
                 </div>
                 {isFinal && (
-                  <span className="text-xs bg-emerald-600 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow-xs shrink-0">
+                  <span className="text-xs bg-emerald-600 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow-xs shrink-0 animate-in fade-in duration-500">
                     उत्तर ✅
                   </span>
                 )}
@@ -195,10 +521,17 @@ export default function TuitionClassroomStudio() {
     }
 
     return (
-      <div className={`text-base sm:text-xl font-bold tracking-wide leading-relaxed ${
-        isDarkMode ? 'text-white' : 'text-slate-900'
-      }`}>
-        {clean}
+      <div
+        className={`text-base sm:text-xl font-bold tracking-wide leading-relaxed font-mono ${
+          isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+        }`}
+      >
+        <ChalkTypewriter
+          text={clean}
+          speed={22}
+          enabled={isTypewriterEnabled}
+          isChalkboard={chalkboardTheme === 'green'}
+        />
       </div>
     );
   };
@@ -329,7 +662,37 @@ export default function TuitionClassroomStudio() {
     },
   ]);
 
-  // Text-To-Speech
+  // Real Hindi Voice Selector & Text-To-Speech
+  const [hindiVoice, setHindiVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [selectedBookPage, setSelectedBookPage] = useState<number>(1);
+
+  // Initialize and prioritize best Hindi TTS Voice (Chrome Google हिन्दी, Microsoft Swara / Kalpana Natural)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const findBestHindiVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices || voices.length === 0) return;
+      // 1. Natural / Google Hindi
+      const best =
+        voices.find(
+          (v) =>
+            (v.lang === 'hi-IN' || v.lang === 'hi_IN') &&
+            (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Swara') || v.name.includes('Kalpana'))
+        ) ||
+        voices.find((v) => v.lang === 'hi-IN' || v.lang === 'hi_IN') ||
+        voices.find((v) => v.lang.startsWith('hi')) ||
+        voices.find((v) => v.name.toLowerCase().includes('hindi') || v.name.includes('हिन्दी')) ||
+        voices.find((v) => v.lang.includes('IN') && !v.name.includes('English'));
+      if (best) {
+        setHindiVoice(best);
+      }
+    };
+
+    findBestHindiVoice();
+    window.speechSynthesis.onvoiceschanged = findBestHindiVoice;
+  }, []);
+
+  // Text-To-Speech with Real Hindi Voice
   const speakText = (text: string) => {
     if (isAudioMuted || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
@@ -341,11 +704,40 @@ export default function TuitionClassroomStudio() {
         .replace(/×/g, ' गुणा ')
         .replace(/÷/g, ' भाग ')
         .replace(/1\/2/g, ' आधा ')
-        .replace(/1\/4/g, ' चौथाई ');
+        .replace(/1\/4/g, ' चौथाई ')
+        .replace(/3\/4/g, ' तीन चौथाई ')
+        .replace(/\b1\s*kg\b/gi, ' एक किलोग्राम ')
+        .replace(/\b2\s*kg\b/gi, ' दो किलोग्राम ')
+        .replace(/\b([0-9]+)\s*kg\b/gi, '$1 किलोग्राम ')
+        .replace(/\b([0-9]+)\s*g\b/gi, '$1 ग्राम ')
+        .replace(/\b([0-9]+)\s*m\b/gi, '$1 मीटर ')
+        .replace(/\b([0-9]+)\s*cm\b/gi, '$1 सेंटीमीटर ')
+        .trim();
 
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = 'hi-IN';
-      utterance.rate = 0.85;
+
+      // Pick Hindi voice
+      let voiceToUse = hindiVoice;
+      if (!voiceToUse && 'speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        voiceToUse =
+          voices.find(
+            (v) =>
+              (v.lang === 'hi-IN' || v.lang === 'hi_IN') &&
+              (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Swara') || v.name.includes('Kalpana'))
+          ) ||
+          voices.find((v) => v.lang === 'hi-IN' || v.lang === 'hi_IN') ||
+          voices.find((v) => v.lang.startsWith('hi')) ||
+          voices.find((v) => v.name.toLowerCase().includes('hindi') || v.name.includes('हिन्दी')) ||
+          null;
+      }
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+      }
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
 
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
@@ -357,6 +749,26 @@ export default function TuitionClassroomStudio() {
       setIsSpeaking(false);
     }
   };
+
+  // Auto-progress revealedSteps when in typewriter mode
+  useEffect(() => {
+    if (!isTypewriterEnabled) return;
+    if (revealedSteps < whiteboardSteps.length && whiteboardSteps.length > 1) {
+      const timer = setTimeout(() => {
+        setRevealedSteps((prev) => {
+          if (prev >= whiteboardSteps.length) return prev;
+          const next = prev + 1;
+          const s = whiteboardSteps[next - 1];
+          if (s && !isAudioMuted) {
+            speakText(`${s.step}: ${s.formula}. ${s.annotation}`);
+          }
+          return next;
+        });
+      }, 3000); // 3.0s allows realistic typing and reading per step
+
+      return () => clearTimeout(timer);
+    }
+  }, [revealedSteps, whiteboardSteps, isTypewriterEnabled, isAudioMuted]);
 
   // Mic Speech Recognition
   const toggleMic = () => {
@@ -424,16 +836,21 @@ export default function TuitionClassroomStudio() {
   // Start Teaching a Specific Chapter
   const handleStartChapter = (ch: Chapter) => {
     setSelectedChapter(ch);
+    setSelectedBookPage(1);
     setActiveQuestionIdx(0);
     setSelectedMCQ(null);
     setTypedAnswer('');
     setAnswerStatus('idle');
+    setActiveTargetQuestion('');
+    setDetectedQuestions([]);
 
     setWhiteboardHeading(`पाठ ${ch.chapterNumber}: ${ch.titleHindi}`);
 
     // If chapter has sample questions with whiteboard steps
-    if (ch.sampleQuestions && ch.sampleQuestions[0]?.whiteboardSteps) {
+    if (ch.sampleQuestions && ch.sampleQuestions.length > 0 && ch.sampleQuestions[0]?.whiteboardSteps) {
+      setActiveTargetQuestion(ch.sampleQuestions[0].question);
       setWhiteboardSteps(ch.sampleQuestions[0].whiteboardSteps);
+      setRevealedSteps(ch.sampleQuestions[0].whiteboardSteps.length);
     } else {
       // Dynamic concept introduction
       setWhiteboardSteps([
@@ -453,9 +870,8 @@ export default function TuitionClassroomStudio() {
           annotation: 'नीचे दिया गया अभ्यास प्रश्न हल करें या मुझसे कोई भी डाउट पूछें!',
         },
       ]);
+      setRevealedSteps(3);
     }
-
-    setRevealedSteps(1);
 
     // Add to Teacher Memory History Log
     const newRecord: StudyHistoryItem = {
@@ -471,106 +887,169 @@ export default function TuitionClassroomStudio() {
     };
     setStudyHistory((prev) => [newRecord, ...prev.slice(0, 4)]);
 
-    const welcomeMsg = `शाबाश बेटा! अब हम पाठ ${ch.chapterNumber} "${ch.titleHindi}" पढ़ेंगे। मैंने व्हाइटबोर्ड पर पहला स्टेप लिख दिया है, ध्यान से देखिए!`;
+    const welcomeMsg = `शाबाश बेटा! अब हम पाठ ${ch.chapterNumber} "${ch.titleHindi}" पढ़ेंगे। मैंने किताब के 5 असली पृष्ठ और अंत के अभ्यास सवाल लोड कर दिए हैं। ध्यान से देखिए!`;
     setSpeechText(welcomeMsg);
     speakText(welcomeMsg);
   };
 
+  // Solve a specific real chapter question on whiteboard
+  const handleSolveChapterQuestion = (qItem: any) => {
+    setActiveTargetQuestion(qItem.question);
+    if (qItem.whiteboardSteps && qItem.whiteboardSteps.length > 0) {
+      setWhiteboardSteps(qItem.whiteboardSteps);
+      setRevealedSteps(1); // Progressive slow typewriter handwriting
+    } else {
+      handleStudentQuery(`कृपया पाठ ${selectedChapter?.chapterNumber || ''} का यह प्रश्न हल कराएं: "${qItem.question}"`);
+      return;
+    }
+    const msg = `बेटा, ध्यान से देखिए: सवाल है "${qItem.question}"। इसका स्टेप-बाय-स्टेप हल मैंने व्हाइटबोर्ड पर लिख दिया है!`;
+    setSpeechText(msg);
+    speakText(msg);
+  };
+
   // Handle Free-Form Student Query or Doubt
   const handleStudentQuery = async (queryText?: string) => {
-    const q = (queryText || inputText).trim();
+    const rawVal = queryText !== undefined ? queryText : (inputText || inputRef.current?.value || '');
+    const q = (rawVal || '').trim();
     if (!q && !uploadedImage) return;
 
     setInputText('');
+    if (inputRef.current) inputRef.current.value = '';
     setIsCheckingHomework(true);
 
-    // If no image is uploaded, check if user explicitly requested a textbook chapter
-    if (!uploadedImage) {
-      const qLower = q.toLowerCase();
-      if (qLower.includes('math') || q.includes('गणित')) {
-        const mathSub = allSubjects.find((s) => s.id === 'math');
-        if (mathSub) setSelectedSubject(mathSub);
-      } else if (qLower.includes('english') || q.includes('अंग्रेजी')) {
-        const engSub = allSubjects.find((s) => s.id === 'english');
-        if (engSub) setSelectedSubject(engSub);
-      } else if (qLower.includes('evs') || q.includes('पर्यावरण')) {
-        const evsSub = allSubjects.find((s) => s.id === 'evs');
-        if (evsSub) setSelectedSubject(evsSub);
-      } else if (qLower.includes('hindi') || q.includes('हिंदी')) {
-        const hinSub = allSubjects.find((s) => s.id === 'hindi');
-        if (hinSub) setSelectedSubject(hinSub);
-      }
+    const qLower = q.toLowerCase();
 
-      // Check if query explicitly asks for textbook chapters (e.g. 'पाठ 1', 'chapter 3')
-      const mathSub = allSubjects.find((s) => s.id === 'math');
+    // 0. Dedicated Math Expression Solver (e.g. 10+10, 10 + 10, 25*4, 50-20, 100/4, 10 aur 10, etc.)
+    const mathSol = solveMathExpression(q, currentTeacher.name);
+    if (mathSol) {
+      const mathSub =
+        allSubjects.find(
+          (s) => s.id.toLowerCase().includes('math') || s.subject.toLowerCase().includes('math') || s.teacherId === 'sharma'
+        ) || allSubjects[0];
       if (mathSub) {
-        if (q.includes('पाठ 1') || q.includes('chapter 1') || q.includes('पुस्तकालय')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 1);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 2') || q.includes('chapter 2') || q.includes('जनक का गाँव')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 2);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 3') || q.includes('chapter 3') || q.includes('संख्याओं में जोड़')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 3);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 4') || q.includes('chapter 4') || q.includes('जोड़-घटाव')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 4);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 5') || q.includes('chapter 5') || q.includes('वैदिक गणित')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 5);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 6') || q.includes('chapter 6') || q.includes('आकृतियाँ')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 6);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 7') || q.includes('chapter 7') || q.includes('सममिति')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 7);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
-        if (q.includes('पाठ 8') || q.includes('chapter 8') || q.includes('पहाड़े बनाएँ')) {
-          setSelectedSubject(mathSub);
-          const ch = mathSub.chapters.find((c) => c.chapterNumber === 8);
-          if (ch) { setIsCheckingHomework(false); handleStartChapter(ch); return; }
-        }
+        setSelectedSubject(mathSub);
+        setCurrentTeacher({
+          id: 'sharma',
+          name: 'Sharma Sir',
+          role: 'Class 1st-8th Math Mentor',
+          emoji: '👨‍🏫',
+        });
       }
+      setIsCheckingHomework(false);
+      setUploadedImage(null);
+      setUploadedFileName('');
+      setDetectedQuestions([]);
+      setCustomQuizQuestions([]);
+      setActiveTargetQuestion(mathSol.questionDisplay);
+      setWhiteboardHeading(mathSol.heading);
+      setWhiteboardSteps(mathSol.steps);
+      setRevealedSteps(1); // Start from step 1 so slow typewriter handwriting writes each step
+      setSpeechText(mathSol.speechText);
+      speakText(mathSol.speechText);
+      return;
+    }
 
-      if ((q.includes('पाठ 5') || q.includes('chapter 5')) && (qLower.includes('english') || q.includes('helen'))) {
-        const engSub = allSubjects.find((s) => s.id === 'english');
-        if (engSub) {
-          setSelectedSubject(engSub);
-          const ch5 = engSub.chapters.find((c) => c.chapterNumber === 5);
-          if (ch5) {
-            setIsCheckingHomework(false);
-            handleStartChapter(ch5);
-            return;
-          }
-        }
+    // 1. Direct Action: Check Copy/Homework request
+    if (
+      q.includes('कॉपी चेक') ||
+      q.includes('होमवर्क चेक') ||
+      qLower.includes('check copy') ||
+      qLower.includes('check homework')
+    ) {
+      if (uploadedImage) {
+        handleTriggerMode('check');
+        return;
+      } else {
+        const askMsg = 'बेटा, कॉपी चेक करवाने के लिए कृपया पहले नीचे "फोटो खींचो" बटन से अपनी कॉपी या वर्कशीट की फोटो अपलोड करें!';
+        setSpeechText(askMsg);
+        speakText(askMsg);
+        setIsCheckingHomework(false);
+        return;
       }
+    }
 
-      if ((q.includes('पाठ 11') || q.includes('chapter 11')) && (qLower.includes('evs') || q.includes('फूल') || q.includes('valley'))) {
-        const evsSub = allSubjects.find((s) => s.id === 'evs');
-        if (evsSub) {
-          setSelectedSubject(evsSub);
-          const ch11 = evsSub.chapters.find((c) => c.chapterNumber === 11);
-          if (ch11) {
-            setIsCheckingHomework(false);
-            handleStartChapter(ch11);
-            return;
-          }
+    // 2. Helper to find subject flexibly (works for c1-math, c4-math, cbse-c4-math, etc.)
+    const findSubjectFlexible = (text: string) => {
+      const t = text.toLowerCase();
+      if (t.includes('math') || t.includes('गणित') || t.includes('ganit')) {
+        return allSubjects.find(
+          (s) => s.id.toLowerCase().includes('math') || s.subject.toLowerCase().includes('math') || s.teacherId === 'sharma'
+        ) || allSubjects[0];
+      }
+      if (t.includes('english') || t.includes('अंग्रेजी') || t.includes('angrezi')) {
+        return allSubjects.find(
+          (s) => s.id.toLowerCase().includes('eng') || s.subject.toLowerCase().includes('english') || s.teacherId === 'riya'
+        );
+      }
+      if (t.includes('evs') || t.includes('पर्यावरण') || t.includes('science') || t.includes('विज्ञान')) {
+        return allSubjects.find(
+          (s) => s.id.toLowerCase().includes('evs') || s.id.toLowerCase().includes('sc') || s.subject.toLowerCase().includes('env') || s.subject.toLowerCase().includes('sci') || s.teacherId === 'neha'
+        );
+      }
+      if (t.includes('hindi') || t.includes('हिंदी')) {
+        return allSubjects.find(
+          (s) => s.id.toLowerCase().includes('hin') || s.subject.toLowerCase().includes('hindi') || s.teacherId === 'pooja'
+        );
+      }
+      return null;
+    };
+
+    // 3. Check if query asks to teach or open a specific chapter (e.g. 'Math का Chapter 8 पढ़ाओ', 'पाठ 5 पढ़ाओ')
+    const chapterMatch = q.match(/(?:chapter|पाठ|अध्याय)\s*([0-9]+)/i);
+    const asksToTeach =
+      q.includes('पढ़ाओ') ||
+      q.includes('पढाओ') ||
+      q.includes('पढ़ाओ') ||
+      q.includes('सिखाओ') ||
+      q.includes('खोलो') ||
+      qLower.includes('teach') ||
+      qLower.includes('open') ||
+      qLower.includes('start');
+
+    if (chapterMatch || (asksToTeach && (qLower.includes('chapter') || q.includes('पाठ')))) {
+      const targetSub = findSubjectFlexible(q) || selectedSubject || allSubjects[0];
+      if (targetSub) {
+        handleSelectSubject(targetSub);
+        const chNum = chapterMatch ? parseInt(chapterMatch[1], 10) : 1;
+        let targetChapter = targetSub.chapters.find((c) => c.chapterNumber === chNum);
+
+        // Fallback matching by keyword if number didn't directly match
+        if (!targetChapter) {
+          if (q.includes('पुस्तकालय')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 1);
+          else if (q.includes('गाँव')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 2);
+          else if (q.includes('जोड़')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 3 || c.chapterNumber === 4);
+          else if (q.includes('वैदिक')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 5);
+          else if (q.includes('भिन्न')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 6);
+          else if (q.includes('मापन') || q.includes('लंबाई')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 7);
+          else if (q.includes('भार') || q.includes('तौल') || q.includes('वजन')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 8);
+          else if (q.includes('धारिता') || q.includes('आयतन') || q.includes('लीटर')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 9);
+          else if (q.includes('समय')) targetChapter = targetSub.chapters.find((c) => c.chapterNumber === 10);
+        }
+
+        // Default to first or closest chapter if not found
+        if (!targetChapter && targetSub.chapters.length > 0) {
+          targetChapter = targetSub.chapters.find((c) => c.chapterNumber <= chNum) || targetSub.chapters[0];
+        }
+
+        if (targetChapter) {
+          setIsCheckingHomework(false);
+          // Clear any active photo upload so whiteboard switches directly to teaching textbook chapter
+          setUploadedImage(null);
+          setUploadedFileName('');
+          setDetectedQuestions([]);
+          setCustomQuizQuestions([]);
+          handleStartChapter(targetChapter);
+          return;
         }
       }
+    }
+
+    // 4. Check if student just asks to switch subjects (e.g., 'Math पढ़ाओ', 'English पढ़ाओ')
+    const generalSub = findSubjectFlexible(q);
+    if (generalSub && (asksToTeach || q.length < 15)) {
+      handleSelectSubject(generalSub);
+      setIsCheckingHomework(false);
+      return;
     }
 
     // Otherwise, it is a specific doubt in the middle of learning
@@ -596,7 +1075,7 @@ export default function TuitionClassroomStudio() {
         if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
           setWhiteboardHeading(`सवाल समाधान: "${q.length > 30 ? q.slice(0, 30) + '...' : q}"`);
           setWhiteboardSteps(data.whiteboard_steps);
-          setRevealedSteps(data.whiteboard_steps.length);
+          setRevealedSteps(1); // Progressive slow typewriter handwriting
         }
         if (data.detected_questions && Array.isArray(data.detected_questions) && data.detected_questions.length > 0) {
           setDetectedQuestions(data.detected_questions);
@@ -1543,6 +2022,179 @@ export default function TuitionClassroomStudio() {
             </div>
           )}
 
+          {/* REAL 5 BOOK PAGES VIEWER & CHAPTER EXERCISE SOLVER */}
+          {selectedChapter && (
+            <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-4 ${
+              isDarkMode
+                ? 'bg-slate-900 border-slate-800 shadow-xl'
+                : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl shrink-0">
+                    📖
+                  </div>
+                  <div>
+                    <h3 className={`text-sm md:text-base font-black flex items-center gap-2 ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      पाठ {selectedChapter.chapterNumber}: पाठ्यपुस्तक के 5 असली पृष्ठ (Real Book Pages)
+                    </h3>
+                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {selectedSubject?.bookName} — पृष्ठ 1 से 5 व अंत के असली अभ्यास प्रश्न
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+                    isDarkMode ? 'bg-indigo-950/60 border-indigo-700/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                  }`}>
+                    कुल 5 पृष्ठ (Full Chapter)
+                  </span>
+                </div>
+              </div>
+
+              {/* 5 PAGE TABS */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+                {(selectedChapter.bookPages || [
+                  { pageNumber: 1, pageTitle: 'पृष्ठ 1: अवधारणा व चित्र' },
+                  { pageNumber: 2, pageTitle: 'पृष्ठ 2: मुख्य सूत्र व नियम' },
+                  { pageNumber: 3, pageTitle: 'पृष्ठ 3: दैनिक जीवन उदाहरण' },
+                  { pageNumber: 4, pageTitle: 'पृष्ठ 4: अभ्यास प्रश्न 8.1' },
+                  { pageNumber: 5, pageTitle: '🎯 पृष्ठ 5: किताब के अंत के प्रश्न' },
+                ]).map((bp, pIdx) => {
+                  const pNum = bp.pageNumber || pIdx + 1;
+                  const isPageActive = selectedBookPage === pNum;
+                  const isEndPage = pNum === 5;
+
+                  return (
+                    <button
+                      key={pNum}
+                      onClick={() => {
+                        setSelectedBookPage(pNum);
+                        if (pNum === 5 && selectedChapter.sampleQuestions && selectedChapter.sampleQuestions.length >= 4) {
+                          handleSolveChapterQuestion(selectedChapter.sampleQuestions[3]);
+                        } else if (selectedChapter.sampleQuestions && selectedChapter.sampleQuestions[pNum - 1]) {
+                          handleSolveChapterQuestion(selectedChapter.sampleQuestions[pNum - 1]);
+                        }
+                      }}
+                      className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1 ${
+                        isPageActive
+                          ? isEndPage
+                            ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border-amber-400 text-amber-500 shadow-sm'
+                            : isDarkMode
+                            ? 'bg-indigo-600/20 border-indigo-400 text-white shadow-sm'
+                            : 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
+                          : isDarkMode
+                          ? 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
+                          : 'bg-slate-50 border-slate-200 hover:border-indigo-300 text-slate-700'
+                      }`}
+                    >
+                      <span className={`text-[10px] font-black uppercase ${
+                        isEndPage ? 'text-amber-500 font-extrabold' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        {isEndPage ? '🎯 मुख्य प्रश्न' : `पेज ${pNum}`}
+                      </span>
+                      <span className="text-[11px] font-bold line-clamp-1">
+                        {bp.pageTitle || `पृष्ठ ${pNum}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* CURRENT BOOK PAGE DETAILS & REAL EXERCISE QUESTIONS */}
+              {(() => {
+                const curPageData = selectedChapter.bookPages?.find((p) => p.pageNumber === selectedBookPage) || {
+                  pageNumber: selectedBookPage,
+                  pageTitle: `पृष्ठ ${selectedBookPage}: ${selectedChapter.titleHindi}`,
+                  summary: selectedChapter.concepts.join(', '),
+                  concepts: selectedChapter.concepts,
+                };
+
+                return (
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-black flex items-center gap-1.5 ${
+                        selectedBookPage === 5 ? 'text-amber-500' : isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                      }`}>
+                        <span>{selectedBookPage === 5 ? '🎯' : '📄'}</span>
+                        {curPageData.pageTitle}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400">
+                        NCERT / RBSE Class 4th Real Book
+                      </span>
+                    </div>
+
+                    <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                      {curPageData.summary}
+                    </p>
+
+                    {/* REAL EXERCISE QUESTIONS FOR THIS CHAPTER */}
+                    <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-black text-slate-900 dark:text-white flex items-center gap-1">
+                          <span>✍️</span> {selectedBookPage === 5 ? 'किताब के अंत के असली प्रश्न (End-of-Chapter Real Questions):' : 'इस पृष्ठ के अभ्यास प्रश्न:'}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                          क्लिक करके सीधे व्हाइटबोर्ड पर हल करें
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(selectedChapter.sampleQuestions || []).map((qItem, qIdx) => {
+                          const isTarget = activeTargetQuestion === qItem.question;
+                          const isEndQ = qIdx >= 3;
+                          if (selectedBookPage === 5 && !isEndQ) return null; // On Page 5 only show end-of-chapter questions
+
+                          return (
+                            <div
+                              key={qIdx}
+                              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+                                isTarget
+                                  ? isDarkMode
+                                    ? 'bg-amber-950/40 border-amber-400/60 shadow-md'
+                                    : 'bg-amber-50 border-amber-300 shadow-xs'
+                                  : isDarkMode
+                                  ? 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                                  : 'bg-white border-slate-200 hover:border-indigo-300'
+                              }`}
+                            >
+                              <div className="flex-1">
+                                <span className={`text-[10px] font-black uppercase block ${
+                                  isEndQ ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400'
+                                }`}>
+                                  {isEndQ ? '🎯 किताब के अंत का असली प्रश्न' : `प्रश्न ${qIdx + 1}`}
+                                </span>
+                                <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                                  {qItem.question}
+                                </p>
+                              </div>
+
+                              <button
+                                onClick={() => handleSolveChapterQuestion(qItem)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-1 self-start sm:self-auto ${
+                                  isTarget
+                                    ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30'
+                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
+                                }`}
+                              >
+                                <span>{isTarget ? '✓ हल देख रहे हैं' : 'व्हाइटबोर्ड पर हल करें →'}</span>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* DIGITAL WHITEBOARD (Properly Types & Solves Doubts) */}
           <div className={`rounded-3xl border overflow-hidden flex flex-col transition-all duration-200 ${
             isDarkMode
@@ -1579,19 +2231,50 @@ export default function TuitionClassroomStudio() {
                   <span>{chalkboardTheme === 'green' ? '🟩 ग्रीन बोर्ड' : '⬜ व्हाइटबोर्ड'}</span>
                 </button>
 
-              {whiteboardSteps.length > 0 && (
+                {/* Chalk Typewriter Live Animation Toggle */}
                 <button
-                  onClick={() => setRevealedSteps(1)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
-                    isDarkMode
-                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
+                  onClick={() => setIsTypewriterEnabled(!isTypewriterEnabled)}
+                  title={isTypewriterEnabled ? 'फास्ट मोड चालू करें' : 'रियल चॉक राइटिंग चालू करें'}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center gap-1 transition-all ${
+                    isTypewriterEnabled
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
+                      : isDarkMode
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-400 border-slate-700'
+                      : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                   }`}
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>शुरू से देखें</span>
+                  <span>{isTypewriterEnabled ? '✍️ चॉक राइटिंग (Live)' : '⚡ तुरंत देखें'}</span>
                 </button>
-              )}
+
+                {whiteboardSteps.length > 0 && (
+                  <>
+                    {/* Skip / Show Full Solution Immediately */}
+                    {revealedSteps < whiteboardSteps.length && (
+                      <button
+                        onClick={() => setRevealedSteps(whiteboardSteps.length)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center gap-1 transition-all ${
+                          isDarkMode
+                            ? 'bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border-indigo-700/50'
+                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                        }`}
+                      >
+                        <span>⏩ तुरंत पूरा हल</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => setRevealedSteps(1)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all ${
+                        isDarkMode
+                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
+                      }`}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>शुरू से देखें</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -1852,7 +2535,13 @@ export default function TuitionClassroomStudio() {
                                     <p className={`text-xs sm:text-sm font-bold leading-relaxed ${
                                       isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
                                     }`}>
-                                      {item.matchedQuestion}
+                                      <ChalkTypewriter
+                                        text={item.matchedQuestion}
+                                        speed={18}
+                                        delay={isTypewriterEnabled ? mIdx * 120 : 0}
+                                        enabled={isTypewriterEnabled}
+                                        isChalkboard={chalkboardTheme === 'green'}
+                                      />
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-2 sm:self-center shrink-0 pl-7 sm:pl-0">
@@ -1900,7 +2589,12 @@ export default function TuitionClassroomStudio() {
                                 <p className={`text-sm sm:text-base md:text-lg font-bold leading-relaxed ${
                                   !isDarkMode && chalkboardTheme !== 'green' ? 'text-slate-900' : 'text-white'
                                 }`}>
-                                  {singleQuestion}
+                                  <ChalkTypewriter
+                                    text={singleQuestion}
+                                    speed={20}
+                                    enabled={isTypewriterEnabled}
+                                    isChalkboard={chalkboardTheme === 'green'}
+                                  />
                                 </p>
                               </div>
                             )}
@@ -1937,7 +2631,13 @@ export default function TuitionClassroomStudio() {
                               {currentTeacher.name} का स्पष्टीकरण:
                             </span>
                             <p className="text-xs sm:text-sm font-medium leading-relaxed">
-                              {stepItem.annotation}
+                              <ChalkTypewriter
+                                text={stepItem.annotation}
+                                speed={18}
+                                delay={isTypewriterEnabled ? 200 : 0}
+                                enabled={isTypewriterEnabled}
+                                isChalkboard={chalkboardTheme === 'green'}
+                              />
                             </p>
                           </div>
                         </div>
@@ -2118,6 +2818,7 @@ export default function TuitionClassroomStudio() {
 
           <div className="flex-1 relative">
             <input
+              ref={inputRef}
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -2127,10 +2828,11 @@ export default function TuitionClassroomStudio() {
                   ? 'bg-slate-950 border-slate-700 focus:border-indigo-400 text-white placeholder-slate-500'
                   : 'bg-slate-100 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900 placeholder-slate-400'
               }`}
-              onKeyDown={(e) => e.key === 'Enter' && handleStudentQuery()}
+              onKeyDown={(e) => e.key === 'Enter' && handleStudentQuery(inputText || inputRef.current?.value)}
             />
             <button
-              onClick={() => handleStudentQuery()}
+              type="button"
+              onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-xs"
             >
               <Send className="w-4 h-4" />
@@ -2155,9 +2857,10 @@ export default function TuitionClassroomStudio() {
         <div className="max-w-4xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none mt-2 pt-1 text-[11px]">
           <span className={`font-bold shrink-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>सुझाव:</span>
           {[
+            '10 + 10 = ?',
             'Math का Chapter 8 पढ़ाओ',
+            '25 + 35 हल करो',
             'English का Chapter 5 पढ़ाओ',
-            'EVS का Chapter 11 पढ़ाओ',
             'त्रिज्या और व्यास में क्या फर्क है?',
             'मेरी कॉपी चेक करो',
           ].map((chip, idx) => (
