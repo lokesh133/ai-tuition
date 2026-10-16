@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     let fileMime = 'image/jpeg';
     let fileName = '';
     let mode = 'teach';
+    const additionalImages: Array<{ mime: string; base64: string }> = [];
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
@@ -37,6 +38,18 @@ export async function POST(req: NextRequest) {
         fileMime = parts[0].replace('data:', '') || 'image/jpeg';
         fileBufferBase64 = parts[1] || null;
         fileName = json.file_name || 'homework_page.jpg';
+      }
+      if (Array.isArray(json.images)) {
+        json.images.forEach((img: any) => {
+          const str = typeof img === 'string' ? img : img.url || '';
+          if (str.includes('base64,')) {
+            const p = str.split(';base64,');
+            let m = p[0].replace('data:', '') || 'image/jpeg';
+            if (m === 'image/jpg') m = 'image/jpeg';
+            if (m.includes('pdf')) m = 'application/pdf';
+            additionalImages.push({ mime: m, base64: p[1] });
+          }
+        });
       }
     }
 
@@ -131,6 +144,15 @@ CRITICAL MANDATE - ZERO STATIC DATA (100% DYNAMIC FROM UPLOADED IMAGE OR PDF):
             inline_data: {
               mime_type: cleanMime,
               data: fileBufferBase64,
+            },
+          });
+        }
+
+        for (const extraImg of additionalImages) {
+          parts.push({
+            inline_data: {
+              mime_type: extraImg.mime,
+              data: extraImg.base64,
             },
           });
         }
