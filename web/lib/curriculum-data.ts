@@ -16,6 +16,8 @@ export interface Chapter {
   keyFormulas?: string[];
   term: 'half_yearly' | 'annual';
   estimatedMinutes: number;
+  startPage?: number;
+  endPage?: number;
   sampleQuestions: {
     question: string;
     type: 'mcq' | 'fill' | 'solve';
@@ -37,6 +39,10 @@ export interface SubjectCurriculum {
   subject: string;
   subjectHindi: string;
   bookName: string;
+  totalPages?: number;
+  bookPdfName?: string;
+  bookPdfSize?: string;
+  pdfUploadedAt?: string;
   teacherId: 'sharma' | 'neha' | 'riya' | 'pooja';
   teacherName: string;
   emoji: string;
