@@ -78,8 +78,20 @@ const HINGLISH_MAP: Record<string, string> = {
 };
 
 function convertNumbersAndMathToHindi(text: string): string {
+  // Convert fractions and units first
+  let out = text
+    .replace(/1\/2/g, ' आधा ')
+    .replace(/1\/4/g, ' चौथाई ')
+    .replace(/3\/4/g, ' तीन चौथाई ')
+    .replace(/\b([0-9]+)\s*kg\b/gi, '$1 किलोग्राम ')
+    .replace(/\b([0-9]+)\s*g\b/gi, '$1 ग्राम ')
+    .replace(/\b([0-9]+)\s*km\/h\b/gi, '$1 किलोमीटर प्रति घंटा ')
+    .replace(/\b([0-9]+)\s*km\b/gi, '$1 किलोमीटर ')
+    .replace(/\b([0-9]+)\s*m\b/gi, '$1 मीटर ')
+    .replace(/\b([0-9]+)\s*cm\b/gi, '$1 सेंटीमीटर ');
+
   // Convert isolated numbers (0-100) into authentic Hindi words
-  let out = text.replace(/\b([0-9]{1,3})\b/g, (match) => {
+  out = out.replace(/\b([0-9]{1,3})\b/g, (match) => {
     const n = parseInt(match, 10);
     if (!isNaN(n) && HINDI_NUMBERS[n] !== undefined) {
       return HINDI_NUMBERS[n];
@@ -87,12 +99,15 @@ function convertNumbersAndMathToHindi(text: string): string {
     return match;
   });
 
-  // Convert math symbols to Hindi words
+  // Convert math symbols to authentic Hindi spoken words
   out = out
     .replace(/\+/g, ' प्लस ')
-    .replace(/[-–—]/g, ' माइनस ')
+    .replace(/([0-9\u0966-\u096F]+)\s*[-–—]\s*([0-9\u0966-\u096F]+)/g, '$1 माइनस $2')
+    .replace(/\s+[-–—]\s+/g, ' माइनस ')
+    .replace(/[-–—]/g, ' ') // Any remaining compound word hyphens become natural pause/space
     .replace(/[×*]/g, ' गुणा ')
-    .replace(/[÷/]/g, ' भाग ')
+    .replace(/[÷]/g, ' भाग ')
+    .replace(/([0-9\u0966-\u096F]+)\s*\/\s*([0-9\u0966-\u096F]+)/g, '$1 बटा $2')
     .replace(/=/g, ' बराबर ')
     .replace(/≠/g, ' बराबर नहीं है ')
     .replace(/%/g, ' प्रतिशत ')
@@ -101,7 +116,7 @@ function convertNumbersAndMathToHindi(text: string): string {
   return out;
 }
 
-function cleanAndPhoneticizeHindi(text: string): string {
+function cleanAndPhoneticizeHindi(text: string, lang = 'hi'): string {
   let cleaned = text
     .replace(/<[^>]*>/g, '')
     .replace(/[*_#`~]/g, '')
@@ -114,22 +129,25 @@ function cleanAndPhoneticizeHindi(text: string): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Convert Hinglish phonetic words if mostly latin script
-  const devanagariCount = (cleaned.match(/[\u0900-\u097F]/g) || []).length;
-  if (devanagariCount <= cleaned.length * 0.4) {
-    const words = cleaned.split(/(\s+|[.,!?।])/);
-    const converted = words.map((w) => {
-      const cleanWord = w.toLowerCase().replace(/[^a-z]/g, '');
-      if (HINGLISH_MAP[cleanWord]) {
-        return HINGLISH_MAP[cleanWord];
-      }
-      return w;
-    });
-    cleaned = converted.join('');
-  }
+  // If requesting English voice or language is English, do not translate English words into Hindi phonetics
+  if (lang !== 'en' && lang !== 'en-IN') {
+    // Convert Hinglish phonetic words if mostly latin script
+    const devanagariCount = (cleaned.match(/[\u0900-\u097F]/g) || []).length;
+    if (devanagariCount <= cleaned.length * 0.4) {
+      const words = cleaned.split(/(\s+|[.,!?।])/);
+      const converted = words.map((w) => {
+        const cleanWord = w.toLowerCase().replace(/[^a-z]/g, '');
+        if (HINGLISH_MAP[cleanWord]) {
+          return HINGLISH_MAP[cleanWord];
+        }
+        return w;
+      });
+      cleaned = converted.join('');
+    }
 
-  // Convert numbers & math symbols to Hindi
-  cleaned = convertNumbersAndMathToHindi(cleaned);
+    // Convert numbers & math symbols to Hindi
+    cleaned = convertNumbersAndMathToHindi(cleaned);
+  }
 
   return cleaned.trim();
 }
@@ -208,8 +226,8 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Text is required', { status: 400 });
     }
 
-    const cleanText = cleanAndPhoneticizeHindi(rawText);
-    const targetLang = lang === 'en' ? 'en-IN' : 'hi';
+    const targetLang = lang === 'en' || lang === 'en-IN' ? 'en-IN' : 'hi';
+    const cleanText = cleanAndPhoneticizeHindi(rawText, targetLang);
 
     // Break text into natural spoken chunks
     const chunks = splitIntoChunks(cleanText, 150);

@@ -20,11 +20,11 @@ export async function POST(req: NextRequest) {
     const audioBase64 = Buffer.from(audioBytes).toString('base64');
     const mimeType = audioFile.type || 'audio/webm';
 
-    // 1. Primary Engine: Google Gemini 1.5 Flash (100% Free Multimodal Audio)
+    // 1. Primary Engine: Google Gemini 3.6 Flash (Fast Multimodal Audio)
     if (GEMINI_API_KEY) {
       try {
         const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

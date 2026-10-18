@@ -56,10 +56,9 @@ export const WorksheetHistoryModal: React.FC<WorksheetHistoryModalProps> = ({
   const [selectedDateFilter, setSelectedDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  if (!isOpen) return null;
-
   // Filter records based on Subject, Date, and Search Query
   const filteredRecords = useMemo(() => {
+    if (!isOpen) return [];
     const todayStr = new Date().toISOString().split('T')[0];
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -92,7 +91,9 @@ export const WorksheetHistoryModal: React.FC<WorksheetHistoryModalProps> = ({
 
       return true;
     });
-  }, [historyRecords, selectedSubjectFilter, selectedDateFilter, searchQuery]);
+  }, [isOpen, historyRecords, selectedSubjectFilter, selectedDateFilter, searchQuery]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">

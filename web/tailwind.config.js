@@ -20,7 +20,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Outfit', '"Noto Sans Devanagari"', 'Inter', 'system-ui', 'sans-serif'],
+        heading: ['Outfit', '"Plus Jakarta Sans"', 'sans-serif'],
+        reader: ['"Plus Jakarta Sans"', '"Noto Sans Devanagari"', 'sans-serif'],
       },
     },
   },
