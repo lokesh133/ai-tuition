@@ -213,7 +213,7 @@ export default function LandingPage() {
             <p className="mt-1">Empowering Bharat's students with affordable AI guidance (Class 1st to 8th).</p>
           </div>
           <div className="flex items-center gap-6 text-slate-400">
-            <Link href="/dashboard" className="hover:text-white">Parent Portal</Link>
+            <Link href="/reports" className="hover:text-white">Student Report</Link>
             <a href="#privacy" className="hover:text-white">Privacy Policy</a>
             <a href="#terms" className="hover:text-white">Terms of Service</a>
             <a href="#contact" className="hover:text-white">WhatsApp Support</a>

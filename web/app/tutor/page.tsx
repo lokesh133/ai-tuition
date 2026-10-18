@@ -38,7 +38,7 @@ import {
   Plus,
   ChevronDown,
 } from 'lucide-react';
-import ParentWhatsAppReportModal from '@/components/ParentWhatsAppReportModal';
+// Student reports now handled centrally on /reports
 import PrintableSundayExamModal from '@/components/PrintableSundayExamModal';
 import TeacherWhiteboardAnimation from '@/components/TeacherWhiteboardAnimation';
 import { WorksheetHistoryModal, SavedWorksheetRecord } from '@/components/WorksheetHistoryModal';
@@ -786,7 +786,12 @@ export default function TuitionClassroomStudio() {
   // Helper for solution blocks: underlines short formula answers
   const renderFormulaAnswer = (formula: string) => {
     if (!formula) return null;
-    const clean = formatFormula(formula);
+    let clean = formatFormula(formula);
+    if (medium === 'english') {
+      clean = clean
+        .replace(/खाली स्थान में सही उत्तर:/g, 'Correct blank answer:')
+        .replace(/सही उत्तर:/g, 'Correct answer:');
+    }
 
     // If explicit bracketed [answer]
     if (/\[[^\]]+\]/.test(clean)) {
@@ -820,6 +825,26 @@ export default function TuitionClassroomStudio() {
     }
 
     return clean;
+  };
+
+  // Helper to dynamically localize whiteboard heading when medium === 'english'
+  const getDisplayWhiteboardHeading = (heading: string) => {
+    if (medium !== 'english' || !heading) return heading;
+    if (heading.includes('आज की ट्यूशन क्लास')) return "Today's Tuition Class (Ready to Teach)";
+    if (heading.includes('मॉक टेस्ट') || heading.includes('परीक्षा तैयारी')) return '🎯 Exam Preparation: Worksheet Mock Test';
+    if (heading.includes('मास्टर उत्तर कुंजी') || heading.includes('Master Answer Key')) return '📋 Complete Worksheet Master Answer Key';
+    if (heading.includes('14.3') || heading.includes('Early Home')) return '📖 Chapter 14.3: My Early Home (Full 7-Paragraph Story - Textbook Reading)';
+    if (heading.includes('A.1')) return 'Practice Question A.1: Fill in the Blank';
+    if (heading.includes('A.2')) return 'Practice Question A.2: Fill in the Blank';
+    if (heading.includes('A.3')) return 'Practice Question A.3: Fill in the Blank';
+    if (heading.includes('A.4')) return 'Practice Question A.4: Fill in the Blank';
+    if (heading.startsWith('शीट हल:')) return heading.replace('शीट हल:', 'Worksheet Solution:');
+    if (heading.startsWith('सवाल समाधान:')) return heading.replace('सवाल समाधान:', 'Solution:');
+    if (heading.startsWith('दस्तावेज स्कैन:')) return heading.replace('दस्तावेज स्कैन:', 'Document Scan:');
+    if (heading.startsWith('गणित हल:')) return heading.replace('गणित हल:', 'Math Solution:');
+    if (heading.startsWith('📖 पाठ वाचन:')) return heading.replace('📖 पाठ वाचन:', '📖 Story Reading:');
+    if (heading.startsWith('वर्कशीट हल:')) return heading.replace('वर्कशीट हल:', 'Worksheet Solution:');
+    return heading;
   };
 
   const renderFormulaBlocks = (formula: string) => {
@@ -899,7 +924,7 @@ export default function TuitionClassroomStudio() {
                   </div>
                   {isAnswerExplicit && (
                     <span className="text-xs bg-emerald-600 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow-xs shrink-0 animate-in fade-in duration-500 self-start mt-1">
-                      उत्तर ✅
+                      {medium === 'english' ? 'Answer ✅' : 'उत्तर ✅'}
                     </span>
                   )}
                 </div>
@@ -1617,60 +1642,77 @@ But his wife did not want to eat without giving some to their son.`;
 
       setTimeout(() => {
         setIsCheckingHomework(false);
+        const isEn = medium === 'english';
         if (isSecA_Q1) {
-          setWhiteboardHeading('अभ्यास सवाल A.1: रिक्त स्थान भरें (Complete the sentence)');
+          setWhiteboardHeading(isEn ? 'Practice Question A.1: Fill in the Blank' : 'अभ्यास सवाल A.1: रिक्त स्थान भरें (Complete the sentence)');
           setWhiteboardSteps([
             {
               step: 'A. 1. Complete the sentence',
               question: 'A. 1. The first place the speaker remembers was a big, pleasant meadow with a clean pond in the middle.',
-              formula: 'The first place the speaker remembers was a big, pleasant [meadow] with a clean pond in the middle. (खाली स्थान में सही उत्तर: [meadow] ✅)',
-              annotation: 'Riya Didi: "पाठ के पहले पैराग्राफ की शुरुआत में ही लिखा है: \'The first place I remember was a big, pleasant meadow with a clean pond in the middle.\' इसलिए यहाँ meadow आएगा।"',
+              formula: `The first place the speaker remembers was a big, pleasant [meadow] with a clean pond in the middle. (${isEn ? 'Correct blank answer:' : 'खाली स्थान में सही उत्तर:'} [meadow] ✅)`,
+              annotation: isEn
+                ? 'Riya Didi: "In paragraph 1 of the story, it says: \'The first place I remember was a big, pleasant meadow with a clean pond in the middle.\' So the correct word for the blank is meadow."'
+                : 'Riya Didi: "पाठ के पहले पैराग्राफ की शुरुआत में ही लिखा है: \'The first place I remember was a big, pleasant meadow with a clean pond in the middle.\' इसलिए यहाँ meadow आएगा।"',
             },
           ]);
           setRevealedSteps(1);
-          const sp = 'सवाल A.1: पाठ के पहले पैराग्राफ के अनुसार, खाली स्थान में सही शब्द "meadow" (चरागाह) आएगा!';
+          const sp = isEn
+            ? 'Question A.1: According to the story, the correct word for the blank is "meadow"!'
+            : 'सवाल A.1: पाठ के पहले पैराग्राफ के अनुसार, खाली स्थान में सही शब्द "meadow" (चरागाह) आएगा!';
           setSpeechText(sp);
           speakText(sp);
         } else if (isSecA_Q2) {
-          setWhiteboardHeading('अभ्यास सवाल A.2: रिक्त स्थान भरें (Complete the sentence)');
+          setWhiteboardHeading(isEn ? 'Practice Question A.2: Fill in the Blank' : 'अभ्यास सवाल A.2: रिक्त स्थान भरें (Complete the sentence)');
           setWhiteboardSteps([
             {
               step: 'A. 2. Complete the sentence',
               question: 'A. 2. When the weather was hot, the speaker and his mother stood by the pond under the trees.',
-              formula: 'When the weather was hot, the speaker and his mother stood by the [pond] under the trees. (खाली स्थान में सही उत्तर: [pond] ✅)',
-              annotation: 'Riya Didi: "पाठ के दूसरे पैराग्राफ में लिखा है: \'When the weather was hot, we stood by the pond under the trees.\' इसलिए यहाँ pond आएगा।"',
+              formula: `When the weather was hot, the speaker and his mother stood by the [pond] under the trees. (${isEn ? 'Correct blank answer:' : 'खाली स्थान में सही उत्तर:'} [pond] ✅)`,
+              annotation: isEn
+                ? 'Riya Didi: "In paragraph 2 of the story: \'When the weather was hot, we stood by the pond under the trees.\' So the correct word for the blank is pond."'
+                : 'Riya Didi: "पाठ के दूसरे पैराग्राफ में लिखा है: \'When the weather was hot, we stood by the pond under the trees.\' इसलिए यहाँ pond आएगा।"',
             },
           ]);
           setRevealedSteps(1);
-          const sp = 'सवाल A.2: पाठ के अनुसार गर्मी के दिनों में वे तालाब के पास खड़े होते थे, इसलिए सही उत्तर "pond" आएगा!';
+          const sp = isEn
+            ? 'Question A.2: When the weather was hot, they stood by the pond. The correct word is "pond"!'
+            : 'सवाल A.2: पाठ के अनुसार गर्मी के दिनों में वे तालाब के पास खड़े होते थे, इसलिए सही उत्तर "pond" आएगा!';
           setSpeechText(sp);
           speakText(sp);
         } else if (isSecA_Q3) {
-          setWhiteboardHeading('अभ्यास सवाल A.3: रिक्त स्थान भरें (Complete the sentence)');
+          setWhiteboardHeading(isEn ? 'Practice Question A.3: Fill in the Blank' : 'अभ्यास सवाल A.3: रिक्त स्थान भरें (Complete the sentence)');
           setWhiteboardSteps([
             {
               step: 'A. 3. Complete the sentence',
               question: 'A. 3. As the speaker grew older and could eat grass, his mother went out to work during the day.',
-              formula: 'As the speaker grew older and could eat grass, his [mother] went out to work during the day. (खाली स्थान में सही उत्तर: [mother] ✅)',
-              annotation: 'Riya Didi: "पाठ के तीसरे पैराग्राफ में लिखा है: \'As I grew older and could eat grass, my mother went out to work during the day...\' इसलिए यहाँ mother आएगा।"',
+              formula: `As the speaker grew older and could eat grass, his [mother] went out to work during the day. (${isEn ? 'Correct blank answer:' : 'खाली स्थान में सही उत्तर:'} [mother] ✅)`,
+              annotation: isEn
+                ? 'Riya Didi: "In paragraph 3: \'As I grew older and could eat grass, my mother went out to work during the day...\' So the correct word is mother."'
+                : 'Riya Didi: "पाठ के तीसरे पैराग्राफ में लिखा है: \'As I grew older and could eat grass, my mother went out to work during the day...\' इसलिए यहाँ mother आएगा।"',
             },
           ]);
           setRevealedSteps(1);
-          const sp = 'सवाल A.3: जब वह बड़ा हुआ और घास खाने लगा, तो उसकी माँ काम पर जाती थी। सही उत्तर "mother" आएगा!';
+          const sp = isEn
+            ? 'Question A.3: When he was older and could eat grass, his mother went out to work. The correct word is "mother"!'
+            : 'सवाल A.3: जब वह बड़ा हुआ और घास खाने लगा, तो उसकी माँ काम पर जाती थी। सही उत्तर "mother" आएगा!';
           setSpeechText(sp);
           speakText(sp);
         } else if (isSecA_Q4) {
-          setWhiteboardHeading('अभ्यास सवाल A.4: रिक्त स्थान भरें (Complete the sentence)');
+          setWhiteboardHeading(isEn ? 'Practice Question A.4: Fill in the Blank' : 'अभ्यास सवाल A.4: रिक्त स्थान भरें (Complete the sentence)');
           setWhiteboardSteps([
             {
               step: 'A. 4. Complete the sentence',
               question: 'A. 4. The speaker\'s master called him Darkie because his coat was black.',
-              formula: 'The speaker\'s master called him Darkie because his coat was [black]. (खाली स्थान में सही उत्तर: [black] ✅)',
-              annotation: 'Riya Didi: "पाठ के अंतिम पैराग्राफ में लिखा है: \'I was black, so he called me Darkie.\' इसलिए यहाँ black आएगा।"',
+              formula: `The speaker\'s master called him Darkie because his coat was [black]. (${isEn ? 'Correct blank answer:' : 'खाली स्थान में सही उत्तर:'} [black] ✅)`,
+              annotation: isEn
+                ? 'Riya Didi: "In the final paragraph: \'I was black, so he called me Darkie.\' So the correct word is black."'
+                : 'Riya Didi: "पाठ के अंतिम पैराग्राफ में लिखा है: \'I was black, so he called me Darkie.\' इसलिए यहाँ black आएगा।"',
             },
           ]);
           setRevealedSteps(1);
-          const sp = 'सवाल A.4: वक्ता का रंग काला था इसलिए मालिक उसे Darkie कहते थे। सही उत्तर "black" आएगा!';
+          const sp = isEn
+            ? 'Question A.4: His coat was black, so he was called Darkie. The correct word is "black"!'
+            : 'सवाल A.4: वक्ता का रंग काला था इसलिए मालिक उसे Darkie कहते थे। सही उत्तर "black" आएगा!';
           setSpeechText(sp);
           speakText(sp);
         }
@@ -1696,7 +1738,12 @@ But his wife did not want to eat without giving some to their son.`;
 
       setTimeout(() => {
         setIsCheckingHomework(false);
-        setWhiteboardHeading('📖 पाठ 14.3: My Early Home (पूरी 7 पैराग्राफ कहानी - Textbook Reading)');
+        const isEn = medium === 'english';
+        setWhiteboardHeading(
+          isEn
+            ? '📖 Chapter 14.3: My Early Home (Full 7-Paragraph Story - Textbook Reading)'
+            : '📖 पाठ 14.3: My Early Home (पूरी 7 पैराग्राफ कहानी - Textbook Reading)'
+        );
         const full14_3Text = `The first place I remember was a big, pleasant meadow with a clean pond in the middle. There were trees that gave us shade, and at one end of the pond, there were tall plants and water lilies. On one side of the field, we could see a ploughed farm, and on the other side, we could see our master's house near the road. At the top of the field was a group of pine trees, and at the bottom was a small stream with a steep bank beside it.
 
 When I was little, I lived on my mother's milk because I was too young to eat grass. I ran beside her during the day and slept close to her at night. When the weather was hot, we stood by the pond under the trees. When it was cold, we stayed warm in a nice shed near the trees.
@@ -1713,27 +1760,43 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
         const fullSteps: WhiteboardStepItem[] = [
           {
-            step: '📖 पाठ 14.3: My Early Home (पूरी 7 पैराग्राफ कहानी - Textbook Reading Passage)',
+            step: isEn
+              ? '📖 Chapter 14.3: My Early Home (Full 7-Paragraph Story - Textbook Reading Passage)'
+              : '📖 पाठ 14.3: My Early Home (पूरी 7 पैराग्राफ कहानी - Textbook Reading Passage)',
             question: '14.3 My Early Home',
             formula: full14_3Text,
-            annotation: 'Riya Didi: "यह अन्ना सीवेल की प्रसिद्ध पुस्तक ब्लैक ब्यूटी की पूरी 7 पैराग्राफ की कहानी है। इसमें डार्की अपने बचपन के सुहावने चरागाह, माँ डचेस की सीख और दयालु मालिक के प्रेम की कहानी सुनाता है। किताब की तरह इसे एक साथ पूरा बोलकर पढ़ें बेटा!"',
+            annotation: isEn
+              ? 'Riya Didi: "This is the complete 7-paragraph story from Anna Sewell\'s classic Black Beauty. Darkie shares the pleasant meadow, his mother Duchess\'s advice, and their kind master. Read aloud the entire story just like in your book!"'
+              : 'Riya Didi: "यह अन्ना सीवेल की प्रसिद्ध पुस्तक ब्लैक ब्यूटी की पूरी 7 पैराग्राफ की कहानी है। इसमें डार्की अपने बचपन के सुहावने चरागाह, माँ डचेस की सीख और दयालु मालिक के प्रेम की कहानी सुनाता है। किताब की तरह इसे एक साथ पूरा बोलकर पढ़ें बेटा!"',
           },
           {
-            step: 'कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation)',
+            step: isEn
+              ? 'Key Vocabulary & Pronunciation'
+              : 'कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation)',
             question: '14.3 My Early Home',
-            formula: 'Meadow (मेडो) = हरा-भरा चरागाह | Water lilies (वॉटर लिलीज़) = कुमुदिनी के फूल | Ploughed (प्लाउड) = जुता हुआ खेत | Galloped (गैलप्ड) = सरपट दौड़े | Colts (कोल्ट्स) = युवा घोड़े / बछेड़े | Neigh (ने) = हिनहिनाना | Duchess (डचेस) = माँ का नाम | Favourites (फेवरिट्स) = सबसे प्यारे',
-            annotation: 'Riya Didi: "यह नए शब्द अपनी कॉपी में लिख लें बेटा, ताकि आपकी अंग्रेजी शब्दावली और उच्चारण बहुत मजबूत हो सके!"',
+            formula: isEn
+              ? 'Meadow = A field of grass | Water lilies = Flowering water plants | Ploughed = Turned soil for farming | Galloped = Ran very fast | Colts = Young male horses | Neigh = Whinny or horse sound | Duchess = Mother\'s name | Favourites = Most loved ones'
+              : 'Meadow (मेडो) = हरा-भरा चरागाह | Water lilies (वॉटर लिलीज़) = कुमुदिनी के फूल | Ploughed (प्लाउड) = जुता हुआ खेत | Galloped (गैलप्ड) = सरपट दौड़े | Colts (कोल्ट्स) = युवा घोड़े / बछेड़े | Neigh (ने) = हिनहिनाना | Duchess (डचेस) = माँ का नाम | Favourites (फेवरिट्स) = सबसे प्यारे',
+            annotation: isEn
+              ? 'Riya Didi: "Write these new words in your notebook to strengthen your reading vocabulary and spelling!"'
+              : 'Riya Didi: "यह नए शब्द अपनी कॉपी में लिख लें बेटा, ताकि आपकी अंग्रेजी शब्दावली और उच्चारण बहुत मजबूत हो सके!"',
           },
           {
-            step: 'कहानी की मुख्य सीख (Moral of the Story)',
+            step: isEn
+              ? 'Moral of the Story'
+              : 'कहानी की मुख्य सीख (Moral of the Story)',
             question: '14.3 My Early Home',
             formula: '⭐ "Always do your work well, and never bite or kick, even when playing."',
-            annotation: 'Riya Didi: "कहानी की सबसे बड़ी सीख: हमेशा भले और दयालु बनो, खेल में भी किसी को नुकसान मत पहुंचाओ और अपना काम लगन से करो। क्या पूरी 7 पैराग्राफ की कहानी अच्छे से समझ आ गई बेटा?"',
+            annotation: isEn
+              ? 'Riya Didi: "The key moral lesson: always be gentle and kind, never hurt others even in play, and do your work diligently. Did you enjoy the complete 7-paragraph story?"'
+              : 'Riya Didi: "कहानी की सबसे बड़ी सीख: हमेशा भले और दयालु बनो, खेल में भी किसी को नुकसान मत पहुंचाओ और अपना काम लगन से करो। क्या पूरी 7 पैराग्राफ की कहानी अच्छे से समझ आ गई बेटा?"',
           },
         ];
         setWhiteboardSteps(fullSteps);
         setRevealedSteps(fullSteps.length);
-        const sp = 'नमस्ते बेटा! आइए पाठ 14.3 "My Early Home" की पूरी कहानी पहले पैराग्राफ से बिना छोटा किए सभी 7 पैराग्राफ एक साथ पढ़ते हैं!';
+        const sp = isEn
+          ? 'Hello beta! Let us read the full 7-paragraph story of "My Early Home" from Chapter 14.3 together!'
+          : 'नमस्ते बेटा! आइए पाठ 14.3 "My Early Home" की पूरी कहानी पहले पैराग्राफ से बिना छोटा किए सभी 7 पैराग्राफ एक साथ पढ़ते हैं!';
         setSpeechText(sp);
         speakText(sp);
       }, 400);
@@ -2242,16 +2305,27 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     setCurrentUploadMode(mode);
 
     let promptMsg = '';
+    const isEn = medium === 'english';
     if (mode === 'check') {
       setWhiteboardSteps([]);
       setIsCheckingHomework(true);
-      promptMsg = 'कृपया इस पूरी वर्कशीट के सभी 15 सवालों (MCQs 1-5, Fill in blanks 1-5, True/False 1-5) के सही उत्तर मास्टर आंसर की (Master Answer Key) के साथ व्हाइटबोर्ड पर दिखाएं ताकि बच्चा और पेरेंट्स सभी उत्तर चेक कर सकें।';
-      setWhiteboardHeading('📋 संपूर्ण वर्कशीट मास्टर उत्तर कुंजी (All 15 Answers Key)');
+      promptMsg = isEn
+        ? 'Please display the master answer key for all questions on this worksheet on the whiteboard so the student can verify answers.'
+        : 'कृपया इस पूरी वर्कशीट के सभी 15 सवालों (MCQs 1-5, Fill in blanks 1-5, True/False 1-5) के सही उत्तर मास्टर आंसर की (Master Answer Key) के साथ व्हाइटबोर्ड पर दिखाएं ताकि छात्र सभी उत्तर चेक कर सके।';
+      setWhiteboardHeading(
+        isEn
+          ? '📋 Complete Worksheet Master Answer Key'
+          : '📋 संपूर्ण वर्कशीट मास्टर उत्तर कुंजी (All 15 Answers Key)'
+      );
     } else if (mode === 'quiz') {
-      setWhiteboardHeading('🎯 परीक्षा तैयारी: वर्कशीट मॉक टेस्ट');
+      setWhiteboardHeading(
+        isEn
+          ? '🎯 Exam Preparation: Worksheet Mock Test'
+          : '🎯 परीक्षा तैयारी: वर्कशीट मॉक टेस्ट'
+      );
       setActiveMockQIdx(0);
       const introMsg =
-        medium === 'english'
+        isEn
           ? 'Beta, Mock Test is ready! Read each question, write your answer in the box, and click "Save & Check" to see your score, mistakes, and spelling corrections!'
           : 'बेटा, मॉक टेस्ट तैयार है! केवल सवाल देखें, अपना उत्तर लिखें और "उत्तर सेव करें" दबाकर अपना स्कोर, गलतियां और स्पेलिंग चेक करें!';
       setSpeechText(introMsg);
@@ -2263,12 +2337,20 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         return;
       }
       setIsCheckingHomework(true);
-      promptMsg = 'कृपया इस शीट के सभी सवालों को एक इंटरैक्टिव मॉक टेस्ट में बदलें ताकि बच्चा परीक्षा की तैयारी कर सके।';
+      promptMsg = isEn
+        ? 'Please convert all questions from this worksheet into an interactive mock test in English for student exam preparation.'
+        : 'कृपया इस शीट के सभी सवालों को एक इंटरैक्टिव मॉक टेस्ट में बदलें ताकि बच्चा परीक्षा की तैयारी कर सके।';
     } else {
       setWhiteboardSteps([]);
       setIsCheckingHomework(true);
-      promptMsg = 'कृपया इस वर्कशीट के सभी 15 सवाल (MCQs, Fill in blanks, True/False) पहचानें और पहले सवाल का व्हाइटबोर्ड पर स्टेप-बाय-स्टेप हल सिखाएं।';
-      setWhiteboardHeading(`शीट हल: ${uploadedFileName || 'वर्कशीट'}`);
+      promptMsg = isEn
+        ? 'Please identify all exercise questions from this worksheet and teach step-by-step solutions on the whiteboard in simple English.'
+        : 'कृपया इस वर्कशीट के सभी 15 सवाल (MCQs, Fill in blanks, True/False) पहचानें और पहले सवाल का व्हाइटबोर्ड पर स्टेप-बाय-स्टेप हल सिखाएं।';
+      setWhiteboardHeading(
+        isEn
+          ? `Worksheet Solution: ${uploadedFileName || 'Worksheet'}`
+          : `शीट हल: ${uploadedFileName || 'वर्कशीट'}`
+      );
     }
 
     try {
@@ -2277,6 +2359,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           teacher_id: currentTeacher.id,
+          learning_language: isEn ? 'en' : 'hi',
           question: promptMsg,
           image_url: uploadedImage,
           file_name: uploadedFileName,
@@ -2688,15 +2771,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       }`}>
         <div className="flex items-center gap-3">
           <Link
-            href="/dashboard"
+            href="/reports"
             className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border ${
               isDarkMode
                 ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
             }`}
+            title={medium === 'english' ? 'View Student All Report Card' : 'स्टूडेंट ऑल रिपोर्ट देखें'}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">डैशबोर्ड</span>
+            <span className="hidden sm:inline">{medium === 'english' ? 'All Reports' : 'ऑल रिपोर्ट'}</span>
           </Link>
 
           <div className="flex items-center gap-2">
@@ -2764,7 +2848,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
         </div>
 
-        {/* Streak, WhatsApp Report, Theme Toggle & Controls */}
+        {/* Streak, Student Report, Theme Toggle & Controls */}
         <div className="flex items-center gap-2">
           {/* Duolingo Streak */}
           <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-xs ${
@@ -2773,7 +2857,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               : 'bg-amber-50 border-amber-200 text-amber-800'
           }`}>
             <Flame className="w-4 h-4 fill-amber-400 text-amber-500 animate-pulse" />
-            <span>7 दिन स्ट्रीक</span>
+            <span>{medium === 'english' ? '7-Day Streak' : '7 दिन स्ट्रीक'}</span>
           </div>
 
           {/* ☀️ / 🌙 THEME TOGGLE: 1-Click Classroom Light vs Midnight Dark */}
@@ -2784,10 +2868,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
                 : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700'
             }`}
-            title="आंखों के आराम के लिए थीम बदलें"
+            title={medium === 'english' ? 'Toggle Theme' : 'आंखों के आराम के लिए थीम बदलें'}
           >
             {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
-            <span className="hidden md:inline">{isDarkMode ? '☀️ क्लासरूम' : '🌙 डार्क'}</span>
+            <span className="hidden md:inline">{isDarkMode ? (medium === 'english' ? '☀️ Classroom' : '☀️ क्लासरूम') : (medium === 'english' ? '🌙 Dark' : '🌙 डार्क')}</span>
           </button>
 
           {/* Previous Records & Worksheet History Button */}
@@ -2799,11 +2883,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
                 : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
             }`}
-            title="पिछला रिकॉर्ड व वर्कशीट इतिहास देखें (Subject व Date Filter सहित)"
+            title={medium === 'english' ? 'View Worksheet & Learning History' : 'पिछला रिकॉर्ड व वर्कशीट इतिहास देखें'}
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">पिछला रिकॉर्ड</span>
-            <span className="sm:hidden">रिकॉर्ड</span>
+            <span className="hidden sm:inline">{medium === 'english' ? 'Past Records' : 'पिछला रिकॉर्ड'}</span>
+            <span className="sm:hidden">{medium === 'english' ? 'Records' : 'रिकॉर्ड'}</span>
             {worksheetHistory.length > 0 && (
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-white">
                 {worksheetHistory.length}
@@ -2821,18 +2905,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             }`}
           >
             <FileText className="w-3.5 h-3.5 text-indigo-500" />
-            <span className="hidden sm:inline">संडे टेस्ट</span>
+            <span className="hidden sm:inline">{medium === 'english' ? 'Sunday Test' : 'संडे टेस्ट'}</span>
           </button>
 
-          {/* Parent WhatsApp Report Card Button */}
-          <button
-            onClick={() => setIsReportModalOpen(true)}
+          {/* Student All Report Link Button (Replaces Parent Report) */}
+          <Link
+            href="/reports"
             className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-600/20"
+            title={medium === 'english' ? 'View Complete Student Report Card' : 'विद्यार्थी की संपूर्ण रिपोर्ट देखें'}
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">पेरेंट रिपोर्ट</span>
-            <span className="sm:hidden">रिपोर्ट</span>
-          </button>
+            <span className="hidden sm:inline">{medium === 'english' ? 'Student Report' : 'स्टूडेंट रिपोर्ट'}</span>
+            <span className="sm:hidden">{medium === 'english' ? 'Report' : 'रिपोर्ट'}</span>
+          </Link>
 
           {/* Board Selector */}
           <div className={`p-1 rounded-xl border flex items-center text-xs font-bold ${
@@ -2889,7 +2974,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <span className={`text-xs font-black uppercase mr-2 shrink-0 ${
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             }`}>
-              विषय चुनें (4 Subjects):
+              {medium === 'english' ? 'Select Subject (4 Subjects):' : 'विषय चुनें (4 Subjects):'}
             </span>
             {allSubjects.map((sub) => {
               const isSelected = selectedSubject?.id === sub.id;
@@ -3043,7 +3128,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 isDarkMode ? 'text-amber-400' : 'text-indigo-700'
               }`}>
                 <Camera className="w-4 h-4" />
-                होमवर्क / कॉपी चेक करवाएं
+                {medium === 'english' ? 'Upload Homework / Book Page' : 'होमवर्क / कॉपी चेक करवाएं'}
               </span>
               <span className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 1-Click Scan
@@ -3068,35 +3153,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-black flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{uploadedFiles.length} पेज / फाइलें अपलोड</span>
+                    <span>
+                      {uploadedFiles.length}{' '}
+                      {medium === 'english'
+                        ? uploadedFiles.length === 1
+                          ? 'Page / File Uploaded'
+                          : 'Pages / Files Uploaded'
+                        : 'पेज / फाइलें अपलोड'}
+                    </span>
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="px-2 py-1 rounded-lg text-[11px] font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 flex items-center gap-1 transition-all"
-                      title="और फोटो या पेज जोड़ें"
+                      title={medium === 'english' ? 'Add more pages or photos' : 'और फोटो या पेज जोड़ें'}
                     >
                       <Plus className="w-3 h-3" />
-                      <span>+ और जोड़ें</span>
+                      <span>{medium === 'english' ? '+ Add More' : '+ और जोड़ें'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsHistoryModalOpen(true)}
                       className="px-2 py-1 rounded-lg text-[11px] font-black bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 flex items-center gap-1 transition-all"
-                      title="पिछला रिकॉर्ड देखें"
+                      title={medium === 'english' ? 'View history records' : 'पिछला रिकॉर्ड देखें'}
                     >
                       <Clock className="w-3 h-3" />
-                      <span>इतिहास</span>
+                      <span>{medium === 'english' ? 'History' : 'इतिहास'}</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleClearAllFiles}
                       className="px-2 py-1 rounded-lg text-[11px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 flex items-center gap-1 transition-all"
-                      title="सभी अपलोड की गई फाइलें हटाएं"
+                      title={medium === 'english' ? 'Remove all uploaded files' : 'सभी अपलोड की गई फाइलें हटाएं'}
                     >
                       <Trash2 className="w-3 h-3" />
-                      <span>सभी हटाएं</span>
+                      <span>{medium === 'english' ? 'Remove All' : 'सभी हटाएं'}</span>
                     </button>
                   </div>
                 </div>
@@ -3105,7 +3197,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 {uploadedFiles.length > 1 && (
                   <div className="space-y-1">
                     <span className="text-[10px] font-black uppercase text-slate-400 block">
-                      अपलोड किए गए पेज (क्लिक करके पेज बदलें):
+                      {medium === 'english'
+                        ? 'Uploaded Pages (Click to switch):'
+                        : 'अपलोड किए गए पेज (क्लिक करके पेज बदलें):'}
                     </span>
                     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
                       {uploadedFiles.map((file, idx) => {
@@ -3131,7 +3225,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                               <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                             )}
                             <span className="absolute bottom-0 inset-x-0 bg-black/75 text-white text-[9px] font-bold text-center py-0.5 truncate px-0.5">
-                              पेज #{idx + 1}
+                              {medium === 'english' ? `Page #${idx + 1}` : `पेज #${idx + 1}`}
                             </span>
                             {/* Individual Delete Button */}
                             <button
@@ -3141,7 +3235,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 handleRemoveFile(file.id);
                               }}
                               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center text-xs shadow-md opacity-90 hover:opacity-100 hover:scale-110 transition-all z-10"
-                              title="यह पेज हटाएं"
+                              title={medium === 'english' ? 'Remove this page' : 'यह पेज हटाएं'}
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -3165,20 +3259,22 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-[10px] uppercase font-black tracking-wider text-rose-500 block">
-                          PDF दस्तावेज़ (Live Document)
+                          {medium === 'english' ? 'PDF Document (Live Document)' : 'PDF दस्तावेज़ (Live Document)'}
                         </span>
                         <h4 className={`text-xs font-black truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                           {uploadedFileName}
                         </h4>
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                          ✓ लाइव AI विज़न से सीधे प्रश्न व उत्तर स्कैन होंगे
+                          {medium === 'english'
+                            ? '✓ Questions & answers scanned directly via Live AI Vision'
+                            : '✓ लाइव AI विज़न से सीधे प्रश्न व उत्तर स्कैन होंगे'}
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(activeFileDoc?.id || '')}
                         className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-all"
-                        title="हटाएं"
+                        title={medium === 'english' ? 'Remove' : 'हटाएं'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -3194,10 +3290,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         type="button"
                         onClick={() => handleRemoveFile(activeFileDoc?.id || '')}
                         className="absolute top-2 right-2 px-2 py-1 rounded-lg bg-black/70 hover:bg-rose-600 text-white text-xs font-bold flex items-center gap-1 shadow-md transition-all"
-                        title="यह फोटो हटाएं"
+                        title={medium === 'english' ? 'Remove this photo' : 'यह फोटो हटाएं'}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>हटाएं</span>
+                        <span>{medium === 'english' ? 'Remove' : 'हटाएं'}</span>
                       </button>
                     </div>
                   )}
@@ -3206,7 +3302,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <div className="flex items-center justify-between text-xs px-1">
                   <span className="text-emerald-600 dark:text-emerald-400 font-bold truncate max-w-[200px] flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    {uploadedFileName || 'बुक / कॉपी का पेज'}
+                    {uploadedFileName || (medium === 'english' ? 'Book / Notebook Page' : 'बुक / कॉपी का पेज')}
                   </span>
                   <button
                     type="button"
@@ -3214,7 +3310,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     className="text-rose-500 hover:text-rose-600 text-xs font-bold flex items-center gap-1"
                   >
                     <Trash2 className="w-3 h-3" />
-                    <span>हटाएं (Remove)</span>
+                    <span>{medium === 'english' ? 'Remove' : 'हटाएं (Remove)'}</span>
                   </button>
                 </div>
 
@@ -3236,7 +3332,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     ) : (
                       <span>📖</span>
                     )}
-                    <span>सवाल समझें</span>
+                    <span>{medium === 'english' ? 'Understand' : 'सवाल समझें'}</span>
                   </button>
 
                   <button
@@ -3255,7 +3351,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     ) : (
                       <span>✍️</span>
                     )}
-                    <span>कॉपी चेक</span>
+                    <span>{medium === 'english' ? 'Check Copy' : 'कॉपी चेक'}</span>
                   </button>
 
                   <button
@@ -3274,28 +3370,27 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     ) : (
                       <span>🎯</span>
                     )}
-                    <span>मॉक टेस्ट</span>
+                    <span>{medium === 'english' ? 'Mock Test' : 'मॉक टेस्ट'}</span>
                   </button>
                 </div>
 
-                {/* 1-Click WhatsApp Parent Share Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsReportModalOpen(true)}
+                {/* 1-Click Student All Report Card Button */}
+                <Link
+                  href="/reports"
                   className="w-full py-2 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-2xs"
                 >
                   <Share2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>📱 मम्मी-पापा को व्हाट्सएप पर रिपोर्ट शेयर करें</span>
-                </button>
+                  <span>{medium === 'english' ? '📊 View Student All Report' : '📊 स्टूडेंट ऑल रिपोर्ट देखें'}</span>
+                </Link>
 
                 {detectedChapter && (
                   <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-500/15 via-indigo-500/10 to-emerald-500/10 border-2 border-amber-400/40 shadow-xs space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 flex items-center gap-1.5 uppercase tracking-wide">
-                        📖 नया पाठ (Reading Story)
+                        {medium === 'english' ? '📖 New Chapter (Reading Story)' : '📖 नया पाठ (Reading Story)'}
                       </span>
                       <span className="text-[10px] bg-amber-500/20 text-amber-700 dark:text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-400/30">
-                        वाचन
+                        {medium === 'english' ? 'Reading' : 'वाचन'}
                       </span>
                     </div>
                     <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 line-clamp-2">
@@ -3307,7 +3402,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all"
                     >
                       <BookOpen className="w-3.5 h-3.5" />
-                      <span>पूरी कहानी पढ़ें व समझें (Read Story)</span>
+                      <span>{medium === 'english' ? 'Read Story & Explanation' : 'पूरी कहानी पढ़ें व समझें (Read Story)'}</span>
                     </button>
                   </div>
                 )}
@@ -3319,10 +3414,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         isDarkMode ? 'text-amber-300' : 'text-indigo-700'
                       }`}>
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        अभ्यास प्रश्न (Exercise Questions):
+                        {medium === 'english' ? 'Exercise Questions:' : 'अभ्यास प्रश्न (Exercise Questions):'}
                       </span>
                       <span className={`text-[10px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {detectedQuestions.length} सवाल मिले
+                        {detectedQuestions.length} {medium === 'english' ? 'Questions Found' : 'सवाल मिले'}
                       </span>
                     </div>
                     <button
@@ -3338,7 +3433,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       ) : (
                         <span>📋</span>
                       )}
-                      <span>पूरी शीट के सभी उत्तर एक साथ देखें</span>
+                      <span>{medium === 'english' ? 'View All Sheet Answers (Master Key)' : 'पूरी शीट के सभी उत्तर एक साथ देखें'}</span>
                     </button>
 
                     {/* Quick Question Next/Prev Switcher Bar in Sidebar */}
@@ -3348,14 +3443,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         onClick={handlePrevQuestion}
                         disabled={isCheckingHomework}
                         className="py-1 px-2.5 rounded-lg text-[11px] font-black bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center gap-1 shadow-2xs transition-all disabled:opacity-50"
-                        title="पिछला सवाल (Previous Question)"
+                        title={medium === 'english' ? 'Previous Question' : 'पिछला सवाल (Previous Question)'}
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
-                        <span>पिछला</span>
+                        <span>{medium === 'english' ? 'Prev' : 'पिछला'}</span>
                       </button>
 
                       <span className="text-[11px] font-black text-indigo-700 dark:text-amber-300 px-1">
-                        सवाल {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
+                        {medium === 'english'
+                          ? `Question ${effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / ${detectedQuestions.length}`
+                          : `सवाल ${effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / ${detectedQuestions.length}`}
                       </span>
 
                       <button
@@ -3363,9 +3460,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         onClick={handleNextQuestion}
                         disabled={isCheckingHomework}
                         className="py-1 px-2.5 rounded-lg text-[11px] font-black bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 shadow-xs transition-all disabled:opacity-50"
-                        title="अगला सवाल (Next Question)"
+                        title={medium === 'english' ? 'Next Question' : 'अगला सवाल (Next Question)'}
                       >
-                        <span>अगला</span>
+                        <span>{medium === 'english' ? 'Next' : 'अगला'}</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -3853,7 +3950,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <span className={`text-[10px] font-black uppercase block ${
                                   isEndQ ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400'
                                 }`}>
-                                  {isEndQ ? '🎯 किताब के अंत का असली प्रश्न' : `प्रश्न ${qIdx + 1}`}
+                                  {isEndQ
+                                    ? (medium === 'english' ? '🎯 Textbook Chapter End Question' : '🎯 किताब के अंत का असली प्रश्न')
+                                    : (medium === 'english' ? `Question ${qIdx + 1}` : `प्रश्न ${qIdx + 1}`)}
                                 </span>
                                 <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                                   {qItem.question}
@@ -3868,7 +3967,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
                                 }`}
                               >
-                                <span>{isTarget ? '✓ हल देख रहे हैं' : 'व्हाइटबोर्ड पर हल करें →'}</span>
+                                <span>{isTarget
+                                  ? (medium === 'english' ? '✓ Viewing Solution' : '✓ हल देख रहे हैं')
+                                  : (medium === 'english' ? 'Solve on Board →' : 'व्हाइटबोर्ड पर हल करें →')}</span>
                               </button>
                             </div>
                           );
@@ -3895,13 +3996,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <span className={`text-xs font-black uppercase ${
                   isDarkMode ? 'text-emerald-400' : 'text-indigo-700'
                 }`}>
-                  डिजिटल व्हाइटबोर्ड (Digital Blackboard)
+                  {medium === 'english' ? 'Digital Whiteboard' : 'डिजिटल व्हाइटबोर्ड (Digital Blackboard)'}
                 </span>
                 <span className={isDarkMode ? 'text-slate-600' : 'text-slate-300'}>|</span>
                 <span className={`text-xs font-bold truncate max-w-xs ${
                   isDarkMode ? 'text-slate-300' : 'text-slate-700'
                 }`}>
-                  {whiteboardHeading}
+                  {getDisplayWhiteboardHeading(whiteboardHeading)}
                 </span>
               </div>
 
@@ -3917,9 +4018,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
                       : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
                   }`}
-                  title="बच्चे की रफ़ कॉपी खोलें (हाथ या माउस से गुणा-भाग करें)"
+                  title={medium === 'english' ? "Open Student's Rough Work Notebook" : "बच्चे की रफ़ कॉपी खोलें (हाथ या माउस से गुणा-भाग करें)"}
                 >
-                  <span>📝 रफ़ कॉपी</span>
+                  <span>{medium === 'english' ? '📝 Scratchpad' : '📝 रफ़ कॉपी'}</span>
                   {isScratchpadOpen && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-pulse" />}
                 </button>
 
@@ -3931,13 +4032,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-2xs'
                   }`}
                 >
-                  <span>{chalkboardTheme === 'green' ? '🟩 ग्रीन बोर्ड' : '⬜ व्हाइटबोर्ड'}</span>
+                  <span>{chalkboardTheme === 'green'
+                    ? (medium === 'english' ? '🟩 Green Board' : '🟩 ग्रीन बोर्ड')
+                    : (medium === 'english' ? '⬜ Whiteboard' : '⬜ व्हाइटबोर्ड')}</span>
                 </button>
 
                 {/* Chalk Typewriter Live Animation Toggle */}
                 <button
                   onClick={() => setIsTypewriterEnabled(!isTypewriterEnabled)}
-                  title={isTypewriterEnabled ? 'फास्ट मोड चालू करें' : 'रियल चॉक राइटिंग चालू करें'}
+                  title={isTypewriterEnabled
+                    ? (medium === 'english' ? 'Turn on Fast Mode' : 'फास्ट मोड चालू करें')
+                    : (medium === 'english' ? 'Turn on Real Chalk Writing' : 'रियल चॉक राइटिंग चालू करें')}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center gap-1 transition-all ${
                     isTypewriterEnabled
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-xs'
@@ -3946,7 +4051,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       : 'bg-white hover:bg-slate-100 text-slate-600 border-slate-300'
                   }`}
                 >
-                  <span>{isTypewriterEnabled ? '✍️ चॉक राइटिंग (Live)' : '⚡ तुरंत देखें'}</span>
+                  <span>{isTypewriterEnabled
+                    ? (medium === 'english' ? '✍️ Chalk Writing (Live)' : '✍️ चॉक राइटिंग (Live)')
+                    : (medium === 'english' ? '⚡ Instant Show' : '⚡ तुरंत देखें')}</span>
                 </button>
 
                 {whiteboardSteps.length > 0 && (
@@ -3961,7 +4068,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
                         }`}
                       >
-                        <span>⏩ तुरंत पूरा हल</span>
+                        <span>{medium === 'english' ? '⏩ Full Solution' : '⏩ तुरंत पूरा हल'}</span>
                       </button>
                     )}
 
@@ -3974,7 +4081,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       }`}
                     >
                       <RotateCcw className="w-3 h-3" />
-                      <span>शुरू से देखें</span>
+                      <span>{medium === 'english' ? 'Restart' : 'शुरू से देखें'}</span>
                     </button>
                   </>
                 )}
@@ -3989,13 +4096,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <span className={`text-[11px] font-black uppercase shrink-0 flex items-center gap-1 ${
                   isDarkMode ? 'text-amber-400' : 'text-indigo-700'
                 }`}>
-                  <span>🎯</span> सवाल चुनें:
+                  <span>🎯</span> {medium === 'english' ? 'Select Question:' : 'सवाल चुनें:'}
                 </span>
 
                 {/* Master Answer Key Button */}
                 <button
                   onClick={() => {
-                    setActiveTargetQuestion('सभी 15 सवालों के सही उत्तर व मास्टर कुंजी');
+                    setActiveTargetQuestion(medium === 'english' ? 'Complete Master Answer Key for All Questions' : 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी');
                     setWhiteboardSteps([]);
                     setIsCheckingHomework(true);
                     handleTriggerMode('check');
@@ -4003,7 +4110,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   className="px-3 py-1 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shrink-0 transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-600/30 whitespace-nowrap"
                 >
                   <span>📋</span>
-                  <span>सभी उत्तर (Master Key)</span>
+                  <span>{medium === 'english' ? 'All Answers (Master Key)' : 'सभी उत्तर (Master Key)'}</span>
                 </button>
 
                 {detectedChapter && (
@@ -4080,18 +4187,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <div className="space-y-1.5 max-w-md mx-auto">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 text-xs font-black uppercase tracking-wider">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
-                      <span>लाइव AI विज़न एक्टिव (Scanning Live)</span>
+                      <span>{medium === 'english' ? 'Live AI Vision Scanning' : 'लाइव AI विज़न एक्टिव (Scanning Live)'}</span>
                     </div>
 
                     <h4 className={`text-base sm:text-lg font-black ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'}`}>
-                      {activeTargetQuestion && activeTargetQuestion !== 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी'
-                        ? 'सवाल का हल तैयार किया जा रहा है... ✍️'
+                      {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर')
+                        ? (medium === 'english' ? 'Preparing step-by-step solution... ✍️' : 'सवाल का हल तैयार किया जा रहा है... ✍️')
                         : uploadedFileName
-                        ? `दस्तावेज़ "${uploadedFileName}" से सवाल पढ़े जा रहे हैं... 🔍`
-                        : `${currentTeacher.name} व्हाइटबोर्ड पर हल तैयार कर रहे हैं... ⏳`}
+                        ? (medium === 'english' ? `Reading questions from "${uploadedFileName}"... 🔍` : `दस्तावेज़ "${uploadedFileName}" से सवाल पढ़े जा रहे हैं... 🔍`)
+                        : (medium === 'english' ? `${currentTeacher.name} is preparing the board... ⏳` : `${currentTeacher.name} व्हाइटबोर्ड पर हल तैयार कर रहे हैं... ⏳`)}
                     </h4>
 
-                    {activeTargetQuestion && activeTargetQuestion !== 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी' && (
+                    {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर') && (
                       <p className={`text-xs font-semibold line-clamp-2 px-3 py-1.5 rounded-xl border ${
                         isDarkMode || chalkboardTheme === 'green'
                           ? 'text-amber-300 bg-slate-900/90 border-slate-800'
@@ -4102,7 +4209,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     )}
 
                     <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'}`}>
-                      कृपया कुछ सेकंड प्रतीक्षा करें। सभी प्रश्न सीधे आपकी इमेज/PDF से लाइव निकाले जा रहे हैं।
+                      {medium === 'english'
+                        ? 'Please wait a few seconds. Questions are being analyzed directly from your uploaded page.'
+                        : 'कृपया कुछ सेकंड प्रतीक्षा करें। सभी प्रश्न सीधे आपकी इमेज/PDF से लाइव निकाले जा रहे हैं।'}
                     </p>
                   </div>
 
@@ -4114,7 +4223,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         : 'bg-slate-50 border-slate-200'
                     }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>चरण 1: प्रश्न व दिया गया मान</span>
+                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {medium === 'english' ? 'Step 1: Given values & question' : 'चरण 1: प्रश्न व दिया गया मान'}
+                      </span>
                       <div className={`h-2 rounded w-1/3 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     </div>
                     <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-150 ${
@@ -4123,7 +4234,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         : 'bg-slate-50 border-slate-200'
                     }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>चरण 2: गणना व नियम</span>
+                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {medium === 'english' ? 'Step 2: Formula & calculation' : 'चरण 2: गणना व नियम'}
+                      </span>
                       <div className={`h-2 rounded w-1/4 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     </div>
                     <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-300 ${
@@ -4132,7 +4245,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         : 'bg-slate-50 border-slate-200'
                     }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>चरण 3: अंतिम उत्तर व विकल्प</span>
+                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
+                        {medium === 'english' ? 'Step 3: Final answer & verification' : 'चरण 3: अंतिम उत्तर व विकल्प'}
+                      </span>
                       <div className={`h-2 rounded w-1/5 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     </div>
                   </div>
@@ -4141,7 +4256,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <div className="text-center py-12 space-y-2">
                   <span className="text-3xl">📝</span>
                   <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    व्हाइटबोर्ड अभी खाली है। कोई भी पाठ चुनें, कॉपी की फोटो भेजें, या माइक से सवाल पूछें!
+                    {medium === 'english'
+                      ? 'The whiteboard is currently empty. Pick a chapter, upload your notebook photo, or ask with the mic!'
+                      : 'व्हाइटबोर्ड अभी खाली है। कोई भी पाठ चुनें, कॉपी की फोटो भेजें, या माइक से सवाल पूछें!'}
                   </p>
                 </div>
               ) : (
@@ -4231,7 +4348,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <h3 className={`text-sm sm:text-base font-black ${
                                   isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
                                 }`}>
-                                  वर्कशीट मॉक टेस्ट (Mock Test Arena)
+                                  {medium === 'english' ? 'Worksheet Mock Test Arena' : 'वर्कशीट मॉक टेस्ट (Mock Test Arena)'}
                                 </h3>
                                 <p className={`text-xs ${
                                   isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
@@ -4246,7 +4363,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             {/* Total Questions Badge */}
                             {getMockQuestionsList().length > 0 && (
                               <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 self-start sm:self-auto">
-                                कुल {getMockQuestionsList().length} सवाल
+                                {medium === 'english'
+                                  ? `Total ${getMockQuestionsList().length} Questions`
+                                  : `कुल ${getMockQuestionsList().length} सवाल`}
                               </span>
                             )}
                           </div>
@@ -4272,7 +4391,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                                     }`}
                                   >
-                                    <span>सवाल {qIdx + 1}</span>
+                                    <span>{medium === 'english' ? `Question ${qIdx + 1}` : `सवाल ${qIdx + 1}`}</span>
                                     {isEvaluated && <span className="text-[10px]">✅</span>}
                                   </button>
                                 );
@@ -4300,7 +4419,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                   <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/10">
                                     <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
                                       <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                      प्रश्न #{activeMockQIdx + 1}
+                                      {medium === 'english' ? `Question #${activeMockQIdx + 1}` : `प्रश्न #${activeMockQIdx + 1}`}
                                     </span>
                                     <button
                                       type="button"
@@ -4318,7 +4437,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
                                           : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                                       }`}
-                                      title="सवाल बोलकर सुनें"
+                                      title={medium === 'english' ? 'Listen to question' : 'सवाल बोलकर सुनें'}
                                     >
                                       <Volume2 className="w-3.5 h-3.5" />
                                     </button>
@@ -4338,11 +4457,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                   <div className="flex items-center justify-between">
                                     <label className="text-xs font-black text-indigo-400 flex items-center gap-1.5">
                                       <span>✍️</span>
-                                      <span>अपना उत्तर यहाँ लिखें (Type Your Answer):</span>
+                                      <span>{medium === 'english' ? 'Type Your Answer:' : 'अपना उत्तर यहाँ लिखें (Type Your Answer):'}</span>
                                     </label>
                                     {studentAns && (
                                       <span className="text-[11px] text-slate-400 font-medium">
-                                        {studentAns.trim().split(/\s+/).filter(Boolean).length} शब्द
+                                        {studentAns.trim().split(/\s+/).filter(Boolean).length} {medium === 'english' ? 'words' : 'शब्द'}
                                       </span>
                                     )}
                                   </div>
@@ -4356,7 +4475,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         [activeMockQIdx]: e.target.value,
                                       }))
                                     }
-                                    placeholder="यहाँ कॉपी की तरह अपना पूरा उत्तर टाइप करें..."
+                                    placeholder={medium === 'english'
+                                      ? 'Type your complete answer here like in your notebook...'
+                                      : 'यहाँ कॉपी की तरह अपना पूरा उत्तर टाइप करें...'}
                                     className={`w-full p-3.5 rounded-xl border text-sm outline-none transition-all resize-y ${
                                       isDarkMode || chalkboardTheme === 'green'
                                         ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500'
@@ -4378,8 +4499,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       )}
                                       <span>
                                         {evalData
-                                          ? 'उत्तर पुनः सेव करें व जांचें'
-                                          : 'उत्तर सेव करें और जांचें (Save & Check Answer)'}
+                                          ? (medium === 'english' ? 'Re-save & Check Answer' : 'उत्तर पुनः सेव करें व जांचें')
+                                          : (medium === 'english' ? 'Save & Check Answer' : 'उत्तर सेव करें और जांचें (Save & Check Answer)')}
                                       </span>
                                     </button>
 
@@ -4394,7 +4515,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         }
                                         className="px-3 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-rose-400 transition-all"
                                       >
-                                        साफ़ करें (Clear)
+                                        {medium === 'english' ? 'Clear' : 'साफ़ करें (Clear)'}
                                       </button>
                                     )}
                                   </div>
@@ -4413,10 +4534,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         <span className="text-3xl">🏆</span>
                                         <div>
                                           <span className="text-[11px] uppercase font-black tracking-wider text-amber-400 block">
-                                            मॉक टेस्ट रिजल्ट (Score Card):
+                                            {medium === 'english' ? 'Mock Test Scorecard:' : 'मॉक टेस्ट रिजल्ट (Score Card):'}
                                           </span>
                                           <h4 className="text-xl font-black text-white flex items-center gap-2">
-                                            <span>{evalData.score} / {evalData.totalMarks || 10} अंक</span>
+                                            <span>{evalData.score} / {evalData.totalMarks || 10} {medium === 'english' ? 'Marks' : 'अंक'}</span>
                                             <span className="text-xs font-bold text-slate-400">
                                               ({evalData.percentage || evalData.score * 10}%)
                                             </span>
@@ -4425,7 +4546,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       </div>
 
                                       <span className="px-3.5 py-1.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 self-start sm:self-auto shadow-xs">
-                                        {evalData.badge || '⭐ शानदार प्रयास!'}
+                                        {evalData.badge || (medium === 'english' ? '⭐ Excellent Effort!' : '⭐ शानदार प्रयास!')}
                                       </span>
                                     </div>
 
@@ -4433,7 +4554,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     {evalData.strengths && evalData.strengths.length > 0 && (
                                       <div className="p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 space-y-1.5">
                                         <span className="text-xs font-black text-emerald-400 flex items-center gap-1.5">
-                                          <span>👏</span> क्या अच्छा लिखा (Strengths):
+                                          <span>👏</span> {medium === 'english' ? 'Strengths (What you wrote well):' : 'क्या अच्छा लिखा (Strengths):'}
                                         </span>
                                         <ul className="text-xs sm:text-sm text-emerald-200 list-disc list-inside space-y-1">
                                           {evalData.strengths.map((str: string, i: number) => (
@@ -4447,7 +4568,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     {evalData.mistakes && evalData.mistakes.length > 0 && (
                                       <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/30 space-y-1.5">
                                         <span className="text-xs font-black text-rose-400 flex items-center gap-1.5">
-                                          <span>❌</span> कहाँ गलती हुई (Mistakes to Fix):
+                                          <span>❌</span> {medium === 'english' ? 'Mistakes to Fix:' : 'कहाँ गलती हुई (Mistakes to Fix):'}
                                         </span>
                                         <ul className="text-xs sm:text-sm text-rose-200 list-disc list-inside space-y-1">
                                           {evalData.mistakes.map((mst: string, i: number) => (
@@ -4460,7 +4581,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     {/* 4. Spelling Mistakes: Speling mistke thi */}
                                     <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/30 space-y-2">
                                       <span className="text-xs font-black text-amber-400 flex items-center gap-1.5">
-                                        <span>✍️</span> स्पेलिंग जांच (Spelling Check):
+                                        <span>✍️</span> {medium === 'english' ? 'Spelling Check:' : 'स्पेलिंग जांच (Spelling Check):'}
                                       </span>
                                       {evalData.spellingMistakes && evalData.spellingMistakes.length > 0 ? (
                                         <div className="flex flex-wrap gap-2 pt-1">
@@ -4479,7 +4600,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         </div>
                                       ) : (
                                         <p className="text-xs text-emerald-300 font-bold">
-                                          ✅ शाबाश बेटा! आपके उत्तर में कोई स्पेलिंग गलती नहीं मिली!
+                                          {medium === 'english'
+                                            ? '✅ Great job! Zero spelling errors found in your answer!'
+                                            : '✅ शाबाश बेटा! आपके उत्तर में कोई स्पेलिंग गलती नहीं मिली!'}
                                         </p>
                                       )}
                                     </div>
@@ -4488,7 +4611,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     {evalData.missingPoints && evalData.missingPoints.length > 0 && (
                                       <div className="p-3.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 space-y-1.5">
                                         <span className="text-xs font-black text-indigo-300 flex items-center gap-1.5">
-                                          <span>💡</span> कहाँ और क्या जोड़ना है (Points to Add for 10/10):
+                                          <span>💡</span> {medium === 'english' ? 'Key Points to Add for 10/10 Score:' : 'कहाँ और क्या जोड़ना है (Points to Add for 10/10):'}
                                         </span>
                                         <ul className="text-xs sm:text-sm text-indigo-200 list-disc list-inside space-y-1">
                                           {evalData.missingPoints.map((mp: string, i: number) => (
@@ -4502,7 +4625,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     {evalData.idealAnswer && (
                                       <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
                                         <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
-                                          📖 आदर्श उत्तर (Full Model Answer):
+                                          {medium === 'english' ? '📖 Complete Model Answer:' : '📖 आदर्श उत्तर (Full Model Answer):'}
                                         </span>
                                         <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-sans">
                                           {evalData.idealAnswer}
@@ -4523,7 +4646,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           type="button"
                                           onClick={() => speakText(evalData.teacherPraise)}
                                           className="p-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white transition-all shrink-0"
-                                          title="बोलकर सुनें"
+                                          title={medium === 'english' ? 'Listen' : 'बोलकर सुनें'}
                                         >
                                           <Volume2 className="w-4 h-4" />
                                         </button>
@@ -4537,7 +4660,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         onClick={() => setActiveMockQIdx((prev) => prev + 1)}
                                         className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transform active:scale-95"
                                       >
-                                        <span>अगला सवाल हल करें (Question #{activeMockQIdx + 2})</span>
+                                        <span>{medium === 'english' ? `Next Question (Question #${activeMockQIdx + 2})` : `अगला सवाल हल करें (Question #${activeMockQIdx + 2})`}</span>
                                         <span>→</span>
                                       </button>
                                     )}
@@ -4548,7 +4671,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           })()
                         ) : (
                           <div className="p-8 text-center text-slate-400 text-xs">
-                            मॉक टेस्ट के लिए सवाल तैयार किए जा रहे हैं...
+                            {medium === 'english' ? 'Preparing questions for mock test...' : 'मॉक टेस्ट के लिए सवाल तैयार किए जा रहे हैं...'}
                           </div>
                         )}
                       </div>
@@ -4643,7 +4766,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       }`}
                                     >
                                       <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                                      <span>हिंट लो</span>
+                                      <span>{medium === 'english' ? 'Hint' : 'हिंट लो'}</span>
                                     </button>
                                     <button
                                       type="button"
@@ -4653,7 +4776,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
                                           : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs'
                                       }`}
-                                      title="बोलकर सुनें"
+                                      title={medium === 'english' ? 'Listen' : 'बोलकर सुनें'}
                                     >
                                       <Volume2 className="w-3.5 h-3.5" />
                                     </button>
@@ -4666,7 +4789,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     <span className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${
                                       isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
                                     }`}>
-                                      <span>📋</span> हर सवाल व उसका सही उत्तर (Question & Answer Breakdown):
+                                      <span>📋</span> {medium === 'english' ? 'Question & Answer Breakdown:' : 'हर सवाल व उसका सही उत्तर (Question & Answer Breakdown):'}
                                     </span>
                                     <div className="grid grid-cols-1 gap-2">
                                       {multiItems.map((item, mIdx) => (
@@ -4701,7 +4824,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           <div className="flex items-center gap-2 sm:self-center shrink-0 pl-7 sm:pl-0">
                                             <span className={`text-[10px] font-bold uppercase ${
                                               isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                            }`}>सही उत्तर:</span>
+                                            }`}>{medium === 'english' ? 'Answer:' : 'सही उत्तर:'}</span>
                                             <span className={`text-xs md:text-sm font-black px-3 py-1 rounded-xl border shadow-xs flex items-center gap-1 ${
                                               isDarkMode || chalkboardTheme === 'green'
                                                 ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/40'
@@ -4746,12 +4869,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                             : isDarkMode || chalkboardTheme === 'green' ? 'text-emerald-400' : 'text-emerald-700'
                                         }`}>
                                           {isVocab
-                                            ? '📖 कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation):'
+                                            ? (medium === 'english' ? '📖 Key Vocabulary & Pronunciation:' : '📖 कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation):')
                                             : isMoral
-                                            ? '⭐ कहानी की मुख्य सीख (Moral of the Story):'
+                                            ? (medium === 'english' ? '⭐ Moral of the Story:' : '⭐ कहानी की मुख्य सीख (Moral of the Story):')
                                             : isStoryStep
-                                            ? '📖 पाठ / कहानी वाचन (Story Reading Passage):'
-                                            : '✅ सही हल व उत्तर (Solution & Answer Steps):'}
+                                            ? (medium === 'english' ? '📖 Story Reading Passage:' : '📖 पाठ / कहानी वाचन (Story Reading Passage):')
+                                            : (medium === 'english' ? '✅ Solution & Step-by-Step Answer:' : '✅ सही हल व उत्तर (Solution & Answer Steps):')}
                                         </span>
                                       );
                                     })()}
@@ -4781,13 +4904,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           ? 'bg-slate-900/80 hover:bg-slate-800 text-indigo-300 border-indigo-500/30'
                                           : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-200 shadow-2xs'
                                       }`}
-                                      title="टीचर का स्पष्टीकरण देखें या छुपाएं"
+                                      title={medium === 'english' ? 'Show or hide teacher explanation' : 'टीचर का स्पष्टीकरण देखें या छुपाएं'}
                                     >
                                       <span>{currentTeacher.emoji}</span>
                                       <span className="font-bold">
                                         {expandedExplanations[idx]
-                                          ? `${currentTeacher.name} का स्पष्टीकरण छुपाएं ▲`
-                                          : `💡 ${currentTeacher.name} का स्पष्टीकरण देखें (Click to Explain) ▼`}
+                                          ? (medium === 'english' ? `Hide ${currentTeacher.name}'s Explanation ▲` : `${currentTeacher.name} का स्पष्टीकरण छुपाएं ▲`)
+                                          : (medium === 'english' ? `💡 View ${currentTeacher.name}'s Explanation ▼` : `💡 ${currentTeacher.name} का स्पष्टीकरण देखें (Click to Explain) ▼`)}
                                       </span>
                                     </button>
 
@@ -4802,7 +4925,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           <span className={`text-[11px] font-black block mb-0.5 ${
                                             isDarkMode || chalkboardTheme === 'green' ? 'text-amber-300' : 'text-indigo-900'
                                           }`}>
-                                            {currentTeacher.name} का स्पष्टीकरण:
+                                            {medium === 'english' ? `${currentTeacher.name}'s Explanation:` : `${currentTeacher.name} का स्पष्टीकरण:`}
                                           </span>
                                           <p className="text-xs sm:text-sm font-medium leading-relaxed">
                                             {stepItem.annotation}
@@ -4827,7 +4950,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             }}
                             className="w-full py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-black text-xs md:text-sm shadow-xl flex items-center justify-center gap-2 transition-all"
                           >
-                            <span>अगला कदम समझें (Next Step)</span>
+                            <span>{medium === 'english' ? 'Next Step' : 'अगला कदम समझें (Next Step)'}</span>
                             <ChevronRight className="w-4 h-4" />
                           </button>
                         )}
@@ -4855,7 +4978,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             }`}
                           >
                             <ChevronLeft className="w-4 h-4" />
-                            <span>पिछला सवाल (Prev)</span>
+                            <span>{medium === 'english' ? 'Prev Question' : 'पिछला सवाल (Prev)'}</span>
                           </button>
                         )}
 
@@ -4871,12 +4994,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           return (
                             <div className="text-center px-2">
                               <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block mb-0.5">
-                                {isViewingStory ? '📖 पाठ वाचन मोड' : 'अभ्यास सवाल'}
+                                {isViewingStory ? (medium === 'english' ? '📖 Story Reading Mode' : '📖 पाठ वाचन मोड') : (medium === 'english' ? 'Practice Questions' : 'अभ्यास सवाल')}
                               </span>
                               <span className={`text-xs sm:text-sm font-black ${
                                 !isDarkMode && chalkboardTheme !== 'green' ? 'text-indigo-950' : 'text-amber-300'
                               }`}>
-                                {isViewingStory ? 'पूरी 7 पैराग्राफ कहानी' : `सवाल ${effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / ${detectedQuestions.length}`}
+                                {isViewingStory ? (medium === 'english' ? 'Complete 7-Paragraph Story' : 'पूरी 7 पैराग्राफ कहानी') : (medium === 'english' ? `Question ${effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / ${detectedQuestions.length}` : `सवाल ${effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / ${detectedQuestions.length}`)}
                               </span>
                             </div>
                           );
@@ -4897,10 +5020,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           >
                             <span>{
                               activeTargetQuestion.includes('पाठ') || activeTargetQuestion.includes('14.3') || activeTargetQuestion.includes('Early Home')
-                                ? `✏️ सवाल 1 हल करें (Questions 1-${detectedQuestions.length})`
+                                ? (medium === 'english' ? `✏️ Solve Question 1 (Questions 1-${detectedQuestions.length})` : `✏️ सवाल 1 हल करें (Questions 1-${detectedQuestions.length})`)
                                 : effectiveQuestionIdx === detectedQuestions.length - 1 && detectedChapter
-                                ? '📖 पाठ पढ़ें (Story)'
-                                : 'अगला सवाल (Next)'
+                                ? (medium === 'english' ? '📖 Read Story' : '📖 पाठ पढ़ें (Story)')
+                                : (medium === 'english' ? 'Next Question' : 'अगला सवाल (Next)')
                             }</span>
                             <ChevronRight className="w-4 h-4" />
                           </button>
@@ -4918,7 +5041,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           }`}
                         >
                           <BookOpen className="w-4 h-4 text-amber-500" />
-                          <span>📖 नया पाठ: {detectedChapter.title}</span>
+                          <span>{medium === 'english' ? `📖 New Chapter: ${detectedChapter.title}` : `📖 नया पाठ: ${detectedChapter.title}`}</span>
                         </button>
                       )}
                     </div>
@@ -5075,7 +5198,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 ? 'bg-rose-600 animate-pulse ring-4 ring-rose-500/40'
                 : 'bg-gradient-to-tr from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 shadow-indigo-600/40 hover:scale-105'
             }`}
-            title="माइक से बोलें"
+            title={medium === 'english' ? 'Speak with mic' : 'माइक से बोलें'}
           >
             {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
           </button>
@@ -5086,7 +5209,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isListening ? 'सुन रहे हैं... बोलिए बेटा!' : 'माइक दबाकर बोलें या सवाल यहाँ टाइप करें...'}
+              placeholder={isListening ? (medium === 'english' ? 'Listening... Speak now!' : 'सुन रहे हैं... बोलिए बेटा!') : (medium === 'english' ? 'Tap mic to speak or type your question...' : 'माइक दबाकर बोलें या सवाल यहाँ टाइप करें...')}
               className={`w-full border rounded-2xl px-5 py-3.5 text-xs md:text-sm outline-none transition-all pr-12 ${
                 isDarkMode
                   ? 'bg-slate-950 border-slate-700 focus:border-indigo-400 text-white placeholder-slate-500'
@@ -5110,23 +5233,23 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-2xs'
             }`}
-            title="होमवर्क या बुक पेज की फोटो खींचें"
+            title={medium === 'english' ? 'Capture homework or textbook page' : 'होमवर्क या बुक पेज की फोटो खींचें'}
           >
             <Camera className="w-5 h-5 text-amber-500" />
-            <span className="hidden sm:inline">फोटो खींचो</span>
+            <span className="hidden sm:inline">{medium === 'english' ? 'Take Photo' : 'फोटो खींचो'}</span>
           </label>
         </div>
 
         {/* Quick Suggestion Chips for Switching Subjects */}
         <div className="max-w-4xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none mt-2 pt-1 text-[11px]">
-          <span className={`font-bold shrink-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>सुझाव:</span>
+          <span className={`font-bold shrink-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{medium === 'english' ? 'Suggestions:' : 'सुझाव:'}</span>
           {[
             '10 + 10 = ?',
-            'Math का Chapter 8 पढ़ाओ',
-            '25 + 35 हल करो',
-            'English का Chapter 5 पढ़ाओ',
-            'त्रिज्या और व्यास में क्या फर्क है?',
-            'मेरी कॉपी चेक करो',
+            medium === 'english' ? 'Teach Math Chapter 8' : 'Math का Chapter 8 पढ़ाओ',
+            medium === 'english' ? 'Solve 25 + 35' : '25 + 35 हल करो',
+            medium === 'english' ? 'Teach English Chapter 5' : 'English का Chapter 5 पढ़ाओ',
+            medium === 'english' ? 'Difference between radius and diameter?' : 'त्रिज्या और व्यास में क्या फर्क है?',
+            medium === 'english' ? 'Check my notebook' : 'मेरी कॉपी चेक करो',
           ].map((chip, idx) => (
             <button
               key={idx}
@@ -5145,31 +5268,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           ))}
         </div>
       </footer>
-      {/* PARENT WHATSAPP REPORT MODAL */}
-      <ParentWhatsAppReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        studentName="राहुल कुमावत"
-        className={className}
-        board={board}
-        teacherName={currentTeacher.name}
-        subjectName={selectedSubject?.subjectHindi || 'गणित (Mathematics)'}
-        score={
-          detectedQuestions.length > 0
-            ? Math.max(1, detectedQuestions.length - 1)
-            : totalScore || 9
-        }
-        totalQuestions={detectedQuestions.length > 0 ? detectedQuestions.length : 10}
-        topicsCovered={
-          detectedQuestions.length > 0
-            ? [
-                `वर्कशीट: ${uploadedFileName || 'वर्कशीट'} (${detectedQuestions.length} सवाल हल किए)`,
-                `मुख्य प्रश्न: "${detectedQuestions[0].slice(0, 50)}..."`,
-                `${currentTeacher.name} द्वारा व्हाइटबोर्ड पर स्टेप-बाय-स्टेप हल व नियम स्पष्ट किए गए`,
-              ]
-            : undefined
-        }
-      />
+      {/* Student All Report link available on header and celebration modal */}
 
       {/* SUNDAY PRINTABLE TEST PAPER MODAL */}
       <PrintableSundayExamModal
@@ -5222,17 +5321,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             </div>
 
             <div className="flex flex-col gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsWorksheetCelebrationOpen(false);
-                  setIsReportModalOpen(true);
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-600/30 transition-all"
+              <Link
+                href="/reports"
+                onClick={() => setIsWorksheetCelebrationOpen(false)}
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:opacity-95 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30 transition-all text-center"
               >
-                <Share2 className="w-4 h-4" />
-                <span>📱 मम्मी-पापा को खुशखबरी व्हाट्सएप पर भेजें</span>
-              </button>
+                <span>📊</span>
+                <span>{medium === 'english' ? 'View Student All Report' : 'स्टूडेंट ऑल रिपोर्ट देखें (View Report Card)'}</span>
+              </Link>
 
               <button
                 type="button"
