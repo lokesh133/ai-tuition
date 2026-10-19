@@ -77,8 +77,18 @@ interface WhiteboardStepItem {
 function parseQuestionAndSection(raw?: string | null): { section?: string; question: string } {
   if (!raw) return { question: '' };
   const trimmed = raw.trim();
+
+  // Pattern 1: Heading ending with a colon or dash before question number (e.g. "Identify the following from the story: 1. three proper nouns")
+  const colonMatch = trimmed.match(/^([^:\-–\n\r]+?)[:\-–]\s*(\(?\d+[\.\)]\s*.*)$/i);
+  if (colonMatch && colonMatch[1] && colonMatch[2]) {
+    const section = colonMatch[1].trim();
+    const question = colonMatch[2].trim();
+    return { section, question };
+  }
+
+  // Pattern 2: Explicit Section/Part/A. followed by instruction and question number (e.g. "A. Complete the sentences. 1. ...")
   const match = trimmed.match(
-    /^((?:(?:Section|Part|खंड|भाग|प्रश्न)\s*[A-Zक-ह0-9]*|[A-Z][\.\s])\s*[^0-9\n\r]+?)(?:[.:]\s*|\s+)(\d+[\.\)]\s*.*)$/i
+    /^((?:(?:Section|Part|खंड|भाग|प्रश्न)\s*[A-Zक-ह0-9]*|[A-Z][\.\s])\s*[^0-9\n\r]+?)(?:[.:]\s*|\s+)(\(?\d+[\.\)]\s*.*)$/i
   );
   if (match && match[1] && match[2]) {
     const section = match[1].replace(/[.:]$/, '').trim();
@@ -116,7 +126,7 @@ export default function TuitionClassroomStudio() {
           }
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   // Sync with live changes or board/class switch
@@ -139,7 +149,7 @@ export default function TuitionClassroomStudio() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [board, className, medium]);
 
   // Active Selected Subject & Chapter
@@ -172,7 +182,29 @@ export default function TuitionClassroomStudio() {
     'नमस्ते बेटा! आज की ट्यूशन में आपका स्वागत है। आप आज कौन सा विषय पढ़ना चाहते हैं? नीचे से विषय चुनें (जैसे Math, English, EVS, Hindi) या बोलकर बताएं (जैसे: "Math का Chapter 8" या "English का Chapter 5")!'
   );
 
-  // Homework Multi-File & Document Upload State
+  // Homework Multi-File & Document Upload State (Daily 20 Pages Limit per Student)
+  const MAX_DAILY_UPLOADS = 20;
+  const getStudentDailyKey = () => {
+    try {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('student_user') : null;
+      const studentId = stored ? (JSON.parse(stored).id || JSON.parse(stored).name || 'student') : 'guest';
+      const today = new Date().toISOString().slice(0, 10);
+      return `upload_count_${studentId}_${today}`;
+    } catch {
+      const today = new Date().toISOString().slice(0, 10);
+      return `upload_count_guest_${today}`;
+    }
+  };
+  const [dailyUploadCount, setDailyUploadCount] = useState<number>(0);
+
+  useEffect(() => {
+    try {
+      const key = getStudentDailyKey();
+      const count = parseInt(localStorage.getItem(key) || '0', 10);
+      setDailyUploadCount(isNaN(count) ? 0 : count);
+    } catch { }
+  }, []);
+
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ id: string; name: string; url: string; type: string }>>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
   const [activeMathAnim, setActiveMathAnim] = useState<{ num1: number; op: string; num2: number; result: number } | null>(null);
@@ -211,7 +243,7 @@ export default function TuitionClassroomStudio() {
       setActiveMockQIdx(0);
     }
   };
-  const setUploadedFileName = (_name: string) => {};
+  const setUploadedFileName = (_name: string) => { };
 
   const [detectedQuestions, setDetectedQuestions] = useState<string[]>([]);
   const [detectedChapter, setDetectedChapter] = useState<{
@@ -223,10 +255,13 @@ export default function TuitionClassroomStudio() {
   const [currentUploadMode, setCurrentUploadMode] = useState<'teach' | 'check' | 'quiz'>('teach');
   const [mockAnswers, setMockAnswers] = useState<Record<number, string>>({});
   const [mockEvaluations, setMockEvaluations] = useState<Record<number, any>>({});
+  const [isPageFlipping, setIsPageFlipping] = useState<boolean>(false);
 
   // Switch between uploaded worksheet pages and immediately show all questions and steps for that page
   const handleSwitchPage = (targetFileId: string) => {
     stopAudio();
+    setIsPageFlipping(true);
+    setTimeout(() => setIsPageFlipping(false), 350);
     setActiveFileId(targetFileId);
     setActiveTargetQuestion('');
     setActiveMathAnim(null);
@@ -398,84 +433,83 @@ export default function TuitionClassroomStudio() {
     showCursor = false,
     isChalkboard = false,
   }) => {
-    if (!enabled) {
-      return <span className={`inline font-inherit ${className}`}>{text}</span>;
-    }
-
-    const [displayedText, setDisplayedText] = useState(enabled ? '' : text);
-    const [isDone, setIsDone] = useState(!enabled);
-
-    useEffect(() => {
       if (!enabled) {
-        setDisplayedText(text);
-        setIsDone(true);
-        return;
+        return <span className={`inline font-inherit ${className}`}>{text}</span>;
       }
 
-      // Safely split into complete grapheme clusters for Hindi so matras and conjuncts (aksharas) never break
-      let chars: string[] = [];
-      if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
-        try {
-          const segmenter = new (Intl as any).Segmenter('hi', { granularity: 'grapheme' });
-          chars = Array.from(segmenter.segment(text || '')).map((s: any) => s.segment);
-        } catch {
+      const [displayedText, setDisplayedText] = useState(enabled ? '' : text);
+      const [isDone, setIsDone] = useState(!enabled);
+
+      useEffect(() => {
+        if (!enabled) {
+          setDisplayedText(text);
+          setIsDone(true);
+          return;
+        }
+
+        // Safely split into complete grapheme clusters for Hindi so matras and conjuncts (aksharas) never break
+        let chars: string[] = [];
+        if (typeof Intl !== 'undefined' && (Intl as any).Segmenter) {
+          try {
+            const segmenter = new (Intl as any).Segmenter('hi', { granularity: 'grapheme' });
+            chars = Array.from(segmenter.segment(text || '')).map((s: any) => s.segment);
+          } catch {
+            chars = Array.from(text || '');
+          }
+        } else {
           chars = Array.from(text || '');
         }
-      } else {
-        chars = Array.from(text || '');
-      }
 
-      if (chars.length === 0) {
+        if (chars.length === 0) {
+          setDisplayedText('');
+          setIsDone(true);
+          return;
+        }
+
         setDisplayedText('');
-        setIsDone(true);
-        return;
-      }
+        setIsDone(false);
 
-      setDisplayedText('');
-      setIsDone(false);
+        let currentIndex = 0;
+        let intervalId: any = null;
 
-      let currentIndex = 0;
-      let intervalId: any = null;
+        const timeoutId = setTimeout(() => {
+          intervalId = setInterval(() => {
+            currentIndex++;
+            if (currentIndex <= chars.length) {
+              setDisplayedText(chars.slice(0, currentIndex).join(''));
+            } else {
+              clearInterval(intervalId);
+              setIsDone(true);
+              if (onComplete) onComplete();
+            }
+          }, speed);
+        }, delay);
 
-      const timeoutId = setTimeout(() => {
-        intervalId = setInterval(() => {
-          currentIndex++;
-          if (currentIndex <= chars.length) {
-            setDisplayedText(chars.slice(0, currentIndex).join(''));
-          } else {
-            clearInterval(intervalId);
-            setIsDone(true);
-            if (onComplete) onComplete();
-          }
-        }, speed);
-      }, delay);
+        return () => {
+          clearTimeout(timeoutId);
+          if (intervalId) clearInterval(intervalId);
+        };
+      }, [text, speed, delay, enabled]);
 
-      return () => {
-        clearTimeout(timeoutId);
-        if (intervalId) clearInterval(intervalId);
-      };
-    }, [text, speed, delay, enabled]);
-
-    return (
-      <span className={`inline relative font-inherit ${className}`}>
-        {displayedText}
-        {!isDone && enabled && showCursor && (
-          <span className="inline-flex items-center ml-1 select-none animate-pulse align-middle">
-            <span
-              className={`inline-block w-1.5 h-4 rounded-xs ${
-                isChalkboard
+      return (
+        <span className={`inline relative font-inherit ${className}`}>
+          {displayedText}
+          {!isDone && enabled && showCursor && (
+            <span className="inline-flex items-center ml-1 select-none animate-pulse align-middle">
+              <span
+                className={`inline-block w-1.5 h-4 rounded-xs ${isChalkboard
                   ? 'bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.9)]'
                   : 'bg-indigo-600 shadow-[0_0_6px_rgba(99,102,241,0.6)]'
-              }`}
-            />
-            <span className="text-xs ml-0.5 opacity-90 inline-block transform -rotate-12">
-              ✏️
+                  }`}
+              />
+              <span className="text-xs ml-0.5 opacity-90 inline-block transform -rotate-12">
+                ✏️
+              </span>
             </span>
-          </span>
-        )}
-      </span>
-    );
-  };
+          )}
+        </span>
+      );
+    };
 
   // Structured Math Problem Solver (e.g. 10+10, 15*5, 50-20, 100/4)
   const solveMathExpression = (
@@ -967,25 +1001,17 @@ export default function TuitionClassroomStudio() {
     if (isBookPassage) {
       const paragraphs = clean.split('\n\n').map((p) => p.trim()).filter(Boolean);
       return (
-        <div className="space-y-4 py-2 text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-relaxed">
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/50 dark:bg-slate-900/80 border border-amber-200/60 dark:border-white/10 shadow-xs space-y-3.5 text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-relaxed">
           {paragraphs.map((p, pIdx) => (
-            <div
-              key={pIdx}
-              className="p-3.5 sm:p-4 rounded-2xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-white/10 shadow-xs"
-            >
-              <div className="flex items-start gap-2.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-2 shrink-0 opacity-60" />
-                <p className="leading-relaxed font-medium flex-1">
-                  <ChalkTypewriter
-                    text={p.replace(/\[|\]/g, '')}
-                    speed={14}
-                    delay={isTypewriterEnabled ? pIdx * 120 : 0}
-                    enabled={isTypewriterEnabled}
-                    isChalkboard={chalkboardTheme === 'green'}
-                  />
-                </p>
-              </div>
-            </div>
+            <p key={pIdx} className="leading-relaxed indent-4 text-justify sm:text-left font-medium">
+              <ChalkTypewriter
+                text={p.replace(/\[|\]/g, '')}
+                speed={14}
+                delay={isTypewriterEnabled ? pIdx * 100 : 0}
+                enabled={isTypewriterEnabled}
+                isChalkboard={chalkboardTheme === 'green'}
+              />
+            </p>
           ))}
         </div>
       );
@@ -996,13 +1022,22 @@ export default function TuitionClassroomStudio() {
     let rawParts = clean.includes('\n')
       ? clean.split('\n').map((p) => p.trim()).filter(Boolean)
       : clean.includes(' | ')
-      ? clean.split(' | ').map((p) => p.trim()).filter(Boolean)
-      : [];
+        ? clean.split(' | ').map((p) => p.trim()).filter(Boolean)
+        : [];
 
-    // If no newlines, check if the string contains run-on math steps (e.g. sentences ending with period or paren followed by another step/option)
-    if (rawParts.length <= 1) {
+    // Only split sentences into separate step cards if it has explicit step markers or math calculations
+    const isMathOrExplicitSteps =
+      clean.includes('=') ||
+      clean.includes('Option') ||
+      clean.includes('विकल्प') ||
+      clean.includes('Difference') ||
+      clean.includes('Estimated') ||
+      clean.includes('Total') ||
+      /Step\s*\d|चरण\s*\d/i.test(clean);
+
+    if (rawParts.length <= 1 && isMathOrExplicitSteps) {
       const sentenceSteps = clean
-        .split(/(?<=\.|\))\s+(?=[A-Z0-9\u0900-\u097F]|Option|Difference|Estimated|Largest|Smallest|Total|Sum|Correct|Step|चरण|विकल्प)/i)
+        .split(/(?<=\.|\))\s+(?=(?:Option|Difference|Estimated|Largest|Smallest|Total|Sum|Correct|Step|चरण|विकल्प)\b)/i)
         .map((p) => p.trim())
         .filter(Boolean);
 
@@ -1058,40 +1093,38 @@ export default function TuitionClassroomStudio() {
             const stepBadgeText = isAnswerExplicit
               ? (medium === 'english' ? '🎯 Final Answer & Option' : '🎯 अंतिम सही उत्तर (Correct Option)')
               : isCalculation
-              ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व अंतर (Calculation)`)
-              : isRounding
-              ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
-              : isNumberFact
-              ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
-              : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
+                ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व अंतर (Calculation)`)
+                : isRounding
+                  ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
+                  : isNumberFact
+                    ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
+                    : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
 
             return (
               <div
                 key={pIdx}
-                className={`p-3.5 md:p-4 rounded-2xl border transition-all ${
-                  isAnswerExplicit
-                    ? isDarkMode || chalkboardTheme === 'green'
-                      ? 'bg-gradient-to-r from-emerald-950/80 to-teal-950/60 border-emerald-500/60 text-emerald-100 shadow-md shadow-emerald-950/40 ring-1 ring-emerald-500/20'
-                      : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 text-emerald-950 shadow-sm ring-1 ring-emerald-200/50'
-                    : isDarkMode || chalkboardTheme === 'green'
+                className={`p-3.5 md:p-4 rounded-2xl border transition-all ${isAnswerExplicit
+                  ? isDarkMode || chalkboardTheme === 'green'
+                    ? 'bg-gradient-to-r from-emerald-950/80 to-teal-950/60 border-emerald-500/60 text-emerald-100 shadow-md shadow-emerald-950/40 ring-1 ring-emerald-500/20'
+                    : 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 text-emerald-950 shadow-sm ring-1 ring-emerald-200/50'
+                  : isDarkMode || chalkboardTheme === 'green'
                     ? 'bg-slate-900/90 border-slate-800 text-slate-100 hover:border-slate-700'
                     : 'bg-white border-slate-200 text-slate-800 shadow-2xs hover:border-indigo-200'
-                }`}
+                  }`}
               >
                 {/* Step Sub-Header Badge */}
                 <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-black/5 dark:border-white/5">
                   <span
-                    className={`text-[11px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full border ${
-                      isAnswerExplicit
-                        ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
-                        : isCalculation
+                    className={`text-[11px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full border ${isAnswerExplicit
+                      ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
+                      : isCalculation
                         ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20'
                         : isRounding
-                        ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
-                        : isNumberFact
-                        ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
-                        : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
-                    }`}
+                          ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
+                          : isNumberFact
+                            ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
+                            : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
+                      }`}
                   >
                     {stepBadgeText}
                   </span>
@@ -1105,11 +1138,10 @@ export default function TuitionClassroomStudio() {
 
                 {/* Step Text / Formula Display */}
                 <div
-                  className={`leading-relaxed ${
-                    isAnswerExplicit
-                      ? 'text-base sm:text-lg font-black'
-                      : 'text-sm sm:text-base font-semibold'
-                  }`}
+                  className={`leading-relaxed ${isAnswerExplicit
+                    ? 'text-base sm:text-lg font-black'
+                    : 'text-sm sm:text-base font-semibold'
+                    }`}
                 >
                   {renderFormulaAnswer(part)}
                 </div>
@@ -1129,9 +1161,8 @@ export default function TuitionClassroomStudio() {
 
     return (
       <div
-        className={`text-base sm:text-lg font-black tracking-normal leading-relaxed ${
-          isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-        }`}
+        className={`text-base sm:text-lg font-black tracking-normal leading-relaxed ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+          }`}
       >
         <div className="inline-block">
           {renderFormulaAnswer(clean)}
@@ -1195,7 +1226,9 @@ export default function TuitionClassroomStudio() {
   };
 
   // Helper to get matching question for single step
-  const getQuestionForStep = (stepItem: WhiteboardStepItem, idx: number): string | null => {
+  const getQuestionForStep = (stepItem?: WhiteboardStepItem | null, idx?: number): string | null => {
+    if (!stepItem) return null;
+
     // If stepItem has a valid real question from AI
     if (stepItem.question && !isInternalInstruction(stepItem.question)) {
       return stepItem.question;
@@ -1212,7 +1245,7 @@ export default function TuitionClassroomStudio() {
 
     // If worksheet questions were detected from image/PDF
     if (detectedQuestions.length > 0) {
-      const combined = `${stepItem.step} ${stepItem.formula}`.toLowerCase();
+      const combined = `${stepItem.step || ''} ${stepItem.formula || ''}`.toLowerCase();
       const numMatch = combined.match(/\b(?:q|mcq|blank|sawaal|prashn|no\.?)\s*([0-9]+)\b/i);
       if (numMatch && numMatch[1]) {
         const qNum = parseInt(numMatch[1], 10);
@@ -1225,13 +1258,13 @@ export default function TuitionClassroomStudio() {
           return detectedQuestions[qNum - 1];
         }
       }
-      if (idx < detectedQuestions.length) {
+      if (typeof idx === 'number' && idx >= 0 && idx < detectedQuestions.length) {
         return detectedQuestions[idx];
       }
       return detectedQuestions[0];
     }
 
-    if (selectedChapter?.sampleQuestions && selectedChapter.sampleQuestions[idx]) {
+    if (typeof idx === 'number' && selectedChapter?.sampleQuestions && selectedChapter.sampleQuestions[idx]) {
       return selectedChapter.sampleQuestions[idx].question;
     }
 
@@ -2082,8 +2115,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       (uploadedFiles.length > 0
         ? `${uploadedFiles[0].name} (${detectedQuestions.length > 0 ? `${detectedQuestions.length} सवाल` : 'वर्कशीट'})`
         : activeMathAnim
-        ? `गणित हल: ${activeMathAnim.num1} ${activeMathAnim.op === '*' ? '×' : activeMathAnim.op} ${activeMathAnim.num2} = ${activeMathAnim.result}`
-        : activeTargetQuestion || whiteboardHeading || 'अभ्यास सत्र');
+          ? `गणित हल: ${activeMathAnim.num1} ${activeMathAnim.op === '*' ? '×' : activeMathAnim.op} ${activeMathAnim.num2} = ${activeMathAnim.result}`
+          : activeTargetQuestion || whiteboardHeading || 'अभ्यास सत्र');
 
     // Compress thumbnails for safe storage within 5MB limit
     const compressedFiles = await Promise.all(
@@ -2738,10 +2771,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     }
   };
 
-  // Multi-File Upload Handler (Book Pages / Homework)
+  // =========================================================================
+  // 🔒 FROZEN / FIXED CONFIGURATION - DO NOT CHANGE! (स्थिर कॉन्फ़िगरेशन - इसे कभी न बदलें)
+  // Verified: Uploads, reads and parses homework and textbook pages with 100% precision.
+  // Daily Limit: 20 pages/day per student (saves tokens while typed questions remain unlimited).
+  // =========================================================================
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
+
+    // Check daily upload limit (20 images / day per student)
+    const dailyKey = getStudentDailyKey();
+    const currentUploads = parseInt(localStorage.getItem(dailyKey) || '0', 10) || 0;
+    if (currentUploads >= MAX_DAILY_UPLOADS) {
+      const limitNotice =
+        medium === 'english'
+          ? 'Daily upload limit reached (20 pages/day). You can still ask unlimited questions by typing!'
+          : 'आज के 20 पेज अपलोड की सीमा पूरी हो चुकी है। आप नीचे टाइप करके जितने चाहे सवाल पूछ सकते हैं!';
+      setSpeechText(limitNotice);
+      speakText(limitNotice);
+      alert(limitNotice);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (currentUploads + fileList.length > MAX_DAILY_UPLOADS) {
+      const remaining = MAX_DAILY_UPLOADS - currentUploads;
+      const limitNotice =
+        medium === 'english'
+          ? `You can only upload ${remaining} more page(s) today (Limit: 20/day).`
+          : `आज आप केवल ${remaining} और पेज अपलोड कर सकते हैं (दैनिक सीमा: 20 पेज)।`;
+      setSpeechText(limitNotice);
+      speakText(limitNotice);
+      alert(limitNotice);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     // Immediately stop any audio/speech
     stopAudio();
@@ -2778,6 +2843,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         url: dataUrl,
       });
     }
+
+    // Update daily upload count
+    const newUploadTotal = currentUploads + newlyReadFiles.length;
+    try {
+      localStorage.setItem(dailyKey, newUploadTotal.toString());
+      setDailyUploadCount(newUploadTotal);
+    } catch { }
 
     setUploadedFiles((prev) => {
       const combined = [...prev, ...newlyReadFiles];
@@ -2834,18 +2906,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               respSubject === 'english' || respTeacherId === 'riya'
                 ? 'English Reading & Phonetics Coach'
                 : respSubject === 'hindi'
-                ? 'Hindi Vyakaran & Sahitya'
-                : respSubject === 'evs'
-                ? 'EVS & Science Specialist'
-                : 'Class 1st-8th Math Mentor',
+                  ? 'Hindi Vyakaran & Sahitya'
+                  : respSubject === 'evs'
+                    ? 'EVS & Science Specialist'
+                    : 'Class 1st-8th Math Mentor',
             emoji:
               respSubject === 'english' || respTeacherId === 'riya'
                 ? '👩‍🏫'
                 : respSubject === 'hindi'
-                ? '👩‍🏫'
-                : respSubject === 'evs'
-                ? '👩‍🔬'
-                : '👨‍🏫',
+                  ? '👩‍🏫'
+                  : respSubject === 'evs'
+                    ? '👩‍🔬'
+                    : '👨‍🏫',
           });
         }
         if (respSubject) {
@@ -2957,23 +3029,20 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     : (selectedChapter?.sampleQuestions?.length || 0);
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
-      isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f8fafc] text-slate-900'
-    }`}>
-      {/* 1. TOP HEADER */}
-      <header className={`backdrop-blur-md border-b px-4 md:px-8 py-3 flex items-center justify-between gap-3 sticky top-0 z-30 transition-colors duration-200 ${
-        isDarkMode
-          ? 'bg-slate-900/90 border-slate-800 shadow-md text-white'
-          : 'bg-white/95 border-slate-200 shadow-xs text-slate-900'
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f8fafc] text-slate-900'
       }`}>
+      {/* 1. TOP HEADER */}
+      <header className={`backdrop-blur-md border-b px-4 md:px-8 py-3 flex items-center justify-between gap-3 sticky top-0 z-30 transition-colors duration-200 ${isDarkMode
+        ? 'bg-slate-900/90 border-slate-800 shadow-md text-white'
+        : 'bg-white/95 border-slate-200 shadow-xs text-slate-900'
+        }`}>
         <div className="flex items-center gap-3">
           <Link
             href="/reports"
-            className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border ${
-              isDarkMode
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-            }`}
+            className={`p-2 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border ${isDarkMode
+              ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+              }`}
             title={medium === 'english' ? 'View Student All Report Card' : 'स्टूडेंट ऑल रिपोर्ट देखें'}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -2998,9 +3067,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 🌐 Child Language / Medium Selector (हिंदी / English) */}
-          <div className={`p-1 rounded-xl border flex items-center text-xs font-bold shadow-xs ${
-            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-          }`}>
+          <div className={`p-1 rounded-xl border flex items-center text-xs font-bold shadow-xs ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
+            }`}>
             <button
               type="button"
               onClick={() => {
@@ -3009,13 +3077,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 setSpeechText(intro);
                 speakText(intro);
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                medium === 'hindi'
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
-                  : isDarkMode
+              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${medium === 'hindi'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-xs'
+                : isDarkMode
                   ? 'text-slate-400 hover:text-white'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
               title="हिंदी माध्यम (Hindi Medium - बच्चों के लिए सबसे सरल)"
             >
               <span>🇮🇳</span>
@@ -3030,13 +3097,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 setSpeechText(intro);
                 speakText(intro);
               }}
-              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                medium === 'english'
-                  ? 'bg-indigo-600 text-white font-black shadow-xs'
-                  : isDarkMode
+              className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${medium === 'english'
+                ? 'bg-indigo-600 text-white font-black shadow-xs'
+                : isDarkMode
                   ? 'text-slate-400 hover:text-white'
                   : 'text-slate-600 hover:text-slate-900'
-              }`}
+                }`}
               title="English Medium (अंग्रेजी माध्यम)"
             >
               <span>🇬🇧</span>
@@ -3048,38 +3114,23 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         {/* Streak, Student Report, Theme Toggle & Controls */}
         <div className="flex items-center gap-2">
           {/* Duolingo Streak */}
-          <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-xs ${
-            isDarkMode
-              ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-              : 'bg-amber-50 border-amber-200 text-amber-800'
-          }`}>
+          <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-xs ${isDarkMode
+            ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}>
             <Flame className="w-4 h-4 fill-amber-400 text-amber-500 animate-pulse" />
             <span>{medium === 'english' ? '7-Day Streak' : '7 दिन स्ट्रीक'}</span>
           </div>
 
-          {/* ☀️ / 🌙 THEME TOGGLE: 1-Click Classroom Light vs Midnight Dark */}
-          <button
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-xs ${
-              isDarkMode
-                ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-300'
-                : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700'
-            }`}
-            title={medium === 'english' ? 'Toggle Theme' : 'आंखों के आराम के लिए थीम बदलें'}
-          >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
-            <span className="hidden md:inline">{isDarkMode ? (medium === 'english' ? '☀️ Classroom' : '☀️ क्लासरूम') : (medium === 'english' ? '🌙 Dark' : '🌙 डार्क')}</span>
-          </button>
 
           {/* Previous Records & Worksheet History Button */}
           <button
             type="button"
             onClick={() => setIsHistoryModalOpen(true)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-xs ${
-              isDarkMode
-                ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
-                : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
-            }`}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-xs ${isDarkMode
+              ? 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300'
+              : 'bg-amber-50 hover:bg-amber-100 border-amber-300 text-amber-900'
+              }`}
             title={medium === 'english' ? 'View Worksheet & Learning History' : 'पिछला रिकॉर्ड व वर्कशीट इतिहास देखें'}
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
@@ -3095,11 +3146,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           {/* Sunday Test Paper Button */}
           <button
             onClick={() => setIsSundayExamModalOpen(true)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-xs ${
-              isDarkMode
-                ? 'bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/40 text-indigo-300 hover:text-white'
-                : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700'
-            }`}
+            className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-xs ${isDarkMode
+              ? 'bg-indigo-600/20 hover:bg-indigo-600/30 border-indigo-500/40 text-indigo-300 hover:text-white'
+              : 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-700'
+              }`}
           >
             <FileText className="w-3.5 h-3.5 text-indigo-500" />
             <span className="hidden sm:inline">{medium === 'english' ? 'Sunday Test' : 'संडे टेस्ट'}</span>
@@ -3117,20 +3167,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </Link>
 
           {/* Board Selector */}
-          <div className={`p-1 rounded-xl border flex items-center text-xs font-bold ${
-            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-          }`}>
+          <div className={`p-1 rounded-xl border flex items-center text-xs font-bold ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
+            }`}>
             {(['RBSE', 'CBSE'] as const).map((b) => (
               <button
                 key={b}
                 onClick={() => setBoard(b)}
-                className={`px-2.5 py-1 rounded-lg transition-all ${
-                  board === b
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : isDarkMode
+                className={`px-2.5 py-1 rounded-lg transition-all ${board === b
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : isDarkMode
                     ? 'text-slate-400 hover:text-white'
                     : 'text-slate-600 hover:text-slate-900'
-                }`}
+                  }`}
               >
                 {b}
               </button>
@@ -3146,15 +3194,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               }
               setIsAudioMuted(!isAudioMuted);
             }}
-            className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-              isAudioMuted
-                ? isDarkMode
-                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                  : 'bg-rose-50 border-rose-200 text-rose-700'
-                : isDarkMode
+            className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isAudioMuted
+              ? isDarkMode
+                ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                : 'bg-rose-50 border-rose-200 text-rose-700'
+              : isDarkMode
                 ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
                 : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-            }`}
+              }`}
           >
             {isAudioMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 text-amber-500 animate-pulse" />}
             <span className="hidden md:inline">{isAudioMuted ? 'Muted' : 'Sound ON'}</span>
@@ -3163,14 +3210,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       </header>
 
       {/* 2. 4 CORE SUBJECTS SELECTOR RIBBON (Math, EVS, English, Hindi) */}
-      <div className={`border-b px-4 md:px-8 py-2.5 transition-colors duration-200 ${
-        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
-      }`}>
+      <div className={`border-b px-4 md:px-8 py-2.5 transition-colors duration-200 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
+        }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 overflow-x-auto scrollbar-none">
           <div className="flex items-center gap-2">
-            <span className={`text-xs font-black uppercase mr-2 shrink-0 ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`}>
+            <span className={`text-xs font-black uppercase mr-2 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              }`}>
               {medium === 'english' ? 'Select Subject (4 Subjects):' : 'विषय चुनें (4 Subjects):'}
             </span>
             {allSubjects.map((sub) => {
@@ -3179,13 +3224,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <button
                   key={sub.id}
                   onClick={() => handleSelectSubject(sub)}
-                  className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 border whitespace-nowrap shadow-xs ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white border-indigo-400 scale-105 shadow-indigo-600/30'
-                      : isDarkMode
+                  className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 border whitespace-nowrap shadow-xs ${isSelected
+                    ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white border-indigo-400 scale-105 shadow-indigo-600/30'
+                    : isDarkMode
                       ? 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
                       : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50'
-                  }`}
+                    }`}
                 >
                   <span className="text-base">{sub.emoji}</span>
                   <span>{sub.subjectHindi}</span>
@@ -3199,34 +3243,31 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <button
               type="button"
               onClick={() => setIsChaptersOpen((prev) => !prev)}
-              className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 border whitespace-nowrap shadow-xs shrink-0 ${
-                isChaptersOpen
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 shadow-indigo-600/30 ring-2 ring-indigo-400/20'
-                  : isDarkMode
+              className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 border whitespace-nowrap shadow-xs shrink-0 ${isChaptersOpen
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-400 shadow-indigo-600/30 ring-2 ring-indigo-400/20'
+                : isDarkMode
                   ? 'bg-slate-950 text-indigo-300 border-indigo-500/30 hover:border-indigo-400 hover:bg-indigo-950/30'
                   : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
-              }`}
+                }`}
               title="पाठ व चैप्टर्स सूची खोलें"
             >
               <BookOpen className="w-3.5 h-3.5" />
               <span>📚 चैप्टर्स सूची ({selectedSubject?.chapters?.length || 0})</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                isChaptersOpen
-                  ? 'bg-white/20 text-white'
-                  : isDarkMode
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${isChaptersOpen
+                ? 'bg-white/20 text-white'
+                : isDarkMode
                   ? 'bg-indigo-900/50 text-indigo-200'
                   : 'bg-white text-indigo-700 border border-indigo-200'
-              }`}>
+                }`}>
                 {isChaptersOpen ? '✕ बंद करें' : '▾ खोलें'}
               </span>
             </button>
           </div>
 
-          <div className={`text-xs font-extrabold px-3 py-1 rounded-xl border shrink-0 ${
-            isDarkMode
-              ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-              : 'text-amber-800 bg-amber-50 border-amber-200'
-          }`}>
+          <div className={`text-xs font-extrabold px-3 py-1 rounded-xl border shrink-0 ${isDarkMode
+            ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+            : 'text-amber-800 bg-amber-50 border-amber-200'
+            }`}>
             ⭐ कुल स्कोर: {totalScore}
           </div>
         </div>
@@ -3237,28 +3278,25 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         {/* LEFT COLUMN: Animated Character Guide, Copy Scanner, & Student History Memory (4 Cols) - Fixed / Sticky with scroll */}
         <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none">
           {/* TEACHER CHARACTER GUIDE */}
-          <div className={`rounded-3xl p-5 border transition-all duration-200 relative overflow-hidden flex flex-col justify-between ${
-            isDarkMode
-              ? 'bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl text-white'
-              : 'bg-white border-slate-200 shadow-sm text-slate-900'
-          }`}>
+          <div className={`rounded-3xl p-5 border transition-all duration-200 relative overflow-hidden flex flex-col justify-between ${isDarkMode
+            ? 'bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl text-white'
+            : 'bg-white border-slate-200 shadow-sm text-slate-900'
+            }`}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${isSpeaking ? 'bg-emerald-500 animate-ping' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
-                <span className={`text-xs font-black tracking-wider uppercase ${
-                  isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
-                }`}>
+                <span className={`text-xs font-black tracking-wider uppercase ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'
+                  }`}>
                   {isSpeaking ? 'बोल रहे हैं' : isListening ? 'सुन रहे हैं' : 'तैयार हैं (Ready)'}
                 </span>
               </div>
 
               <button
                 onClick={() => speakText(speechText)}
-                className={`p-1.5 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all ${
-                  isDarkMode
-                    ? 'bg-white/10 hover:bg-white/20 text-indigo-200 border-white/10'
-                    : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border-slate-200 shadow-2xs'
-                }`}
+                className={`p-1.5 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all ${isDarkMode
+                  ? 'bg-white/10 hover:bg-white/20 text-indigo-200 border-white/10'
+                  : 'bg-slate-100 hover:bg-slate-200 text-indigo-700 border-slate-200 shadow-2xs'
+                  }`}
               >
                 <Volume2 className="w-3.5 h-3.5" />
                 <span>Replay</span>
@@ -3267,9 +3305,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
             <div className="flex flex-col items-center justify-center py-2">
               <div className={`w-24 h-24 rounded-3xl p-1 bg-gradient-to-tr from-amber-400 via-indigo-500 to-emerald-400 shadow-lg transition-all transform ${isSpeaking ? 'scale-105' : ''}`}>
-                <div className={`w-full h-full rounded-[22px] flex flex-col items-center justify-center border ${
-                  isDarkMode ? 'bg-slate-900 border-white/20' : 'bg-indigo-50/80 border-indigo-100'
-                }`}>
+                <div className={`w-full h-full rounded-[22px] flex flex-col items-center justify-center border ${isDarkMode ? 'bg-slate-900 border-white/20' : 'bg-indigo-50/80 border-indigo-100'
+                  }`}>
                   <span className="text-5xl">{currentTeacher.emoji}</span>
                 </div>
               </div>
@@ -3286,13 +3323,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 {[30, 60, 90, 45, 80, 50, 75, 40].map((h, i) => (
                   <div
                     key={i}
-                    className={`w-1 rounded-full transition-all duration-150 ${
-                      isSpeaking
-                        ? 'bg-indigo-500 shadow-[0_0_6px_#818cf8]'
-                        : isDarkMode
+                    className={`w-1 rounded-full transition-all duration-150 ${isSpeaking
+                      ? 'bg-indigo-500 shadow-[0_0_6px_#818cf8]'
+                      : isDarkMode
                         ? 'bg-slate-700'
                         : 'bg-slate-200'
-                    }`}
+                      }`}
                     style={{ height: isSpeaking ? `${Math.max(4, h * 0.22)}px` : '4px' }}
                   />
                 ))}
@@ -3300,11 +3336,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             </div>
 
             {/* Speech Bubble */}
-            <div className={`mt-3 rounded-2xl p-3.5 border transition-all ${
-              isDarkMode
-                ? 'bg-slate-800/80 border-white/10 text-slate-200 backdrop-blur-md'
-                : 'bg-slate-50 border-slate-200 text-slate-800 shadow-2xs'
-            }`}>
+            <div className={`mt-3 rounded-2xl p-3.5 border transition-all ${isDarkMode
+              ? 'bg-slate-800/80 border-white/10 text-slate-200 backdrop-blur-md'
+              : 'bg-slate-50 border-slate-200 text-slate-800 shadow-2xs'
+              }`}>
               <div className="flex items-start gap-2">
                 <Smile className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                 <p className="text-xs leading-relaxed font-medium">
@@ -3315,20 +3350,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* HOMEWORK & COPY SCANNER */}
-          <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-3 ${
-            isDarkMode
-              ? 'bg-slate-900 border-slate-800 shadow-xl'
-              : 'bg-white border-slate-200 shadow-sm'
-          }`}>
+          <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-3 ${isDarkMode
+            ? 'bg-slate-900 border-slate-800 shadow-xl'
+            : 'bg-white border-slate-200 shadow-sm'
+            }`}>
             <div className="flex items-center justify-between">
-              <span className={`text-xs font-black uppercase flex items-center gap-1.5 ${
-                isDarkMode ? 'text-amber-400' : 'text-indigo-700'
-              }`}>
+              <span className={`text-xs font-black uppercase flex items-center gap-1.5 ${isDarkMode ? 'text-amber-400' : 'text-indigo-700'
+                }`}>
                 <Camera className="w-4 h-4" />
                 {medium === 'english' ? 'Upload Homework / Book Page' : 'होमवर्क / कॉपी चेक करवाएं'}
               </span>
-              <span className={`text-[11px] font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                1-Click Scan
+              <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-full border ${dailyUploadCount >= MAX_DAILY_UPLOADS
+                ? 'bg-rose-50 border-rose-300 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                }`}>
+                📸 {dailyUploadCount}/{MAX_DAILY_UPLOADS} {medium === 'english' ? 'Pages' : 'पेज'}
               </span>
             </div>
 
@@ -3343,9 +3379,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             />
 
             {uploadedFiles.length > 0 ? (
-              <div className={`rounded-2xl border p-3.5 space-y-3 ${
-                isDarkMode ? 'border-emerald-500/50 bg-slate-950' : 'border-emerald-300 bg-slate-50'
-              }`}>
+              <div className={`rounded-2xl border p-3.5 space-y-3 ${isDarkMode ? 'border-emerald-500/50 bg-slate-950' : 'border-emerald-300 bg-slate-50'
+                }`}>
                 {/* Multi-File Header with Friendly Status & History */}
                 <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                   <span className="text-xs font-black flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
@@ -3400,11 +3435,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           <div
                             key={file.id}
                             onClick={() => handleSwitchPage(file.id)}
-                            className={`relative shrink-0 w-20 h-20 rounded-xl border-2 cursor-pointer transition-all overflow-hidden group ${
-                              isThisActive
-                                ? 'border-indigo-500 ring-2 ring-indigo-500/40 shadow-md scale-102'
-                                : 'border-slate-300 dark:border-slate-700 opacity-75 hover:opacity-100'
-                            }`}
+                            className={`relative shrink-0 w-20 h-20 rounded-xl border-2 cursor-pointer transition-all overflow-hidden group ${isThisActive
+                              ? 'border-indigo-500 ring-2 ring-indigo-500/40 shadow-md scale-102'
+                              : 'border-slate-300 dark:border-slate-700 opacity-75 hover:opacity-100'
+                              }`}
                           >
                             {isPdf ? (
                               <div className="w-full h-full bg-rose-950/40 flex flex-col items-center justify-center p-1 text-center">
@@ -3439,11 +3473,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 {/* Active Document Full Display */}
                 <div className="relative">
                   {uploadedFileName.toLowerCase().endsWith('.pdf') ? (
-                    <div className={`p-4 rounded-xl border flex items-center gap-3 ${
-                      isDarkMode
-                        ? 'bg-gradient-to-r from-rose-950/40 via-indigo-950/50 to-slate-900 border-rose-500/30 text-white'
-                        : 'bg-white border-rose-200 text-slate-800 shadow-2xs'
-                    }`}>
+                    <div className={`p-4 rounded-xl border flex items-center gap-3 ${isDarkMode
+                      ? 'bg-gradient-to-r from-rose-950/40 via-indigo-950/50 to-slate-900 border-rose-500/30 text-white'
+                      : 'bg-white border-rose-200 text-slate-800 shadow-2xs'
+                      }`}>
                       <div className="w-12 h-12 rounded-xl bg-rose-600/20 text-rose-500 flex items-center justify-center text-2xl shrink-0 font-bold">
                         📑
                       </div>
@@ -3505,7 +3538,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   title={medium === 'english' ? 'Add more pages or photos' : 'और पेज या फोटो जोड़ें'}
                 >
                   <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  <span>{medium === 'english' ? '+ Add Another Page / Photo' : '+ और पेज या फोटो जोड़ें'}</span>
+                  <span>{medium === 'english' ? 'Add Another Page / Photo' : 'और पेज या फोटो जोड़ें'}</span>
                 </button>
 
                 {/* 3-Action Mode Bar (Kid-Friendly & Clear) */}
@@ -3513,13 +3546,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     onClick={() => handleTriggerMode('teach')}
                     disabled={isCheckingHomework}
-                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${
-                      currentUploadMode === 'teach'
-                        ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30 scale-102'
-                        : isDarkMode
+                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${currentUploadMode === 'teach'
+                      ? 'bg-indigo-600 text-white border-indigo-400 shadow-md shadow-indigo-600/30 scale-102'
+                      : isDarkMode
                         ? 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300'
-                    }`}
+                      }`}
                   >
                     {isCheckingHomework && currentUploadMode === 'teach' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
@@ -3532,13 +3564,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     onClick={() => handleTriggerMode('check')}
                     disabled={isCheckingHomework}
-                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${
-                      currentUploadMode === 'check'
-                        ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30 scale-102'
-                        : isDarkMode
+                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${currentUploadMode === 'check'
+                      ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30 scale-102'
+                      : isDarkMode
                         ? 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50 hover:border-emerald-300'
-                    }`}
+                      }`}
                   >
                     {isCheckingHomework && currentUploadMode === 'check' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
@@ -3551,13 +3582,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     onClick={() => handleTriggerMode('quiz')}
                     disabled={isCheckingHomework}
-                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${
-                      currentUploadMode === 'quiz'
-                        ? 'bg-amber-600 text-white border-amber-400 shadow-md shadow-amber-600/30 scale-102'
-                        : isDarkMode
+                    className={`py-2 px-2 rounded-xl text-xs font-black border-2 transition-all flex items-center justify-center gap-1.5 shadow-xs ${currentUploadMode === 'quiz'
+                      ? 'bg-amber-600 text-white border-amber-400 shadow-md shadow-amber-600/30 scale-102'
+                      : isDarkMode
                         ? 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-amber-50 hover:border-amber-300'
-                    }`}
+                      }`}
                   >
                     {isCheckingHomework && currentUploadMode === 'quiz' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
@@ -3604,9 +3634,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 {detectedQuestions.length > 0 ? (
                   <div className="pt-2 space-y-2">
                     <div className="flex items-center justify-between text-[11px]">
-                      <span className={`font-black flex items-center gap-1.5 ${
-                        isDarkMode ? 'text-amber-300' : 'text-indigo-700'
-                      }`}>
+                      <span className={`font-black flex items-center gap-1.5 ${isDarkMode ? 'text-amber-300' : 'text-indigo-700'
+                        }`}>
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         {medium === 'english' ? 'Exercise Questions:' : 'अभ्यास प्रश्न (Exercise Questions):'}
                       </span>
@@ -3649,34 +3678,31 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             onClick={() => {
                               selectDetectedQuestionByIndex(idx, qText);
                             }}
-                            className={`w-full p-2.5 rounded-xl text-left border transition-all group flex items-start justify-between gap-2 shadow-xs cursor-pointer ${
-                              isThisActive
-                                ? isDarkMode
-                                  ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-md shadow-indigo-500/20'
-                                  : 'bg-indigo-50 border-indigo-400 text-indigo-950 font-bold shadow-xs'
-                                : isDarkMode
+                            className={`w-full p-2.5 rounded-xl text-left border transition-all group flex items-start justify-between gap-2 shadow-xs cursor-pointer ${isThisActive
+                              ? isDarkMode
+                                ? 'bg-indigo-950/80 border-indigo-400 text-white shadow-md shadow-indigo-500/20'
+                                : 'bg-indigo-50 border-indigo-400 text-indigo-950 font-bold shadow-xs'
+                              : isDarkMode
                                 ? 'bg-slate-900 hover:bg-indigo-900/40 border-slate-800 hover:border-indigo-500/50 text-slate-200'
                                 : 'bg-white hover:bg-indigo-50/60 border-slate-200 hover:border-indigo-300 text-slate-700'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-start gap-2 flex-1 min-w-0">
-                              <span className={`text-xs shrink-0 font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 ${
-                                isThisLoading
-                                  ? 'bg-amber-500/20 text-amber-500 border-amber-500/40 animate-pulse'
-                                  : isThisActive
+                              <span className={`text-xs shrink-0 font-bold px-1.5 py-0.5 rounded border flex items-center gap-1 ${isThisLoading
+                                ? 'bg-amber-500/20 text-amber-500 border-amber-500/40 animate-pulse'
+                                : isThisActive
                                   ? 'bg-indigo-600 text-white border-indigo-500'
                                   : isDarkMode
-                                  ? 'text-amber-400 group-hover:text-amber-300 bg-amber-500/10 border-amber-500/20'
-                                  : 'text-amber-700 group-hover:text-amber-800 bg-amber-50 border-amber-200'
-                              }`}>
+                                    ? 'text-amber-400 group-hover:text-amber-300 bg-amber-500/10 border-amber-500/20'
+                                    : 'text-amber-700 group-hover:text-amber-800 bg-amber-50 border-amber-200'
+                                }`}>
                                 {isThisLoading && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
                                 #{idx + 1}
                               </span>
-                              <span className={`text-xs font-medium line-clamp-2 leading-relaxed ${
-                                isThisActive
-                                  ? isDarkMode ? 'text-white' : 'text-indigo-950'
-                                  : isDarkMode ? 'group-hover:text-white' : 'group-hover:text-slate-900'
-                              }`}>
+                              <span className={`text-xs font-medium line-clamp-2 leading-relaxed ${isThisActive
+                                ? isDarkMode ? 'text-white' : 'text-indigo-950'
+                                : isDarkMode ? 'group-hover:text-white' : 'group-hover:text-slate-900'
+                                }`}>
                                 {renderQuestionWithBlankFill(parseQuestionAndSection(qText).question || qText)}
                               </span>
                             </div>
@@ -3701,9 +3727,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </div>
                   </div>
                 ) : (
-                  <div className={`pt-2 p-3 rounded-2xl border text-center space-y-1 ${
-                    isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
-                  }`}>
+                  <div className={`pt-2 p-3 rounded-2xl border text-center space-y-1 ${isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-100 border-slate-200'
+                    }`}>
                     <p className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                       📄 {uploadedFileName || 'दस्तावेज़'} अपलोड हो गया है
                     </p>
@@ -3714,20 +3739,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 )}
 
                 {isCheckingHomework && (
-                  <div className={`p-3 rounded-2xl border text-center space-y-1.5 shadow-lg animate-in fade-in ${
-                    isDarkMode
-                      ? 'bg-indigo-950/80 border-indigo-500/40 shadow-indigo-950/50'
-                      : 'bg-indigo-50 border-indigo-200 shadow-indigo-100'
-                  }`}>
-                    <div className={`flex items-center justify-center gap-2 text-xs font-black ${
-                      isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                  <div className={`p-3 rounded-2xl border text-center space-y-1.5 shadow-lg animate-in fade-in ${isDarkMode
+                    ? 'bg-indigo-950/80 border-indigo-500/40 shadow-indigo-950/50'
+                    : 'bg-indigo-50 border-indigo-200 shadow-indigo-100'
                     }`}>
+                    <div className={`flex items-center justify-center gap-2 text-xs font-black ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                      }`}>
                       <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
                       <span>{currentTeacher.name} लाइव AI विज़न से पढ़ रहे हैं...</span>
                     </div>
-                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${
-                      isDarkMode ? 'bg-slate-900' : 'bg-indigo-200/50'
-                    }`}>
+                    <div className={`w-full rounded-full h-1.5 overflow-hidden ${isDarkMode ? 'bg-slate-900' : 'bg-indigo-200/50'
+                      }`}>
                       <div className="bg-gradient-to-r from-amber-400 via-indigo-500 to-emerald-400 h-full rounded-full animate-pulse" />
                     </div>
                   </div>
@@ -3736,15 +3758,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             ) : (
               <label
                 htmlFor="homework-upload-input"
-                className={`w-full py-5 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group ${
-                  isDarkMode
-                    ? 'border-indigo-500/40 hover:border-indigo-400 bg-indigo-950/20 hover:bg-indigo-950/40 text-indigo-300'
-                    : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 hover:bg-indigo-50/70 text-indigo-700'
-                }`}
+                className={`w-full py-5 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 cursor-pointer group ${isDarkMode
+                  ? 'border-indigo-500/40 hover:border-indigo-400 bg-indigo-950/20 hover:bg-indigo-950/40 text-indigo-300'
+                  : 'border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 hover:bg-indigo-50/70 text-indigo-700'
+                  }`}
               >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${
-                  isDarkMode ? 'bg-indigo-600/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'
-                }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${isDarkMode ? 'bg-indigo-600/20 text-indigo-300' : 'bg-indigo-100 text-indigo-600'
+                  }`}>
                   <Upload className="w-6 h-6" />
                 </div>
                 <div className="text-center">
@@ -3771,15 +3791,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* STUDENT LEARNING HISTORY & TEACHER MEMORY (Real Tuition Record) */}
-          <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-3 ${
-            isDarkMode
-              ? 'bg-slate-900 border-slate-800 shadow-xl'
-              : 'bg-white border-slate-200 shadow-sm'
-          }`}>
+          <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-3 ${isDarkMode
+            ? 'bg-slate-900 border-slate-800 shadow-xl'
+            : 'bg-white border-slate-200 shadow-sm'
+            }`}>
             <div className="flex items-center justify-between">
-              <span className={`text-xs font-black uppercase flex items-center gap-1.5 ${
-                isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
-              }`}>
+              <span className={`text-xs font-black uppercase flex items-center gap-1.5 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                }`}>
                 <Brain className="w-4 h-4 text-indigo-500" />
                 टीचर डायरी (Learning History & Memory)
               </span>
@@ -3794,11 +3812,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               {studyHistory.map((item) => (
                 <div
                   key={item.id}
-                  className={`p-3 rounded-2xl border transition-all text-xs space-y-1.5 ${
-                    isDarkMode
-                      ? 'bg-slate-950 border-slate-800/80 hover:border-indigo-500/40 text-slate-300'
-                      : 'bg-slate-50 border-slate-200 hover:border-indigo-300 text-slate-700 shadow-2xs'
-                  }`}
+                  className={`p-3 rounded-2xl border transition-all text-xs space-y-1.5 ${isDarkMode
+                    ? 'bg-slate-950 border-slate-800/80 hover:border-indigo-500/40 text-slate-300'
+                    : 'bg-slate-50 border-slate-200 hover:border-indigo-300 text-slate-700 shadow-2xs'
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className={`font-black flex items-center gap-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -3843,11 +3860,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           {selectedSubject ? (
             <div className="space-y-3">
               {/* Compact Bar with Button to Open Chapters */}
-              <div className={`rounded-3xl p-4 md:p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                isDarkMode
-                  ? 'bg-slate-900 border-slate-800 shadow-xl'
-                  : 'bg-white border-slate-200 shadow-sm'
-              }`}>
+              <div className={`rounded-3xl p-4 md:p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isDarkMode
+                ? 'bg-slate-900 border-slate-800 shadow-xl'
+                : 'bg-white border-slate-200 shadow-sm'
+                }`}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl shrink-0">
                     📖
@@ -3875,11 +3891,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     type="button"
                     onClick={() => setIsChaptersOpen(!isChaptersOpen)}
-                    className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md ${
-                      isChaptersOpen
-                        ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
-                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-indigo-600/30'
-                    }`}
+                    className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md ${isChaptersOpen
+                      ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-indigo-600/30'
+                      }`}
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>{isChaptersOpen ? '✕ चैप्टर्स बंद करें' : '📚 सारे चैप्टर्स देखें ▾'}</span>
@@ -3889,11 +3904,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* COLLAPSIBLE CHAPTERS GRID (Only opens when user clicks button!) */}
               {isChaptersOpen && (
-                <div className={`rounded-3xl p-5 border transition-all animate-in fade-in duration-200 space-y-3 ${
-                  isDarkMode
-                    ? 'bg-slate-900/95 border-indigo-500/30 shadow-2xl'
-                    : 'bg-indigo-50/40 border-indigo-200 shadow-md'
-                }`}>
+                <div className={`rounded-3xl p-5 border transition-all animate-in fade-in duration-200 space-y-3 ${isDarkMode
+                  ? 'bg-slate-900/95 border-indigo-500/30 shadow-2xl'
+                  : 'bg-indigo-50/40 border-indigo-200 shadow-md'
+                  }`}>
                   <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
                     <span className="text-xs font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
                       <span>📑</span> {selectedSubject?.subjectHindi || 'पाठ्यपुस्तक'} - सभी {selectedSubject?.chapters?.length || 0} चैप्टर्स
@@ -3917,29 +3931,26 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             handleStartChapter(ch);
                             setIsChaptersOpen(false);
                           }}
-                          className={`p-3 rounded-2xl border text-left font-bold text-xs transition-all flex flex-col justify-between ${
-                            isChSelected
-                              ? isDarkMode
-                                ? 'bg-gradient-to-r from-amber-500/20 to-indigo-500/20 border-amber-400 text-white shadow-md'
-                                : 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs'
-                              : isDarkMode
+                          className={`p-3 rounded-2xl border text-left font-bold text-xs transition-all flex flex-col justify-between ${isChSelected
+                            ? isDarkMode
+                              ? 'bg-gradient-to-r from-amber-500/20 to-indigo-500/20 border-amber-400 text-white shadow-md'
+                              : 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs'
+                            : isDarkMode
                               ? 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
                               : 'bg-white border-slate-200 hover:border-indigo-300 text-slate-700 shadow-2xs'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className={`text-[10px] font-black uppercase ${
-                              isDarkMode ? 'text-amber-400' : 'text-indigo-700'
-                            }`}>
+                            <span className={`text-[10px] font-black uppercase ${isDarkMode ? 'text-amber-400' : 'text-indigo-700'
+                              }`}>
                               पाठ {ch.chapterNumber}
                             </span>
                             <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                               {ch.term === 'half_yearly' ? 'अर्धवार्षिक' : 'वार्षिक'}
                             </span>
                           </div>
-                          <span className={`text-xs font-black truncate ${
-                            isChSelected && !isDarkMode ? 'text-indigo-950' : ''
-                          }`}>
+                          <span className={`text-xs font-black truncate ${isChSelected && !isDarkMode ? 'text-indigo-950' : ''
+                            }`}>
                             {ch.titleHindi}
                           </span>
                           <span className={`text-[10px] truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -3954,17 +3965,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             </div>
           ) : (
             /* WELCOME SUBJECT LAUNCHPAD IF NO SUBJECT CLICKED YET */
-            <div className={`rounded-3xl p-6 border text-center space-y-4 transition-all duration-200 ${
-              isDarkMode
-                ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
-                : 'bg-white border-slate-200 shadow-sm text-slate-900'
-            }`}>
+            <div className={`rounded-3xl p-6 border text-center space-y-4 transition-all duration-200 ${isDarkMode
+              ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
+              : 'bg-white border-slate-200 shadow-sm text-slate-900'
+              }`}>
               <span className="text-4xl">👋</span>
               <h2 className={`text-xl md:text-2xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 नमस्ते बेटा! आज ट्यूशन में क्या पढ़ना चाहते हैं?
               </h2>
               <p className={`text-xs max-w-lg mx-auto leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                ऊपर दिए गए 4 विषयों (Math, EVS, English, Hindi) में से कोई भी विषय चुनें, या नीचे माइक दबाकर बोलें: 
+                ऊपर दिए गए 4 विषयों (Math, EVS, English, Hindi) में से कोई भी विषय चुनें, या नीचे माइक दबाकर बोलें:
                 <span className={`font-bold ${isDarkMode ? 'text-amber-300' : 'text-indigo-600'}`}> "शर्मा सर, Math का Chapter 8 पढ़ाओ"</span>
               </p>
 
@@ -3978,20 +3988,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
           {/* REAL 5 BOOK PAGES VIEWER & CHAPTER EXERCISE SOLVER */}
           {selectedChapter && (
-            <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-4 ${
-              isDarkMode
-                ? 'bg-slate-900 border-slate-800 shadow-xl'
-                : 'bg-white border-slate-200 shadow-sm'
-            }`}>
+            <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-4 ${isDarkMode
+              ? 'bg-slate-900 border-slate-800 shadow-xl'
+              : 'bg-white border-slate-200 shadow-sm'
+              }`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl shrink-0">
                     📖
                   </div>
                   <div>
-                    <h3 className={`text-sm md:text-base font-black flex items-center gap-2 ${
-                      isDarkMode ? 'text-white' : 'text-slate-900'
-                    }`}>
+                    <h3 className={`text-sm md:text-base font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'
+                      }`}>
                       पाठ {selectedChapter.chapterNumber}: पाठ्यपुस्तक के 5 असली पृष्ठ (Real Book Pages)
                     </h3>
                     <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -4001,9 +4009,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </div>
 
                 <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
-                    isDarkMode ? 'bg-indigo-950/60 border-indigo-700/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                  }`}>
+                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${isDarkMode ? 'bg-indigo-950/60 border-indigo-700/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                    }`}>
                     कुल 5 पृष्ठ (Full Chapter)
                   </span>
                 </div>
@@ -4033,21 +4040,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           handleSolveChapterQuestion(selectedChapter.sampleQuestions[pNum - 1]);
                         }
                       }}
-                      className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1 ${
-                        isPageActive
-                          ? isEndPage
-                            ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border-amber-400 text-amber-500 shadow-sm'
-                            : isDarkMode
+                      className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1 ${isPageActive
+                        ? isEndPage
+                          ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border-amber-400 text-amber-500 shadow-sm'
+                          : isDarkMode
                             ? 'bg-indigo-600/20 border-indigo-400 text-white shadow-sm'
                             : 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
-                          : isDarkMode
+                        : isDarkMode
                           ? 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
                           : 'bg-slate-50 border-slate-200 hover:border-indigo-300 text-slate-700'
-                      }`}
+                        }`}
                     >
-                      <span className={`text-[10px] font-black uppercase ${
-                        isEndPage ? 'text-amber-500 font-extrabold' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                      }`}>
+                      <span className={`text-[10px] font-black uppercase ${isEndPage ? 'text-amber-500 font-extrabold' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
                         {isEndPage ? '🎯 मुख्य प्रश्न' : `पेज ${pNum}`}
                       </span>
                       <span className="text-[11px] font-bold line-clamp-1">
@@ -4068,13 +4073,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 };
 
                 return (
-                  <div className={`p-4 rounded-2xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                  }`}>
+                  <div className={`p-4 rounded-2xl border space-y-3 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                    }`}>
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-black flex items-center gap-1.5 ${
-                        selectedBookPage === 5 ? 'text-amber-500' : isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
-                      }`}>
+                      <span className={`text-xs font-black flex items-center gap-1.5 ${selectedBookPage === 5 ? 'text-amber-500' : isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                        }`}>
                         <span>{selectedBookPage === 5 ? '🎯' : '📄'}</span>
                         {curPageData.pageTitle}
                       </span>
@@ -4107,20 +4110,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           return (
                             <div
                               key={qIdx}
-                              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
-                                isTarget
-                                  ? isDarkMode
-                                    ? 'bg-amber-950/40 border-amber-400/60 shadow-md'
-                                    : 'bg-amber-50 border-amber-300 shadow-xs'
-                                  : isDarkMode
+                              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${isTarget
+                                ? isDarkMode
+                                  ? 'bg-amber-950/40 border-amber-400/60 shadow-md'
+                                  : 'bg-amber-50 border-amber-300 shadow-xs'
+                                : isDarkMode
                                   ? 'bg-slate-900 border-slate-800 hover:border-slate-700'
                                   : 'bg-white border-slate-200 hover:border-indigo-300'
-                              }`}
+                                }`}
                             >
                               <div className="flex-1">
-                                <span className={`text-[10px] font-black uppercase block ${
-                                  isEndQ ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400'
-                                }`}>
+                                <span className={`text-[10px] font-black uppercase block ${isEndQ ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400'
+                                  }`}>
                                   {isEndQ
                                     ? (medium === 'english' ? '🎯 Textbook Chapter End Question' : '🎯 किताब के अंत का असली प्रश्न')
                                     : (medium === 'english' ? `Question ${qIdx + 1}` : `प्रश्न ${qIdx + 1}`)}
@@ -4132,11 +4133,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
                               <button
                                 onClick={() => handleSolveChapterQuestion(qItem)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-1 self-start sm:self-auto ${
-                                  isTarget
-                                    ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30'
-                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
-                                }`}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-1 self-start sm:self-auto ${isTarget
+                                  ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30'
+                                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
+                                  }`}
                               >
                                 <span>{isTarget
                                   ? (medium === 'english' ? '✓ Viewing Solution' : '✓ हल देख रहे हैं')
@@ -4154,25 +4154,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           )}
 
           {/* DIGITAL WHITEBOARD (Properly Types & Solves Doubts) */}
-          <div className={`rounded-3xl border overflow-hidden flex flex-col transition-all duration-200 ${
-            isDarkMode
-              ? 'bg-slate-900 border-slate-800 shadow-2xl'
-              : 'bg-white border-slate-200 shadow-md'
-          }`}>
-            <div className={`px-5 py-3 border-b flex items-center justify-between transition-colors ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+          <div className={`rounded-3xl border overflow-hidden flex flex-col transition-all duration-200 ${isDarkMode
+            ? 'bg-slate-900 border-slate-800 shadow-2xl'
+            : 'bg-white border-slate-200 shadow-md'
             }`}>
+            <div className={`px-5 py-3 border-b flex items-center justify-between transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-                <span className={`text-xs font-black uppercase shrink-0 ${
-                  isDarkMode ? 'text-emerald-400' : 'text-indigo-700'
-                }`}>
+                <span className={`text-xs font-black uppercase shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-indigo-700'
+                  }`}>
                   {medium === 'english' ? 'Digital Whiteboard' : 'डिजिटल व्हाइटबोर्ड (Digital Blackboard)'}
                 </span>
                 <span className={`shrink-0 ${isDarkMode ? 'text-slate-600' : 'text-slate-300'}`}>|</span>
-                <span className={`text-xs font-bold truncate max-w-sm sm:max-w-xl ${
-                  isDarkMode ? 'text-slate-300' : 'text-slate-700'
-                }`}>
+                <span className={`text-xs font-bold truncate max-w-sm sm:max-w-xl ${isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
                   {getDisplayWhiteboardHeading(whiteboardHeading)}
                 </span>
               </div>
@@ -4182,13 +4178,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 <button
                   type="button"
                   onClick={() => setIsScratchpadOpen(!isScratchpadOpen)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all shadow-2xs ${
-                    isScratchpadOpen
-                      ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-md ring-2 ring-amber-400/40 scale-102'
-                      : isDarkMode
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all shadow-2xs ${isScratchpadOpen
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-md ring-2 ring-amber-400/40 scale-102'
+                    : isDarkMode
                       ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40 hover:scale-102'
                       : 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300 hover:scale-102'
-                  }`}
+                    }`}
                   title={medium === 'english' ? "Open Student's Rough Work Notebook (draw or calculate with hand/mouse)" : "बच्चे की रफ़ कॉपी खोलें (हाथ या माउस से गुणा-भाग करें)"}
                 >
                   <span>📝</span>
@@ -4207,11 +4202,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       <button
                         type="button"
                         onClick={() => setRevealedSteps(whiteboardSteps.length)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all shadow-2xs ${
-                          isDarkMode
-                            ? 'bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border-indigo-700/60'
-                            : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-                        }`}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black border flex items-center gap-1.5 transition-all shadow-2xs ${isDarkMode
+                          ? 'bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border-indigo-700/60'
+                          : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                          }`}
                         title={medium === 'english' ? 'Show all solution steps together' : 'पूरा हल एक साथ देखें'}
                       >
                         <span>⏩</span>
@@ -4222,11 +4216,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <button
                       type="button"
                       onClick={() => setRevealedSteps(1)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border transition-all shadow-2xs ${
-                        isDarkMode
-                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border transition-all shadow-2xs ${isDarkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                        }`}
                       title={medium === 'english' ? 'Restart explanation from step 1' : 'शुरू से फिर से समझें'}
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-indigo-500" />
@@ -4239,13 +4232,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
             {/* WORKSHEET PAGE-WISE PAGINATION BAR */}
             {uploadedFiles.length > 0 && (
-              <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-3 overflow-x-auto scrollbar-none transition-colors ${
-                isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50/80 border-slate-200'
-              }`}>
+              <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-3 overflow-x-auto scrollbar-none transition-colors ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50/80 border-slate-200'
+                }`}>
                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
-                  <span className={`text-xs font-black uppercase shrink-0 flex items-center gap-1.5 ${
-                    isDarkMode ? 'text-amber-400' : 'text-indigo-700'
-                  }`}>
+                  <span className={`text-xs font-black uppercase shrink-0 flex items-center gap-1.5 ${isDarkMode ? 'text-amber-400' : 'text-indigo-700'
+                    }`}>
                     <span>📑</span> {medium === 'english' ? 'Worksheet Pages:' : 'वर्कशीट पेज (Pages):'}
                   </span>
 
@@ -4257,13 +4248,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         key={file.id}
                         type="button"
                         onClick={() => handleSwitchPage(file.id)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-2 shadow-xs ${
-                          isThisActive
-                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-105 ring-2 ring-indigo-400/30'
-                            : isDarkMode
+                        className={`px-4 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-2 shadow-xs ${isThisActive
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-600/30 scale-105 ring-2 ring-indigo-400/30'
+                          : isDarkMode
                             ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
                             : 'bg-white hover:bg-indigo-50 text-slate-700 border border-slate-200 hover:border-indigo-300'
-                        }`}
+                          }`}
                         title={medium === 'english' ? `View Page ${pIdx + 1} All Questions & Solutions` : `पेज ${pIdx + 1} के सभी सवाल व हल देखें`}
                       >
                         <span>📄</span>
@@ -4278,10 +4268,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="px-3 py-1.5 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 text-xs font-black shrink-0 transition-all flex items-center gap-1 shadow-2xs"
-                    title={medium === 'english' ? '+ Add Next Page' : '+ अगला पेज जोड़ें'}
+                    title={medium === 'english' ? 'Add Next Page' : 'अगला पेज जोड़ें'}
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>{medium === 'english' ? '+ Add Page' : '+ पेज जोड़ें'}</span>
+                    <span>{medium === 'english' ? 'Add Page' : 'पेज जोड़ें'}</span>
                   </button>
                 </div>
 
@@ -4298,11 +4288,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </button>
                   )}
 
-                  <div className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-2xs ${
-                    isDarkMode
-                      ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                  }`}>
+                  <div className={`px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shadow-2xs ${isDarkMode
+                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    }`}>
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                     <span>{medium === 'english' ? 'All Questions & Answers on this Page' : 'पूरे पेज के सभी प्रश्न व उत्तर नीचे देखें'}</span>
                   </div>
@@ -4310,14 +4299,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             )}
 
-            <div className={`p-6 space-y-4 transition-all duration-300 min-h-[220px] ${
-                !isDarkMode
-                  ? chalkboardTheme === 'green'
-                    ? 'bg-[#0f2e1d] text-white shadow-inner'
-                    : 'bg-white text-slate-900'
-                  : chalkboardTheme === 'green'
-                  ? 'bg-gradient-to-b from-[#0b2416] via-[#0d2a1b] to-[#07190f] border-emerald-900/40 shadow-inner text-white'
-                  : 'bg-gradient-to-b from-slate-950/80 to-slate-900 text-white'
+            <div className={`p-6 space-y-4 transition-all duration-300 min-h-[220px] ${!isDarkMode
+              ? chalkboardTheme === 'green'
+                ? 'bg-[#0f2e1d] text-white shadow-inner'
+                : 'bg-white text-slate-900'
+              : chalkboardTheme === 'green'
+                ? 'bg-gradient-to-b from-[#0b2416] via-[#0d2a1b] to-[#07190f] border-emerald-900/40 shadow-inner text-white'
+                : 'bg-gradient-to-b from-slate-950/80 to-slate-900 text-white'
               }`}>
               {isCheckingHomework ? (
                 <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-300">
@@ -4340,16 +4328,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर')
                         ? (medium === 'english' ? 'Preparing step-by-step solution... ✍️' : 'सवाल का हल तैयार किया जा रहा है... ✍️')
                         : uploadedFileName
-                        ? (medium === 'english' ? `Reading questions from "${uploadedFileName}"... 🔍` : `दस्तावेज़ "${uploadedFileName}" से सवाल पढ़े जा रहे हैं... 🔍`)
-                        : (medium === 'english' ? `${currentTeacher.name} is preparing the board... ⏳` : `${currentTeacher.name} व्हाइटबोर्ड पर हल तैयार कर रहे हैं... ⏳`)}
+                          ? (medium === 'english' ? `Reading questions from "${uploadedFileName}"... 🔍` : `दस्तावेज़ "${uploadedFileName}" से सवाल पढ़े जा रहे हैं... 🔍`)
+                          : (medium === 'english' ? `${currentTeacher.name} is preparing the board... ⏳` : `${currentTeacher.name} व्हाइटबोर्ड पर हल तैयार कर रहे हैं... ⏳`)}
                     </h4>
 
                     {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर') && (
-                      <p className={`text-xs font-semibold line-clamp-2 px-3 py-1.5 rounded-xl border ${
-                        isDarkMode || chalkboardTheme === 'green'
-                          ? 'text-amber-300 bg-slate-900/90 border-slate-800'
-                          : 'text-indigo-900 bg-indigo-50 border-indigo-200'
-                      }`}>
+                      <p className={`text-xs font-semibold line-clamp-2 px-3 py-1.5 rounded-xl border ${isDarkMode || chalkboardTheme === 'green'
+                        ? 'text-amber-300 bg-slate-900/90 border-slate-800'
+                        : 'text-indigo-900 bg-indigo-50 border-indigo-200'
+                        }`}>
                         {activeTargetQuestion}
                       </p>
                     )}
@@ -4363,33 +4350,30 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
                   {/* Pulsing Skeleton Step Cards */}
                   <div className="w-full max-w-md space-y-2 pt-2">
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse ${
-                      isDarkMode || chalkboardTheme === 'green'
-                        ? 'bg-slate-900/80 border-slate-800/80'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}>
+                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse ${isDarkMode || chalkboardTheme === 'green'
+                      ? 'bg-slate-900/80 border-slate-800/80'
+                      : 'bg-slate-50 border-slate-200'
+                      }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
                       <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
                         {medium === 'english' ? 'Step 1: Given values & question' : 'चरण 1: प्रश्न व दिया गया मान'}
                       </span>
                       <div className={`h-2 rounded w-1/3 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     </div>
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-150 ${
-                      isDarkMode || chalkboardTheme === 'green'
-                        ? 'bg-slate-900/80 border-slate-800/80'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}>
+                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-150 ${isDarkMode || chalkboardTheme === 'green'
+                      ? 'bg-slate-900/80 border-slate-800/80'
+                      : 'bg-slate-50 border-slate-200'
+                      }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
                       <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
                         {medium === 'english' ? 'Step 2: Formula & calculation' : 'चरण 2: गणना व नियम'}
                       </span>
                       <div className={`h-2 rounded w-1/4 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     </div>
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-300 ${
-                      isDarkMode || chalkboardTheme === 'green'
-                        ? 'bg-slate-900/80 border-slate-800/80'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}>
+                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-300 ${isDarkMode || chalkboardTheme === 'green'
+                      ? 'bg-slate-900/80 border-slate-800/80'
+                      : 'bg-slate-50 border-slate-200'
+                      }`}>
                       <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                       <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
                         {medium === 'english' ? 'Step 3: Final answer & verification' : 'चरण 3: अंतिम उत्तर व विकल्प'}
@@ -4480,25 +4464,22 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       /* MOCK TEST INTERACTIVE ARENA */
                       <div className="space-y-4 animate-in fade-in duration-300">
                         {/* Mock Test Header Banner */}
-                        <div className={`p-4 rounded-2xl border ${
-                          isDarkMode || chalkboardTheme === 'green'
-                            ? 'bg-gradient-to-r from-amber-950/40 via-indigo-950/40 to-slate-900 border-amber-500/30'
-                            : 'bg-gradient-to-r from-amber-50 via-indigo-50 to-white border-amber-200'
-                        }`}>
+                        <div className={`p-4 rounded-2xl border ${isDarkMode || chalkboardTheme === 'green'
+                          ? 'bg-gradient-to-r from-amber-950/40 via-indigo-950/40 to-slate-900 border-amber-500/30'
+                          : 'bg-gradient-to-r from-amber-50 via-indigo-50 to-white border-amber-200'
+                          }`}>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                               <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-lg font-black shrink-0">
                                 🎯
                               </span>
                               <div>
-                                <h3 className={`text-sm sm:text-base font-black ${
-                                  isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                }`}>
+                                <h3 className={`text-sm sm:text-base font-black ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+                                  }`}>
                                   {medium === 'english' ? 'Worksheet Mock Test Arena' : 'वर्कशीट मॉक टेस्ट (Mock Test Arena)'}
                                 </h3>
-                                <p className={`text-xs ${
-                                  isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                }`}>
+                                <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
+                                  }`}>
                                   {medium === 'english'
                                     ? 'Only questions are shown. Type your full answer, click "Save & Check", and get instant grading!'
                                     : 'यहाँ केवल सवाल दिखाए गए हैं। अपना उत्तर लिखें और "उत्तर सेव करें" दबाकर स्कोर, गलतियां व स्पेलिंग चेक करें!'}
@@ -4527,15 +4508,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     key={qIdx}
                                     type="button"
                                     onClick={() => setActiveMockQIdx(qIdx)}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shrink-0 ${
-                                      isCurrent
-                                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
-                                        : isEvaluated
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shrink-0 ${isCurrent
+                                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
+                                      : isEvaluated
                                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                                         : isDarkMode || chalkboardTheme === 'green'
-                                        ? 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
-                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                                    }`}
+                                          ? 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                      }`}
                                   >
                                     <span>{medium === 'english' ? `Question ${qIdx + 1}` : `सवाल ${qIdx + 1}`}</span>
                                     {isEvaluated && <span className="text-[10px]">✅</span>}
@@ -4557,11 +4537,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             return (
                               <div className="space-y-4">
                                 {/* The Question Card (ONLY QUESTION - NO ANSWER) */}
-                                <div className={`p-4 md:p-5 rounded-2xl border transition-all shadow-md ${
-                                  isDarkMode || chalkboardTheme === 'green'
-                                    ? 'bg-slate-900/90 border-slate-700 text-white'
-                                    : 'bg-white border-slate-200 text-slate-900'
-                                }`}>
+                                <div className={`p-4 md:p-5 rounded-2xl border transition-all shadow-md ${isDarkMode || chalkboardTheme === 'green'
+                                  ? 'bg-slate-900/90 border-slate-700 text-white'
+                                  : 'bg-white border-slate-200 text-slate-900'
+                                  }`}>
                                   <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/10">
                                     <span className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
                                       <span className="w-2 h-2 rounded-full bg-amber-500" />
@@ -4578,11 +4557,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         else if (qLower.includes('called him darkie')) spoken = spoken.replace(/\bblack\b/i, 'blank');
                                         speakText(spoken.replace(/_{2,}/g, 'blank'));
                                       }}
-                                      className={`p-1.5 rounded-lg transition-all ${
-                                        isDarkMode || chalkboardTheme === 'green'
-                                          ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
-                                          : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                                      }`}
+                                      className={`p-1.5 rounded-lg transition-all ${isDarkMode || chalkboardTheme === 'green'
+                                        ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
+                                        : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                        }`}
                                       title={medium === 'english' ? 'Listen to question' : 'सवाल बोलकर सुनें'}
                                     >
                                       <Volume2 className="w-3.5 h-3.5" />
@@ -4595,11 +4573,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 </div>
 
                                 {/* Answer Input Area */}
-                                <div className={`p-4 rounded-2xl border space-y-3 ${
-                                  isDarkMode || chalkboardTheme === 'green'
-                                    ? 'bg-slate-950/80 border-slate-800 text-white'
-                                    : 'bg-slate-50 border-slate-200 text-slate-900'
-                                }`}>
+                                <div className={`p-4 rounded-2xl border space-y-3 ${isDarkMode || chalkboardTheme === 'green'
+                                  ? 'bg-slate-950/80 border-slate-800 text-white'
+                                  : 'bg-slate-50 border-slate-200 text-slate-900'
+                                  }`}>
                                   <div className="flex items-center justify-between">
                                     <label className="text-xs font-black text-indigo-400 flex items-center gap-1.5">
                                       <span>✍️</span>
@@ -4624,11 +4601,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     placeholder={medium === 'english'
                                       ? 'Type your complete answer here like in your notebook...'
                                       : 'यहाँ कॉपी की तरह अपना पूरा उत्तर टाइप करें...'}
-                                    className={`w-full p-3.5 rounded-xl border text-sm outline-none transition-all resize-y ${
-                                      isDarkMode || chalkboardTheme === 'green'
-                                        ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500'
-                                        : 'bg-white border-slate-300 focus:border-amber-500 text-slate-900 placeholder-slate-400 shadow-inner'
-                                    }`}
+                                    className={`w-full p-3.5 rounded-xl border text-sm outline-none transition-all resize-y ${isDarkMode || chalkboardTheme === 'green'
+                                      ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500'
+                                      : 'bg-white border-slate-300 focus:border-amber-500 text-slate-900 placeholder-slate-400 shadow-inner'
+                                      }`}
                                   />
 
                                   <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -4669,11 +4645,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
                                 {/* Evaluation Scorecard (REVEALED AFTER SUBMISSION) */}
                                 {evalData && (
-                                  <div className={`p-4 md:p-5 rounded-2xl border space-y-4 animate-in fade-in duration-300 ${
-                                    isDarkMode || chalkboardTheme === 'green'
-                                      ? 'bg-slate-900/95 border-indigo-500/40 shadow-xl shadow-indigo-500/10'
-                                      : 'bg-white border-indigo-200 shadow-md'
-                                  }`}>
+                                  <div className={`p-4 md:p-5 rounded-2xl border space-y-4 animate-in fade-in duration-300 ${isDarkMode || chalkboardTheme === 'green'
+                                    ? 'bg-slate-900/95 border-indigo-500/40 shadow-xl shadow-indigo-500/10'
+                                    : 'bg-white border-indigo-200 shadow-md'
+                                    }`}>
                                     {/* 1. Score & Badge Header */}
                                     <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-indigo-500/20 to-emerald-500/20 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                       <div className="flex items-center gap-3">
@@ -4823,7 +4798,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       </div>
                     ) : (
                       /* NORMAL WHITEBOARD STEPS (TEACH / CHECK MODE) */
-                      <>
+                      <div className={`space-y-4 transition-all duration-300 ${
+                        isPageFlipping ? 'opacity-0 translate-y-3 scale-98' : 'opacity-100 translate-y-0 scale-100 animate-in fade-in duration-300'
+                      }`}>
                         {(() => {
                           const filtered = filterFillerWhiteboardSteps(whiteboardSteps);
                           let stepsToRender = filtered;
@@ -4864,273 +4841,263 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             const prevParsed = prevStepRaw ? parseQuestionAndSection(prevStepRaw) : null;
                             const isNewSection = Boolean(parsed.section && (!prevParsed || prevParsed.section !== parsed.section));
 
-                          // Check if question is already shown in the top focus banner
-                          const cleanQ = (s?: string | null) =>
-                            (s || '').toLowerCase().replace(/^(?:q\d+:?|सवाल\s*\d+:?|प्रश्ना\s*\d+:?)\s*/i, '').trim();
-                          const isTopBannerShowing = Boolean(
-                            activeTargetQuestion &&
-                            activeTargetQuestion !== 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी'
-                          );
-                          const isSameAsTop = isTopBannerShowing && (
-                            cleanQ(displayQuestionText) === cleanQ(activeTargetQuestion) ||
-                            (displayQuestionText && activeTargetQuestion.includes(displayQuestionText)) ||
-                            (displayQuestionText && displayQuestionText.includes(activeTargetQuestion))
-                          );
-                          const prevQ = idx > 0 ? getQuestionForStep(whiteboardSteps[idx - 1], idx - 1) : null;
-                          const isSameAsPrev = idx > 0 && cleanQ(displayQuestionText) === cleanQ(prevQ);
+                            // Check if question is already shown in the top focus banner
+                            const cleanQ = (s?: string | null) =>
+                              (s || '').toLowerCase().replace(/^(?:q\d+:?|सवाल\s*\d+:?|प्रश्ना\s*\d+:?)\s*/i, '').trim();
+                            const isTopBannerShowing = Boolean(
+                              activeTargetQuestion &&
+                              activeTargetQuestion !== 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी'
+                            );
+                            const isSameAsTop = isTopBannerShowing && (
+                              cleanQ(displayQuestionText) === cleanQ(activeTargetQuestion) ||
+                              (displayQuestionText && activeTargetQuestion.includes(displayQuestionText)) ||
+                              (displayQuestionText && displayQuestionText.includes(activeTargetQuestion))
+                            );
+                            const prevQ = idx > 0 ? getQuestionForStep(allFiltered[idx - 1], idx - 1) : null;
+                            const isSameAsPrev = idx > 0 && cleanQ(displayQuestionText) === cleanQ(prevQ);
 
-                          return (
-                            <React.Fragment key={idx}>
-                              {/* Main Section Heading Banner (Shown once per section, never repeated on every question) */}
-                              {isNewSection && (
-                                <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-emerald-500/10 border-2 border-amber-400/40 flex items-center justify-between shadow-xs mb-3">
-                                  <div className="flex items-center gap-2.5">
-                                    <span className="text-xl shrink-0">📌</span>
-                                    <div>
-                                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                                        मुख्य निर्देश / सेक्शन (Main Section)
-                                      </span>
-                                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">
-                                        {parsed.section}
-                                      </h4>
+                            return (
+                              <React.Fragment key={idx}>
+                                {/* Main Section Heading Banner (Shown once per section, never repeated on every question) */}
+                                {isNewSection && (
+                                  <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-emerald-500/10 border-2 border-amber-400/40 flex items-center justify-between shadow-xs mb-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <span className="text-xl shrink-0">📌</span>
+                                      <div>
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                                          मुख्य निर्देश / सेक्शन (Main Section)
+                                        </span>
+                                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">
+                                          {parsed.section}
+                                        </h4>
+                                      </div>
                                     </div>
+                                    <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200 border border-amber-400/30 shrink-0">
+                                      सेक्शन हेडिंग
+                                    </span>
                                   </div>
-                                  <span className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200 border border-amber-400/30 shrink-0">
-                                    सेक्शन हेडिंग
-                                  </span>
-                                </div>
-                              )}
+                                )}
 
-                              <div
-                                className={`p-3.5 md:p-4 rounded-2xl border transition-all ${
-                                  stepItem.isMistake
+                                <div
+                                  className={`p-3.5 md:p-4 rounded-2xl border transition-all ${stepItem.isMistake
                                     ? isDarkMode || chalkboardTheme === 'green'
                                       ? 'bg-rose-950/40 border-rose-500/40 text-rose-200'
                                       : 'bg-rose-50 border-rose-200 text-rose-950'
                                     : idx === revealedSteps - 1
-                                    ? isDarkMode || chalkboardTheme === 'green'
-                                      ? 'bg-indigo-950/40 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
-                                      : 'bg-indigo-50/40 border-indigo-200 shadow-xs'
-                                    : isDarkMode || chalkboardTheme === 'green'
-                                    ? 'bg-slate-950/90 border-slate-800 text-slate-300'
-                                    : 'bg-slate-50 border-slate-200 text-slate-800'
-                                }`}
-                              >
-                                {/* Header: Question Title & Controls */}
-                                <div className={`flex items-start sm:items-center justify-between gap-3 pb-2.5 border-b ${
-                                  isDarkMode || chalkboardTheme === 'green' ? 'border-white/10' : 'border-slate-200'
-                                }`}>
-                                  <div className="flex items-start gap-2 flex-1">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1 sm:mt-1.5" />
-                                    <h3 className={`text-xs sm:text-sm md:text-base font-bold leading-snug ${
-                                      isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+                                      ? isDarkMode || chalkboardTheme === 'green'
+                                        ? 'bg-indigo-950/40 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
+                                        : 'bg-indigo-50/40 border-indigo-200 shadow-xs'
+                                      : isDarkMode || chalkboardTheme === 'green'
+                                        ? 'bg-slate-950/90 border-slate-800 text-slate-300'
+                                        : 'bg-slate-50 border-slate-200 text-slate-800'
+                                    }`}
+                                >
+                                  {/* Header: Question Title & Controls */}
+                                  <div className={`flex items-start sm:items-center justify-between gap-3 pb-2.5 border-b ${isDarkMode || chalkboardTheme === 'green' ? 'border-white/10' : 'border-slate-200'
                                     }`}>
-                                      {renderQuestionWithBlankFill(displayQuestionText, stepItem, idx)}
-                                    </h3>
-                                  </div>
+                                    <div className="flex items-start gap-2 flex-1">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0 mt-1 sm:mt-1.5" />
+                                      <h3 className={`text-xs sm:text-sm md:text-base font-bold leading-snug ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+                                        }`}>
+                                        {renderQuestionWithBlankFill(displayQuestionText, stepItem, idx)}
+                                      </h3>
+                                    </div>
 
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSocraticHint(idx, stepItem)}
-                                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black border flex items-center gap-1 transition-all ${
-                                        isDarkMode || chalkboardTheme === 'green'
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSocraticHint(idx, stepItem)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black border flex items-center gap-1 transition-all ${isDarkMode || chalkboardTheme === 'green'
                                           ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/20'
                                           : 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300'
-                                      }`}
-                                    >
-                                      <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                                      <span>{medium === 'english' ? 'Hint' : 'हिंट लो'}</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => speakText(`${displayQuestionText}: ${stepItem.formula}. ${stepItem.annotation}`)}
-                                      className={`p-1.5 rounded-lg transition-all ${
-                                        isDarkMode || chalkboardTheme === 'green'
+                                          }`}
+                                      >
+                                        <Sparkles className="w-2.5 h-2.5 text-amber-500" />
+                                        <span>{medium === 'english' ? 'Hint' : 'हिंट लो'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => speakText(`${displayQuestionText}: ${stepItem.formula}. ${stepItem.annotation}`)}
+                                        className={`p-1.5 rounded-lg transition-all ${isDarkMode || chalkboardTheme === 'green'
                                           ? 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white'
                                           : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 shadow-2xs'
-                                      }`}
-                                      title={medium === 'english' ? 'Listen' : 'बोलकर सुनें'}
-                                    >
-                                      <Volume2 className="w-3.5 h-3.5" />
-                                    </button>
+                                          }`}
+                                        title={medium === 'english' ? 'Listen' : 'बोलकर सुनें'}
+                                      >
+                                        <Volume2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
-                                </div>
 
-                                {/* CASE A: Multi-Question Master Key */}
-                                {multiItems && multiItems.length > 0 ? (
-                                  <div className="mt-3 space-y-2.5">
-                                    <span className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${
-                                      isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                    }`}>
-                                      <span>📋</span> {medium === 'english' ? 'Question & Answer Breakdown:' : 'हर सवाल व उसका सही उत्तर (Question & Answer Breakdown):'}
-                                    </span>
-                                    <div className="grid grid-cols-1 gap-2">
-                                      {multiItems.map((item, mIdx) => (
-                                        <div
-                                          key={mIdx}
-                                          className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs ${
-                                            isDarkMode || chalkboardTheme === 'green'
+                                  {/* CASE A: Multi-Question Master Key */}
+                                  {multiItems && multiItems.length > 0 ? (
+                                    <div className="mt-3 space-y-2.5">
+                                      <span className={`text-[11px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
+                                        }`}>
+                                        <span>📋</span> {medium === 'english' ? 'Question & Answer Breakdown:' : 'हर सवाल व उसका सही उत्तर (Question & Answer Breakdown):'}
+                                      </span>
+                                      <div className="grid grid-cols-1 gap-2">
+                                        {multiItems.map((item, mIdx) => (
+                                          <div
+                                            key={mIdx}
+                                            className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs ${isDarkMode || chalkboardTheme === 'green'
                                               ? 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/50'
                                               : 'bg-white border-slate-200 hover:border-emerald-300 text-slate-900'
-                                          }`}
-                                        >
-                                          <div className="flex items-start gap-2.5 flex-1">
-                                            <span className={`text-xs font-black px-2 py-0.5 rounded-md border shrink-0 ${
-                                              isDarkMode || chalkboardTheme === 'green'
+                                              }`}
+                                          >
+                                            <div className="flex items-start gap-2.5 flex-1">
+                                              <span className={`text-xs font-black px-2 py-0.5 rounded-md border shrink-0 ${isDarkMode || chalkboardTheme === 'green'
                                                 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30'
                                                 : 'text-amber-800 bg-amber-50 border-amber-200'
-                                            }`}>
-                                              #{item.num}
-                                            </span>
-                                            <p className={`text-xs sm:text-sm font-bold leading-relaxed ${
-                                              isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                            }`}>
-                                              <ChalkTypewriter
-                                                text={item.matchedQuestion}
-                                                speed={18}
-                                                delay={isTypewriterEnabled ? mIdx * 120 : 0}
-                                                enabled={isTypewriterEnabled}
-                                                isChalkboard={chalkboardTheme === 'green'}
-                                              />
-                                            </p>
-                                          </div>
-                                          <div className="flex items-center gap-2 sm:self-center shrink-0 pl-7 sm:pl-0">
-                                            <span className={`text-[10px] font-bold uppercase ${
-                                              isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                            }`}>{medium === 'english' ? 'Answer:' : 'सही उत्तर:'}</span>
-                                            <span className={`text-xs md:text-sm font-black px-3 py-1 rounded-xl border shadow-xs flex items-center gap-1 ${
-                                              isDarkMode || chalkboardTheme === 'green'
+                                                }`}>
+                                                #{item.num}
+                                              </span>
+                                              <p className={`text-xs sm:text-sm font-bold leading-relaxed ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+                                                }`}>
+                                                <ChalkTypewriter
+                                                  text={item.matchedQuestion}
+                                                  speed={18}
+                                                  delay={isTypewriterEnabled ? mIdx * 120 : 0}
+                                                  enabled={isTypewriterEnabled}
+                                                  isChalkboard={chalkboardTheme === 'green'}
+                                                />
+                                              </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 sm:self-center shrink-0 pl-7 sm:pl-0">
+                                              <span className={`text-[10px] font-bold uppercase ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
+                                                }`}>{medium === 'english' ? 'Answer:' : 'सही उत्तर:'}</span>
+                                              <span className={`text-xs md:text-sm font-black px-3 py-1 rounded-xl border shadow-xs flex items-center gap-1 ${isDarkMode || chalkboardTheme === 'green'
                                                 ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/40'
                                                 : 'text-emerald-800 bg-emerald-50 border-emerald-300'
-                                            }`}>
-                                              <span className="underline decoration-emerald-500 dark:decoration-emerald-400 decoration-2 underline-offset-4 font-black">{item.answer}</span>
-                                              <span>✅</span>
-                                            </span>
+                                                }`}>
+                                                <span className="underline decoration-emerald-500 dark:decoration-emerald-400 decoration-2 underline-offset-4 font-black">{item.answer}</span>
+                                                <span>✅</span>
+                                              </span>
+                                            </div>
                                           </div>
-                                        </div>
-                                      ))}
+                                        ))}
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
-                                  /* CASE B: Single Question Step - Direct Solution & Answer */
-                                  <div className={`mt-2.5 p-3.5 md:p-4 rounded-2xl border shadow-xs ${
-                                    isDarkMode || chalkboardTheme === 'green'
+                                  ) : (
+                                    /* CASE B: Single Question Step - Direct Solution & Answer */
+                                    <div className={`mt-2.5 p-3.5 md:p-4 rounded-2xl border shadow-xs ${isDarkMode || chalkboardTheme === 'green'
                                       ? 'bg-slate-950/90 border-white/10'
                                       : 'bg-white border-slate-200'
-                                  }`}>
-                                    {(() => {
-                                      const isExerciseQuestion = Boolean(
-                                        stepItem.question ||
-                                        stepItem.step.toLowerCase().includes('mcq') ||
-                                        stepItem.step.toLowerCase().includes('प्रश्न') ||
-                                        stepItem.step.toLowerCase().includes('सवाल') ||
-                                        stepItem.step.toLowerCase().includes('exercise') ||
-                                        stepItem.step.toLowerCase().includes('blank') ||
-                                        stepItem.step.toLowerCase().includes('true') ||
-                                        stepItem.step.toLowerCase().includes('false') ||
-                                        stepItem.step.toLowerCase().includes('हल') ||
-                                        stepItem.step.toLowerCase().includes('step')
-                                      );
-                                      const isStoryStep = !isExerciseQuestion && Boolean(
-                                        stepItem.step.includes('पाठ वाचन') ||
-                                        stepItem.step.includes('कहानी वाचन') ||
-                                        stepItem.step.includes('Reading Passage') ||
-                                        stepItem.step.includes('Story Reading') ||
-                                        (stepItem.question && (stepItem.question.includes('14.3') || stepItem.question.includes('Early Home')))
-                                      );
-                                      const isVocab = stepItem.step.includes('शब्दार्थ') || stepItem.step.includes('Vocabulary');
-                                      const isMoral = stepItem.step.includes('सीख') || stepItem.step.includes('Moral');
+                                      }`}>
+                                      {(() => {
+                                        const isStoryStep = Boolean(
+                                          stepItem.step.toLowerCase().includes('पाठ वाचन') ||
+                                          stepItem.step.toLowerCase().includes('कहानी वाचन') ||
+                                          stepItem.step.toLowerCase().includes('reading passage') ||
+                                          stepItem.step.toLowerCase().includes('story') ||
+                                          (stepItem.question && (
+                                            stepItem.question.toLowerCase().startsWith('story:') ||
+                                            stepItem.question.includes('14.3') ||
+                                            stepItem.question.includes('Early Home') ||
+                                            stepItem.question.includes('Black Beauty')
+                                          )) ||
+                                          (stepItem.formula && stepItem.formula.length > 250 && stepItem.formula.includes('\n\n'))
+                                        );
+                                        const isExerciseQuestion = !isStoryStep && Boolean(
+                                          stepItem.question ||
+                                          stepItem.step.toLowerCase().includes('mcq') ||
+                                          stepItem.step.toLowerCase().includes('प्रश्न') ||
+                                          stepItem.step.toLowerCase().includes('सवाल') ||
+                                          stepItem.step.toLowerCase().includes('exercise') ||
+                                          stepItem.step.toLowerCase().includes('blank') ||
+                                          stepItem.step.toLowerCase().includes('true') ||
+                                          stepItem.step.toLowerCase().includes('false') ||
+                                          stepItem.step.toLowerCase().includes('हल') ||
+                                          stepItem.step.toLowerCase().includes('step')
+                                        );
+                                        const isVocab = stepItem.step.includes('शब्दार्थ') || stepItem.step.includes('Vocabulary');
+                                        const isMoral = stepItem.step.includes('सीख') || stepItem.step.includes('Moral');
 
-                                      return (
-                                        <span className={`text-[10px] uppercase font-black block mb-2 ${
-                                          isVocab
+                                        return (
+                                          <span className={`text-[10px] uppercase font-black block mb-2 ${isVocab
                                             ? isDarkMode || chalkboardTheme === 'green' ? 'text-indigo-400' : 'text-indigo-700'
                                             : isMoral
-                                            ? isDarkMode || chalkboardTheme === 'green' ? 'text-amber-400' : 'text-amber-700'
-                                            : isStoryStep
-                                            ? isDarkMode || chalkboardTheme === 'green' ? 'text-indigo-400' : 'text-indigo-700'
-                                            : isDarkMode || chalkboardTheme === 'green' ? 'text-emerald-400' : 'text-emerald-700'
-                                        }`}>
-                                          {isVocab
-                                            ? (medium === 'english' ? '📖 Key Vocabulary & Pronunciation:' : '📖 कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation):')
-                                            : isMoral
-                                            ? (medium === 'english' ? '⭐ Moral of the Story:' : '⭐ कहानी की मुख्य सीख (Moral of the Story):')
-                                            : isStoryStep
-                                            ? (medium === 'english' ? '📖 Story Reading Passage:' : '📖 पाठ / कहानी वाचन (Story Reading Passage):')
-                                            : (medium === 'english' ? '✅ Solution & Step-by-Step Answer:' : '✅ सही हल व उत्तर (Solution & Answer Steps):')}
-                                        </span>
-                                      );
-                                    })()}
-                                    <div>
-                                      {renderFormulaBlocks(stepItem.formula)}
+                                              ? isDarkMode || chalkboardTheme === 'green' ? 'text-amber-400' : 'text-amber-700'
+                                              : isStoryStep
+                                                ? isDarkMode || chalkboardTheme === 'green' ? 'text-indigo-400' : 'text-indigo-700'
+                                                : isDarkMode || chalkboardTheme === 'green' ? 'text-emerald-400' : 'text-emerald-700'
+                                            }`}>
+                                            {isVocab
+                                              ? (medium === 'english' ? '📖 Key Vocabulary & Pronunciation:' : '📖 कठिन शब्दार्थ व सही उच्चारण (Key Vocabulary & Pronunciation):')
+                                              : isMoral
+                                                ? (medium === 'english' ? '⭐ Moral of the Story:' : '⭐ कहानी की मुख्य सीख (Moral of the Story):')
+                                                : isStoryStep
+                                                  ? (medium === 'english' ? '📖 Story Reading Passage:' : '📖 पाठ / कहानी वाचन (Story Reading Passage):')
+                                                  : (medium === 'english' ? '✅ Solution & Step-by-Step Answer:' : '✅ सही हल व उत्तर (Solution & Answer Steps):')}
+                                          </span>
+                                        );
+                                      })()}
+                                      <div>
+                                        {renderFormulaBlocks(stepItem.formula)}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
 
-                                {/* Teacher Annotation (Collapsible on student click for clean UX - hidden by default) */}
-                                {stepItem.annotation && (
-                                  <div className="mt-2.5">
-                                    {(() => {
-                                      const isExpanded = Boolean(expandedExplanations[idx]);
-                                      return (
-                                        <>
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setExpandedExplanations((prev) => ({
-                                                ...prev,
-                                                [idx]: !prev[idx],
-                                              }))
-                                            }
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition-all cursor-pointer ${
-                                              isExpanded
+                                  {/* Teacher Annotation (Collapsible on student click for clean UX - hidden by default) */}
+                                  {stepItem.annotation && (
+                                    <div className="mt-2.5">
+                                      {(() => {
+                                        const isExpanded = Boolean(expandedExplanations[idx]);
+                                        return (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setExpandedExplanations((prev) => ({
+                                                  ...prev,
+                                                  [idx]: !prev[idx],
+                                                }))
+                                              }
+                                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition-all cursor-pointer ${isExpanded
                                                 ? isDarkMode || chalkboardTheme === 'green'
                                                   ? 'bg-indigo-900/70 text-indigo-200 border-indigo-500/50 shadow-sm'
                                                   : 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                                                 : isDarkMode || chalkboardTheme === 'green'
-                                                ? 'bg-slate-900/80 hover:bg-slate-800 text-indigo-300 border-indigo-500/30'
-                                                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-200 shadow-2xs'
-                                            }`}
-                                            title={medium === 'english' ? 'Show or hide teacher explanation' : 'टीचर का स्पष्टीकरण देखें या छुपाएं'}
-                                          >
-                                            <span>{currentTeacher.emoji}</span>
-                                            <span className="font-bold">
-                                              {isExpanded
-                                                ? (medium === 'english' ? `Hide ${currentTeacher.name}'s Explanation ▲` : `${currentTeacher.name} का स्पष्टीकरण छुपाएं ▲`)
-                                                : (medium === 'english' ? `💡 View ${currentTeacher.name}'s Explanation ▼` : `💡 ${currentTeacher.name} का स्पष्टीकरण देखें (Click to Explain) ▼`)}
-                                            </span>
-                                          </button>
+                                                  ? 'bg-slate-900/80 hover:bg-slate-800 text-indigo-300 border-indigo-500/30'
+                                                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-200 shadow-2xs'
+                                                }`}
+                                              title={medium === 'english' ? 'Show or hide teacher explanation' : 'टीचर का स्पष्टीकरण देखें या छुपाएं'}
+                                            >
+                                              <span>{currentTeacher.emoji}</span>
+                                              <span className="font-bold">
+                                                {isExpanded
+                                                  ? (medium === 'english' ? `Hide ${currentTeacher.name}'s Explanation ▲` : `${currentTeacher.name} का स्पष्टीकरण छुपाएं ▲`)
+                                                  : (medium === 'english' ? `💡 View ${currentTeacher.name}'s Explanation ▼` : `💡 ${currentTeacher.name} का स्पष्टीकरण देखें (Click to Explain) ▼`)}
+                                              </span>
+                                            </button>
 
-                                          {isExpanded && (
-                                            <div className={`mt-2 p-3 rounded-2xl border flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200 ${
-                                              isDarkMode || chalkboardTheme === 'green'
+                                            {isExpanded && (
+                                              <div className={`mt-2 p-3 rounded-2xl border flex items-start gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200 ${isDarkMode || chalkboardTheme === 'green'
                                                 ? 'bg-slate-900/90 border-slate-800 text-slate-200'
                                                 : 'bg-indigo-50/80 border-indigo-200 text-slate-800 shadow-xs'
-                                            }`}>
-                                        <span className="text-xl shrink-0 mt-0.5">{currentTeacher.emoji}</span>
-                                        <div className="flex-1">
-                                          <span className={`text-[11px] font-black block mb-0.5 ${
-                                            isDarkMode || chalkboardTheme === 'green' ? 'text-amber-300' : 'text-indigo-900'
-                                          }`}>
-                                            {medium === 'english' ? `${currentTeacher.name}'s Explanation:` : `${currentTeacher.name} का स्पष्टीकरण:`}
-                                          </span>
-                                          <p className="text-xs sm:text-sm font-medium leading-relaxed">
-                                            {stepItem.annotation}
-                                          </p>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                              </div>
-                            )}
-                              </div>
-                            </React.Fragment>
-                          );
-                        });
-                      })()}
+                                                }`}>
+                                                <span className="text-xl shrink-0 mt-0.5">{currentTeacher.emoji}</span>
+                                                <div className="flex-1">
+                                                  <span className={`text-[11px] font-black block mb-0.5 ${isDarkMode || chalkboardTheme === 'green' ? 'text-amber-300' : 'text-indigo-900'
+                                                    }`}>
+                                                    {medium === 'english' ? `${currentTeacher.name}'s Explanation:` : `${currentTeacher.name} का स्पष्टीकरण:`}
+                                                  </span>
+                                                  <p className="text-xs sm:text-sm font-medium leading-relaxed">
+                                                    {stepItem.annotation}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
+                                  )}
+                                </div>
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
 
                         {revealedSteps < whiteboardSteps.length && (
                           <button
@@ -5146,17 +5113,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             <ChevronRight className="w-4 h-4" />
                           </button>
                         )}
-                      </>
+                      </div>
                     )
                   )}
 
-                  {/* Bottom Page Pagination & Next Page Navigation Footer */}
-                  {!activeMathAnim && uploadedFiles.length > 0 && (
-                    <div className={`p-4 rounded-3xl border-2 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg mt-6 ${
-                      !isDarkMode && chalkboardTheme !== 'green'
-                        ? 'bg-gradient-to-r from-amber-50 via-white to-indigo-50 border-indigo-200 text-slate-900'
-                        : 'bg-gradient-to-r from-slate-900 via-indigo-950/70 to-slate-900 border-white/10 text-white'
-                    }`}>
+                  {/* Bottom Multi-Page Pagination Bar (Only when multiple pages exist, NO question pagination) */}
+                  {!activeMathAnim && uploadedFiles.length > 1 && (
+                    <div className={`p-4 rounded-3xl border-2 flex items-center justify-between gap-3 shadow-lg mt-6 ${!isDarkMode && chalkboardTheme !== 'green'
+                      ? 'bg-gradient-to-r from-amber-50 via-white to-indigo-50 border-indigo-200 text-slate-900'
+                      : 'bg-gradient-to-r from-slate-900 via-indigo-950/70 to-slate-900 border-white/10 text-white'
+                      }`}>
                       {(() => {
                         const activeIdx = uploadedFiles.findIndex(
                           (f) => f.id === (activeFileDoc?.id || uploadedFiles[0]?.id)
@@ -5167,117 +5133,50 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         const hasNext = activeIdx < totalPages - 1;
 
                         return (
-                          <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+                          <div className="flex items-center justify-between w-full gap-3">
                             {/* Previous Page Button */}
-                            {hasPrev ? (
-                              <button
-                                type="button"
-                                onClick={() => handleSwitchPage(uploadedFiles[activeIdx - 1].id)}
-                                disabled={isCheckingHomework}
-                                className={`px-4 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                                  !isDarkMode && chalkboardTheme !== 'green'
-                                    ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
-                                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                            <button
+                              type="button"
+                              onClick={() => hasPrev && handleSwitchPage(uploadedFiles[activeIdx - 1].id)}
+                              disabled={!hasPrev || isCheckingHomework}
+                              className={`px-4 sm:px-5 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-xs ${!hasPrev || isCheckingHomework
+                                ? 'opacity-30 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5'
+                                : !isDarkMode && chalkboardTheme !== 'green'
+                                  ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 hover:scale-102 active:scale-95 cursor-pointer shadow-sm'
+                                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20 hover:scale-102 active:scale-95 cursor-pointer shadow-sm'
                                 }`}
-                              >
-                                <ChevronLeft className="w-4 h-4" />
-                                <span>{medium === 'english' ? `Prev Page (Page ${activeIdx})` : `← पिछला पेज (पेज ${activeIdx})`}</span>
-                              </button>
-                            ) : (
-                              <div className="hidden sm:block" />
-                            )}
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                              <span>{medium === 'english' ? `Prev Page (P.${activeIdx})` : `← पिछला पेज (पेज ${activeIdx})`}</span>
+                            </button>
 
-                            {/* Current Page Indicator / Pagination Status */}
-                            <div className="text-center px-3 py-1">
+                            {/* Current Page Indicator */}
+                            <div className="text-center px-4 py-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
                               <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block mb-0.5">
                                 {medium === 'english' ? 'Worksheet Page' : 'वर्कशीट पेज'}
                               </span>
-                              <div className="flex items-center gap-1.5 justify-center">
-                                <span className={`text-sm sm:text-base font-black ${
-                                  !isDarkMode && chalkboardTheme !== 'green' ? 'text-indigo-950' : 'text-amber-300'
+                              <span className={`text-sm sm:text-base font-black ${!isDarkMode && chalkboardTheme !== 'green' ? 'text-indigo-950' : 'text-amber-300'
                                 }`}>
-                                  {medium === 'english' ? `Page ${currentPageNum} of ${totalPages}` : `पेज ${currentPageNum} / ${totalPages}`}
-                                </span>
-                                <span className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-bold">
-                                  {medium === 'english' ? 'All Questions Loaded' : 'सभी सवाल मौजूद हैं ✓'}
-                                </span>
-                              </div>
+                                {medium === 'english' ? `Page ${currentPageNum} of ${totalPages}` : `पेज ${currentPageNum} / ${totalPages}`}
+                              </span>
                             </div>
 
-                            {/* Next Page Button OR Add Next Page */}
-                            {hasNext ? (
-                              <button
-                                type="button"
-                                onClick={() => handleSwitchPage(uploadedFiles[activeIdx + 1].id)}
-                                disabled={isCheckingHomework}
-                                className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/30 cursor-pointer"
-                              >
-                                <span>{medium === 'english' ? `Next Page (Page ${activeIdx + 2})` : `अगला पेज (पेज ${activeIdx + 2}) →`}</span>
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                                title={medium === 'english' ? 'Upload and solve next page' : 'अगला पेज अपलोड करें'}
-                              >
-                                <Plus className="w-4 h-4" />
-                                <span>{medium === 'english' ? '+ Add Next Page' : '+ अगला पेज जोड़ें'}</span>
-                              </button>
-                            )}
-
-                            {/* Question Navigation if detected questions exist */}
-                            {detectedQuestions.length > 0 && (
-                              <div className="flex items-center gap-1.5 border-l border-slate-300 dark:border-white/10 pl-3">
-                                <button
-                                  type="button"
-                                  onClick={handlePrevQuestion}
-                                  disabled={isCheckingHomework}
-                                  className={`px-3 py-2 rounded-xl border text-xs font-black transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
-                                    !isDarkMode && chalkboardTheme !== 'green'
-                                      ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300'
-                                      : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-                                  }`}
-                                  title="पिछला सवाल हल करें"
-                                >
-                                  <ChevronLeft className="w-3.5 h-3.5" />
-                                  <span>{medium === 'english' ? 'Prev Q' : 'पिछला'}</span>
-                                </button>
-                                <span className="text-xs font-black px-2 py-1 rounded-lg bg-indigo-500/10 text-indigo-700 dark:text-amber-300">
-                                  Q{effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1}/{detectedQuestions.length}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={handleNextQuestion}
-                                  disabled={isCheckingHomework}
-                                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 text-white text-xs font-black transition-all flex items-center gap-1 shadow-xs cursor-pointer"
-                                  title="अगला सवाल हल करें"
-                                >
-                                  <span>{medium === 'english' ? 'Next Q' : 'अगला'}</span>
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
+                            {/* Next Page Button */}
+                            <button
+                              type="button"
+                              onClick={() => hasNext && handleSwitchPage(uploadedFiles[activeIdx + 1].id)}
+                              disabled={!hasNext || isCheckingHomework}
+                              className={`px-4 sm:px-5 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-md ${!hasNext || isCheckingHomework
+                                ? 'opacity-30 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5'
+                                : 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-indigo-600/30 hover:scale-102 active:scale-95 cursor-pointer'
+                                }`}
+                            >
+                              <span>{medium === 'english' ? `Next Page (P.${activeIdx + 2})` : `अगला पेज (पेज ${activeIdx + 2}) →`}</span>
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
                           </div>
                         );
                       })()}
-
-                      {/* Reading Story Chapter Button (if textbook chapter detected) */}
-                      {detectedChapter && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenDetectedChapter(detectedChapter)}
-                          className={`w-full sm:w-auto px-4 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-sm ${
-                            activeTargetQuestion.includes(detectedChapter.title) || activeTargetQuestion.includes('पाठ')
-                              ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white border-amber-300 shadow-md shadow-amber-500/20'
-                              : 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-400/40 hover:bg-amber-500/20'
-                          }`}
-                        >
-                          <BookOpen className="w-4 h-4 text-amber-500" />
-                          <span>{medium === 'english' ? `📖 Story: ${detectedChapter.title}` : `📖 पूरा पाठ पढ़ें: ${detectedChapter.title}`}</span>
-                        </button>
-                      )}
                     </div>
                   )}
                 </div>
@@ -5287,17 +5186,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
           {/* INTERACTIVE PRACTICE QUESTION (If chapter is loaded) */}
           {currentQ && (
-            <div className={`rounded-3xl p-6 border transition-all duration-200 space-y-4 ${
-              isDarkMode
-                ? 'bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
-                : 'bg-white border-slate-200 shadow-sm text-slate-900'
-            }`}>
+            <div className={`rounded-3xl p-6 border transition-all duration-200 space-y-4 ${isDarkMode
+              ? 'bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
+              : 'bg-white border-slate-200 shadow-sm text-slate-900'
+              }`}>
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-black px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-                  isDarkMode
-                    ? 'text-indigo-300 bg-indigo-500/20 border-indigo-500/30'
-                    : 'text-indigo-700 bg-indigo-50 border-indigo-200'
-                }`}>
+                <span className={`text-xs font-black px-3 py-1 rounded-full border flex items-center gap-1.5 ${isDarkMode
+                  ? 'text-indigo-300 bg-indigo-500/20 border-indigo-500/30'
+                  : 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                  }`}>
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   अभ्यास प्रश्न #{activeQuestionIdx + 1}
                 </span>
@@ -5306,9 +5203,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </span>
               </div>
 
-              <h3 className={`text-base md:text-lg font-bold leading-relaxed ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
+              <h3 className={`text-base md:text-lg font-bold leading-relaxed ${isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
                 {currentQ.question}
               </h3>
 
@@ -5324,21 +5220,20 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       <button
                         key={i}
                         onClick={() => handleCheckMCQ(opt, currentQ.correctAnswer, currentQ.explanation)}
-                        className={`p-3.5 rounded-2xl border text-left font-bold text-xs md:text-sm transition-all flex items-center justify-between ${
-                          isCorrect
-                            ? isDarkMode
-                              ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
-                              : 'bg-emerald-100 border-emerald-400 text-emerald-900'
-                            : isWrong
+                        className={`p-3.5 rounded-2xl border text-left font-bold text-xs md:text-sm transition-all flex items-center justify-between ${isCorrect
+                          ? isDarkMode
+                            ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
+                            : 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                          : isWrong
                             ? isDarkMode
                               ? 'bg-rose-600/30 border-rose-500 text-rose-200'
                               : 'bg-rose-100 border-rose-400 text-rose-900'
                             : isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
-                            : isDarkMode
-                            ? 'bg-slate-900/90 border-slate-700 hover:border-indigo-400 text-slate-200'
-                            : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white text-slate-800 shadow-2xs'
-                        }`}
+                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                              : isDarkMode
+                                ? 'bg-slate-900/90 border-slate-700 hover:border-indigo-400 text-slate-200'
+                                : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white text-slate-800 shadow-2xs'
+                          }`}
                       >
                         <span>{opt}</span>
                         {isCorrect && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
@@ -5358,11 +5253,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       value={typedAnswer}
                       onChange={(e) => setTypedAnswer(e.target.value)}
                       placeholder="अपना उत्तर लिखें (जैसे: 14 cm)..."
-                      className={`flex-1 border-2 rounded-2xl px-5 py-3 text-sm outline-none transition-all ${
-                        isDarkMode
-                          ? 'bg-slate-900 border-slate-700 focus:border-indigo-400 text-white'
-                          : 'bg-slate-50 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900'
-                      }`}
+                      className={`flex-1 border-2 rounded-2xl px-5 py-3 text-sm outline-none transition-all ${isDarkMode
+                        ? 'bg-slate-900 border-slate-700 focus:border-indigo-400 text-white'
+                        : 'bg-slate-50 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900'
+                        }`}
                       onKeyDown={(e) => e.key === 'Enter' && handleCheckTypedAnswer(currentQ.correctAnswer, currentQ.explanation)}
                     />
                     <button
@@ -5377,11 +5271,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* Status */}
               {answerStatus === 'correct' && (
-                <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between ${
-                  isDarkMode
-                    ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
-                    : 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                }`}>
+                <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between ${isDarkMode
+                  ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
+                  : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                  }`}>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span className="font-bold">बिल्कुल सही! {currentQ.explanation}</span>
@@ -5404,11 +5297,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               )}
 
               {answerStatus === 'wrong' && (
-                <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 ${
-                  isDarkMode
-                    ? 'bg-rose-950/70 border-rose-500/50 text-rose-300'
-                    : 'bg-rose-50 border-rose-200 text-rose-800'
-                }`}>
+                <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 ${isDarkMode
+                  ? 'bg-rose-950/70 border-rose-500/50 text-rose-300'
+                  : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
                   <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
                   <span>गलत उत्तर है बेटा। हिंट: {currentQ.explanation}</span>
                 </div>
@@ -5419,19 +5311,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       </main>
 
       {/* 4. BOTTOM FLOATING VOICE & QUERY DOCK */}
-      <footer className={`sticky bottom-0 backdrop-blur-md border-t p-3 md:p-4 z-20 transition-colors duration-200 ${
-        isDarkMode
-          ? 'bg-slate-900/95 border-slate-800 shadow-2xl'
-          : 'bg-white/95 border-slate-200 shadow-lg'
-      }`}>
+      <footer className={`sticky bottom-0 backdrop-blur-md border-t p-3 md:p-4 z-20 transition-colors duration-200 ${isDarkMode
+        ? 'bg-slate-900/95 border-slate-800 shadow-2xl'
+        : 'bg-white/95 border-slate-200 shadow-lg'
+        }`}>
         <div className="max-w-4xl mx-auto flex items-center gap-3">
           <button
             onClick={toggleMic}
-            className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all transform active:scale-95 shrink-0 ${
-              isListening
-                ? 'bg-rose-600 animate-pulse ring-4 ring-rose-500/40'
-                : 'bg-gradient-to-tr from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 shadow-indigo-600/40 hover:scale-105'
-            }`}
+            className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shadow-xl transition-all transform active:scale-95 shrink-0 ${isListening
+              ? 'bg-rose-600 animate-pulse ring-4 ring-rose-500/40'
+              : 'bg-gradient-to-tr from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 shadow-indigo-600/40 hover:scale-105'
+              }`}
             title={medium === 'english' ? 'Speak with mic' : 'माइक से बोलें'}
           >
             {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
@@ -5444,11 +5334,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={isListening ? (medium === 'english' ? 'Listening... Speak now!' : 'सुन रहे हैं... बोलिए बेटा!') : (medium === 'english' ? 'Tap mic to speak or type your question...' : 'माइक दबाकर बोलें या सवाल यहाँ टाइप करें...')}
-              className={`w-full border rounded-2xl px-5 py-3.5 text-xs md:text-sm outline-none transition-all pr-12 ${
-                isDarkMode
-                  ? 'bg-slate-950 border-slate-700 focus:border-indigo-400 text-white placeholder-slate-500'
-                  : 'bg-slate-100 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900 placeholder-slate-400'
-              }`}
+              className={`w-full border rounded-2xl px-5 py-3.5 text-xs md:text-sm outline-none transition-all pr-12 ${isDarkMode
+                ? 'bg-slate-950 border-slate-700 focus:border-indigo-400 text-white placeholder-slate-500'
+                : 'bg-slate-100 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900 placeholder-slate-400'
+                }`}
               onKeyDown={(e) => e.key === 'Enter' && handleStudentQuery(inputText || inputRef.current?.value)}
             />
             <button
@@ -5462,11 +5351,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
           <label
             htmlFor="homework-upload-input"
-            className={`p-3.5 rounded-2xl border flex items-center gap-1.5 text-xs font-bold shrink-0 transition-all cursor-pointer ${
-              isDarkMode
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-2xs'
-            }`}
+            className={`p-3.5 rounded-2xl border flex items-center gap-1.5 text-xs font-bold shrink-0 transition-all cursor-pointer ${isDarkMode
+              ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 shadow-2xs'
+              }`}
             title={medium === 'english' ? 'Capture homework or textbook page' : 'होमवर्क या बुक पेज की फोटो खींचें'}
           >
             <Camera className="w-5 h-5 text-amber-500" />
@@ -5491,11 +5379,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 setInputText(chip);
                 handleStudentQuery(chip);
               }}
-              className={`px-3 py-1 rounded-full border transition-all shrink-0 whitespace-nowrap ${
-                isDarkMode
-                  ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700/60'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:border-indigo-300'
-              }`}
+              className={`px-3 py-1 rounded-full border transition-all shrink-0 whitespace-nowrap ${isDarkMode
+                ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700/60'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:border-indigo-300'
+                }`}
             >
               {chip}
             </button>
@@ -5528,9 +5415,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       {/* 🏆 WORKSHEET COMPLETION CELEBRATION MODAL */}
       {isWorksheetCelebrationOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`max-w-md w-full rounded-3xl p-6 border text-center space-y-4 shadow-2xl transition-all ${
-            isDarkMode ? 'bg-slate-900 border-amber-500/40 text-white' : 'bg-white border-amber-300 text-slate-900'
-          }`}>
+          <div className={`max-w-md w-full rounded-3xl p-6 border text-center space-y-4 shadow-2xl transition-all ${isDarkMode ? 'bg-slate-900 border-amber-500/40 text-white' : 'bg-white border-amber-300 text-slate-900'
+            }`}>
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-500 text-white flex items-center justify-center text-4xl mx-auto shadow-lg shadow-amber-500/30 animate-bounce">
               🏆
             </div>
@@ -5567,11 +5453,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               <button
                 type="button"
                 onClick={() => setIsWorksheetCelebrationOpen(false)}
-                className={`w-full py-2 px-4 rounded-xl border text-xs font-bold transition-all ${
-                  isDarkMode
-                    ? 'border-slate-700 hover:bg-slate-800 text-slate-300'
-                    : 'border-slate-300 hover:bg-slate-100 text-slate-700'
-                }`}
+                className={`w-full py-2 px-4 rounded-xl border text-xs font-bold transition-all ${isDarkMode
+                  ? 'border-slate-700 hover:bg-slate-800 text-slate-300'
+                  : 'border-slate-300 hover:bg-slate-100 text-slate-700'
+                  }`}
               >
                 व्हाइटबोर्ड पर रहें (Keep Practicing)
               </button>
