@@ -214,9 +214,11 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-6 text-slate-400">
             <Link href="/reports" className="hover:text-white">Student Report</Link>
+            <Link href="/admin/login" className="hover:text-amber-400 flex items-center gap-1">
+              <span>⚡ Admin Login</span>
+            </Link>
             <a href="#privacy" className="hover:text-white">Privacy Policy</a>
             <a href="#terms" className="hover:text-white">Terms of Service</a>
-            <a href="#contact" className="hover:text-white">WhatsApp Support</a>
           </div>
         </div>
       </footer>

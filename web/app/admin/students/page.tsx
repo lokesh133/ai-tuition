@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -14,7 +14,25 @@ import {
   Filter,
   BarChart2,
   TrendingUp,
+  UserCheck,
+  RefreshCw,
+  Phone,
+  ShieldCheck,
+  Award,
 } from 'lucide-react';
+
+interface StudentAccount {
+  id: string;
+  name: string;
+  phone: string;
+  classGrade: string;
+  board: string;
+  medium: string;
+  city: string;
+  isSubscribed: boolean;
+  doubtsAsked: number;
+  createdAt: string;
+}
 
 interface DoubtLog {
   id: string;
@@ -34,261 +52,336 @@ interface DoubtLog {
 const MOCK_DOUBTS: DoubtLog[] = [
   {
     id: 'DBT-9421',
-    studentName: 'Aarav Sharma',
+    studentName: 'आरव शर्मा (Aarav)',
     avatar: '👦',
     classGrade: 'Class 5th',
     city: 'Alwar',
     subject: 'Science',
     teacherId: 'neha_mam',
-    teacherName: 'Neha Mam',
-    question: 'Neha Mam, Photosynthesis kya hota hai simple words me samjhao?',
-    aiResponseSnippet: 'Beta, jaise aapki mummy kitchen me khana banati hain, waise hi paudhe sooraj ki roshni aur paani se apna khana banate hain!',
+    teacherName: 'नेहा मैम',
+    question: 'नेहा मैम, Photosynthesis क्या होता है आसान शब्दों में समझाओ?',
+    aiResponseSnippet: 'बेटा, जैसे आपकी मम्मी किचन में खाना बनाती हैं, वैसे ही पौधे सूरज की रोशनी और पानी से अपना खाना बनाते हैं!',
     cached: true,
-    timestamp: 'Just now',
+    timestamp: 'अभी-अभी',
   },
   {
     id: 'DBT-9420',
-    studentName: 'Priya Verma',
+    studentName: 'प्रिया वर्मा (Priya)',
     avatar: '👧',
     classGrade: 'Class 7th',
-    city: 'Varanasi',
+    city: 'Jaipur',
     subject: 'Math',
     teacherId: 'sharma_sir',
-    teacherName: 'Sharma Sir',
-    question: 'Linear equation 2x + 5 = 15 me pehle 5 minus karenge ya 2 divide?',
-    aiResponseSnippet: 'Shabash beta! Hamesha pehle addition/subtraction wala number dusri side le jaate hain. 15 me se 5 ghatao, kya aaya?',
+    teacherName: 'शर्मा सर',
+    question: 'Linear equation 2x + 5 = 15 में पहले 5 घटाएंगे या 2 से भाग देंगे?',
+    aiResponseSnippet: 'शाबाश बेटा! हमेशा पहले जोड़/घटाव वाली संख्या को दूसरी तरफ ले जाते हैं। 15 में से 5 घटाओ, क्या आया?',
     cached: false,
-    timestamp: '2 mins ago',
+    timestamp: '2 मिनट पहले',
   },
   {
     id: 'DBT-9419',
-    studentName: 'Rohan Gupta',
+    studentName: 'रोहन गुप्ता',
     avatar: '🧒',
     classGrade: 'Class 3rd',
-    city: 'Jabalpur',
+    city: 'Dausa',
     subject: 'English',
     teacherId: 'riya_didi',
-    teacherName: 'Riya Didi',
-    question: 'Didi, "went" aur "gone" me kya antar hota hai?',
-    aiResponseSnippet: '"Went" simple past hai jaise "I went to school". "Gone" hamesha has/have ke saath lagta hai jaise "He has gone".',
+    teacherName: 'रिया दीदी',
+    question: 'दीदी, "went" और "gone" में क्या अंतर होता है?',
+    aiResponseSnippet: '"Went" simple past है जैसे "I went to school". "Gone" हमेशा has/have के साथ लगता है जैसे "He has gone".',
     cached: true,
-    timestamp: '5 mins ago',
-  },
-  {
-    id: 'DBT-9418',
-    studentName: 'Kabir Rathore',
-    avatar: '👦',
-    classGrade: 'Class 4th',
-    city: 'Sikar',
-    subject: 'SST',
-    teacherId: 'kabir_sir',
-    teacherName: 'Kabir Sir',
-    question: 'Kabir Sir, humare solar system me sabse garmi wala grah konsa hai?',
-    aiResponseSnippet: 'Zyadatar log Mercury sochte hain, par sachme Venus sabse garam hai kyunki uske paas moti carbon dioxide ki chadar hai!',
-    cached: true,
-    timestamp: '8 mins ago',
-  },
-  {
-    id: 'DBT-9417',
-    studentName: 'Meera Patel',
-    avatar: '👧',
-    classGrade: 'Class 2nd',
-    city: 'Anand',
-    subject: 'Hindi',
-    teacherId: 'pooja_mam',
-    teacherName: 'Pooja Mam',
-    question: 'Mam, "Sangya" ke kitne bhed hote hain?',
-    aiResponseSnippet: 'Beta, aamtaur par sangya ke 3 mukhya bhed hote hain: Vyakti-vachak, Jati-vachak, aur Bhaav-vachak.',
-    cached: true,
-    timestamp: '11 mins ago',
-  },
-  {
-    id: 'DBT-9416',
-    studentName: 'Aditya Yadav',
-    avatar: '👦',
-    classGrade: 'Class 8th',
-    city: 'Gorakhpur',
-    subject: 'Math',
-    teacherId: 'sharma_sir',
-    teacherName: 'Sharma Sir',
-    question: 'Sharma Sir, Pythagorean triplet check karne ka formula kya hai?',
-    aiResponseSnippet: 'Beta, agar 2m, m²-1 aur m²+1 ka pair dekhein, toh (a)² + (b)² = (c)² satisfy hona chahiye. Check karo 6, 8, 10!',
-    cached: false,
-    timestamp: '14 mins ago',
+    timestamp: '5 मिनट पहले',
   },
 ];
 
 export default function AdminStudentsPage() {
+  const [activeTab, setActiveTab] = useState<'REGISTERED_STUDENTS' | 'DOUBT_STREAM'>(
+    'REGISTERED_STUDENTS'
+  );
+  const [registeredStudents, setRegisteredStudents] = useState<StudentAccount[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
   const [search, setSearch] = useState('');
-  const [filterSubject, setFilterSubject] = useState('ALL');
+  const [filterClass, setFilterClass] = useState('ALL');
 
-  const filteredDoubts = MOCK_DOUBTS.filter((d) => {
+  const fetchStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const res = await fetch('/api/admin/students');
+      const data = await res.json();
+      if (data.success) {
+        setRegisteredStudents(data.students);
+      }
+    } catch (e) {
+      console.error('Failed to load students:', e);
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const filteredStudents = registeredStudents.filter((s) => {
     const matchesSearch =
-      d.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      d.question.toLowerCase().includes(search.toLowerCase()) ||
-      d.teacherName.toLowerCase().includes(search.toLowerCase()) ||
-      d.city.toLowerCase().includes(search.toLowerCase());
-
-    const matchesSubject = filterSubject === 'ALL' || d.subject.toLowerCase() === filterSubject.toLowerCase();
-
-    return matchesSearch && matchesSubject;
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.phone.includes(search) ||
+      s.city.toLowerCase().includes(search.toLowerCase());
+    const matchesClass = filterClass === 'ALL' || s.classGrade.includes(filterClass);
+    return matchesSearch && matchesClass;
   });
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Banner */}
       <div className="bg-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-slate-800">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-bold text-sky-400 bg-sky-500/20 px-3 py-1 rounded-full border border-sky-500/30 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5" /> Live Doubt Stream & Analytics
+              <Zap className="w-3.5 h-3.5" /> लाइव स्टूडेंट डेटाबेस एवं प्रश्न लॉग
             </span>
             <span className="text-xs font-bold text-emerald-400 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">
-              Redis Cache Hit Rate: 68.4%
+              कुल पंजीकृत छात्र: {registeredStudents.length}
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-black">
-            Student Doubt Activity & Learning Signals
+            विद्यार्थी डेटा एवं लाइव डाउट स्ट्रीम
           </h1>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
-            Bache kis subject me sabse zyada sawaal pooch rahe hain aur AI Teachers unhe kaise Socratic step-by-step guidance de rahe hain.
+            जब कोई विद्यार्थी वेबसाइट या मोबाइल ऐप पर साइनअप करता है, तो उसका खाता यहाँ तुरंत दिखाई देता है।
           </p>
         </div>
 
-        <Link
-          href="/admin/subscriptions"
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all whitespace-nowrap"
-        >
-          <span>View Subscriptions & Payments</span>
-          <Users className="w-4 h-4" />
-        </Link>
-      </div>
-
-      {/* Teacher Question Distribution Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
-          <span className="text-2xl block mb-1">📐</span>
-          <span className="text-xs font-bold text-slate-900 block">Sharma Sir</span>
-          <span className="text-[11px] text-slate-400">Mathematics</span>
-          <div className="mt-2 text-lg font-black text-indigo-600">4,820 Doubts</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
-          <span className="text-2xl block mb-1">🔬</span>
-          <span className="text-xs font-bold text-slate-900 block">Neha Mam</span>
-          <span className="text-[11px] text-slate-400">Science & EVS</span>
-          <div className="mt-2 text-lg font-black text-sky-600">3,940 Doubts</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
-          <span className="text-2xl block mb-1">📚</span>
-          <span className="text-xs font-bold text-slate-900 block">Riya Didi</span>
-          <span className="text-[11px] text-slate-400">English Grammar</span>
-          <div className="mt-2 text-lg font-black text-pink-600">2,410 Doubts</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
-          <span className="text-2xl block mb-1">🌍</span>
-          <span className="text-xs font-bold text-slate-900 block">Kabir Sir</span>
-          <span className="text-[11px] text-slate-400">Social Studies</span>
-          <div className="mt-2 text-lg font-black text-purple-600">1,830 Doubts</div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm text-center">
-          <span className="text-2xl block mb-1">✍️</span>
-          <span className="text-xs font-bold text-slate-900 block">Pooja Mam</span>
-          <span className="text-[11px] text-slate-400">Hindi Vyakaran</span>
-          <div className="mt-2 text-lg font-black text-emerald-600">1,220 Doubts</div>
-        </div>
-      </div>
-
-      {/* Filter and Search */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search questions, student names, cities..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-
-        <select
-          value={filterSubject}
-          onChange={(e) => setFilterSubject(e.target.value)}
-          className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white"
-        >
-          <option value="ALL">All Subjects</option>
-          <option value="Math">Mathematics</option>
-          <option value="Science">Science & EVS</option>
-          <option value="English">English</option>
-          <option value="SST">Social Studies</option>
-          <option value="Hindi">Hindi</option>
-        </select>
-      </div>
-
-      {/* Live Stream List */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Real-Time Student Queries (Live Feed)
-          </h3>
-          <span className="text-xs text-slate-400">Auto-refreshing stream</span>
-        </div>
-
-        {filteredDoubts.map((doubt) => (
-          <div
-            key={doubt.id}
-            className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-indigo-300 transition-all space-y-3"
+        <div className="flex items-center gap-3">
+          <button
+            onClick={fetchStudents}
+            className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 flex items-center gap-2 transition-all"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{doubt.avatar}</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-xs text-slate-900">{doubt.studentName}</span>
-                    <span className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
-                      {doubt.classGrade}
-                    </span>
-                    <span className="text-[10px] text-slate-400">{doubt.city}</span>
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>डेटा रिफ्रेश करें</span>
+          </button>
+          <Link
+            href="/admin/subscriptions"
+            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all whitespace-nowrap"
+          >
+            <span>सब्सक्रिप्शन देखें →</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex border-b border-slate-200 gap-6">
+        <button
+          onClick={() => setActiveTab('REGISTERED_STUDENTS')}
+          className={`pb-3 text-sm font-extrabold flex items-center gap-2 transition-all relative ${
+            activeTab === 'REGISTERED_STUDENTS'
+              ? 'text-indigo-600'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <UserCheck className="w-4 h-4" />
+          <span>पंजीकृत विद्यार्थी सूची ({registeredStudents.length})</span>
+          {activeTab === 'REGISTERED_STUDENTS' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('DOUBT_STREAM')}
+          className={`pb-3 text-sm font-extrabold flex items-center gap-2 transition-all relative ${
+            activeTab === 'DOUBT_STREAM'
+              ? 'text-indigo-600'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>लाइव सवाल / डाउट फीड</span>
+          {activeTab === 'DOUBT_STREAM' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+          )}
+        </button>
+      </div>
+
+      {/* TAB 1: Registered Students Table */}
+      {activeTab === 'REGISTERED_STUDENTS' && (
+        <div className="space-y-4">
+          {/* Search & Filter */}
+          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="नाम, मोबाइल नंबर, शहर से खोजें..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <select
+              value={filterClass}
+              onChange={(e) => setFilterClass(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white"
+            >
+              <option value="ALL">सभी कक्षाएं (Class 1-8)</option>
+              <option value="1">कक्षा 1</option>
+              <option value="2">कक्षा 2</option>
+              <option value="3">कक्षा 3</option>
+              <option value="4">कक्षा 4</option>
+              <option value="5">कक्षा 5</option>
+              <option value="6">कक्षा 6</option>
+              <option value="7">कक्षा 7</option>
+              <option value="8">कक्षा 8</option>
+            </select>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+            {loadingStudents ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                विद्यार्थी सूची लोड हो रही है...
+              </div>
+            ) : filteredStudents.length === 0 ? (
+              <div className="p-10 text-center">
+                <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-700">कोई छात्र नहीं मिला</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  नए छात्र <Link href="/signup" className="text-indigo-600 underline">/signup</Link> पेज से खाता बना सकते हैं।
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                    <tr>
+                      <th className="py-3 px-5">विद्यार्थी आईडी और नाम</th>
+                      <th className="py-3 px-5">मोबाइल नंबर</th>
+                      <th className="py-3 px-5">कक्षा एवं बोर्ड</th>
+                      <th className="py-3 px-5">माध्यम / शहर</th>
+                      <th className="py-3 px-5">सब्सक्रिप्शन</th>
+                      <th className="py-3 px-5">पूछे गए सवाल</th>
+                      <th className="py-3 px-5">साइनअप तिथि</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredStudents.map((st) => (
+                      <tr key={st.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-4 px-5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
+                              {st.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-sm">{st.name}</div>
+                              <div className="text-slate-400 text-[10px] font-mono">{st.id}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-5 font-mono text-slate-700 font-semibold">
+                          <span className="flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                            +91 {st.phone}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md text-[11px]">
+                            {st.classGrade}
+                          </span>
+                          <span className="ml-1.5 text-slate-500 text-[11px] font-medium">
+                            ({st.board})
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-slate-600">
+                          <div>{st.medium === 'HINDI' ? 'हिन्दी माध्यम' : 'English'}</div>
+                          <div className="text-[10px] text-slate-400">{st.city}</div>
+                        </td>
+                        <td className="py-4 px-5">
+                          {st.isSubscribed ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                              ✓ ₹200 सक्रिय
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                              फ्री ट्रायल
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className="font-black text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded-md">
+                            {st.doubtsAsked} सवाल
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 text-slate-400 text-[11px]">
+                          {new Date(st.createdAt).toLocaleDateString('hi-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: Live Doubt Stream */}
+      {activeTab === 'DOUBT_STREAM' && (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            {MOCK_DOUBTS.map((doubt) => (
+              <div
+                key={doubt.id}
+                className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:border-indigo-300 transition-all space-y-3"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{doubt.avatar}</span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-slate-900">{doubt.studentName}</span>
+                        <span className="text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full font-bold">
+                          {doubt.classGrade}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{doubt.city}</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400">
+                        शिक्षक: <strong className="text-slate-700">{doubt.teacherName}</strong> • {doubt.subject}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[11px] text-slate-400">
-                    Asked <strong className="text-slate-700">{doubt.teacherName}</strong> • {doubt.subject}
-                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {doubt.cached ? (
+                      <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        ⚡ Redis Cache (₹0 Cost)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
+                        🤖 Gemini 1.5 Flash (₹0.003)
+                      </span>
+                    )}
+                    <span className="text-[11px] text-slate-400 font-medium">{doubt.timestamp}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-xs text-slate-800 font-semibold">
+                  <span className="text-slate-400 mr-1.5 font-bold">Q:</span>
+                  "{doubt.question}"
+                </div>
+
+                <div className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-slate-700">
+                  <span className="text-indigo-600 mr-1.5 font-bold">{doubt.teacherName}:</span>
+                  {doubt.aiResponseSnippet}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                {doubt.cached ? (
-                  <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-                    ⚡ Redis Cache (₹0 Cost)
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-200">
-                    🤖 Gemini 1.5 Flash (₹0.003)
-                  </span>
-                )}
-                <span className="text-[11px] text-slate-400 font-medium">{doubt.timestamp}</span>
-              </div>
-            </div>
-
-            {/* Question */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/60 text-xs text-slate-800 font-semibold">
-              <span className="text-slate-400 mr-1.5 font-bold">Q:</span>
-              "{doubt.question}"
-            </div>
-
-            {/* AI Teacher Answer */}
-            <div className="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 text-xs text-slate-700">
-              <span className="text-indigo-600 mr-1.5 font-bold">{doubt.teacherName}:</span>
-              {doubt.aiResponseSnippet}
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

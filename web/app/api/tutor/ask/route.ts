@@ -413,7 +413,17 @@ CRITICAL MANDATE - PAGE STRUCTURE ANALYSIS (QUESTIONS VS NEW CHAPTER / STORY):
          annotation="[सरल हिंग्लिश में स्पष्टीकरण कि यह उत्तर क्यों सही है]"
        />
 
-3. FORMATTING RULES:
+3. MANDATORY: SOLVE EVERY SINGLE QUESTION DETECTED (ALL QUESTIONS ON BOARD):
+   - You MUST generate a dedicated <whiteboard> card for EVERY SINGLE question found on this page (Q1, Q2, Q3... all the way to the last question, e.g. Q15)!
+   - NEVER stop after 3 or 4 questions! If 15 questions are detected, you MUST output 15 <whiteboard> cards!
+   - For each question:
+     <whiteboard 
+       question="[Exact full question text as printed on page]"
+       step="प्रश्न [Num]: [Question Topic / Type]"
+       formula="[100% complete step-by-step calculation, fill-in-blank, or true-false answer with final answer]"
+       annotation="[Clear explanation in simple Hinglish explaining why this answer is correct]"
+     />
+4. FORMATTING RULES:
    - English, Hindi और थ्योरी में कोई भी गणित का '=' या 'Answer ✅' न लगाएं!
    - Tone: Friendly, encouraging Indian school teacher speaking in warm Hinglish.`;
       }
@@ -428,12 +438,13 @@ CRITICAL MANDATE - ZERO STATIC DATA:
    <detected_question text="[Section] Q[Num]: [Full question text with options]" />
 3. If a new chapter/story is present (e.g. 14.4 Tenali Raman and the Brinjal Curry), output:
    <detected_chapter title="[Exact Chapter Title]" summary="[Summary]" />
-4. WHITEBOARD MASTER ANSWER KEY:
+4. WHITEBOARD MASTER ANSWER KEY (EASY STEP-BY-STEP FOR CHILDREN):
+   For each question, provide step-by-step working separated by newlines (\n) so children can easily follow:
    <whiteboard 
      question="[Exact full question text as printed in the uploaded page/PDF]"
      step="Q[Num]: [Question Topic / Concept]"
-     formula="[100% Complete Full Answer paragraph from the notebook/page. Zero truncation, zero shortcuts!]"
-     annotation="[Explanation of why this answer is correct in child-friendly Hinglish]"
+     formula="[Step 1 / First part in simple words]\n[Step 2 / Second part or calculation]\n[Step 3 / Result]\nसही उत्तर: [Option & Answer Value]"
+     annotation="[Explanation of why this answer is correct in child-friendly Hinglish with an easy exam trick]"
    />
 5. TONE: Warm Hinglish words ending with "Samajh aaya beta?".`;
     } else if (mode === 'quiz') {
@@ -510,11 +521,10 @@ CRITICAL MANDATE - ACCURATE REAL ANSWER (ZERO HALLUCINATIONS, NO 'Answer ✅'):
         }
 
         const candidateModels = [
-          'gemini-3.6-flash',
-          'gemini-3.5-flash-lite',
           'gemini-3.8-flash',
-          'gemini-3.7-flash',
           'gemini-flash-latest',
+          'gemini-3.5-flash',
+          'gemini-3.6-flash',
         ];
         let rawReply = '';
 
@@ -529,7 +539,7 @@ CRITICAL MANDATE - ACCURATE REAL ANSWER (ZERO HALLUCINATIONS, NO 'Answer ✅'):
                   contents: [{ parts }],
                   generationConfig: {
                     temperature: 0.15,
-                    maxOutputTokens: 2800,
+                    maxOutputTokens: 8192,
                   },
                 }),
               }
@@ -641,6 +651,7 @@ CRITICAL MANDATE - ACCURATE REAL ANSWER (ZERO HALLUCINATIONS, NO 'Answer ✅'):
 function cleanMathSymbols(str: string): string {
   if (!str) return '';
   return str
+    .replace(/≠\s*stimated/gi, 'Estimated')
     .replace(/\\rightarrow/gi, ' → ')
     .replace(/\\leftarrow/gi, ' ← ')
     .replace(/\\Rightarrow/gi, ' ⇒ ')
@@ -648,15 +659,17 @@ function cleanMathSymbols(str: string): string {
     .replace(/\\times/gi, ' × ')
     .replace(/\\div/gi, ' ÷ ')
     .replace(/\\approx/gi, ' ≈ ')
-    .replace(/\\le/gi, ' ≤ ')
-    .replace(/\\ge/gi, ' ≥ ')
-    .replace(/\\ne/gi, ' ≠ ')
+    .replace(/\\le(?![a-zA-Z])/gi, ' ≤ ')
+    .replace(/\\ge(?![a-zA-Z])/gi, ' ≥ ')
+    .replace(/\\ne(?![a-zA-Z])/gi, ' ≠ ')
     .replace(/\\pm/gi, ' ± ')
     .replace(/\\cdot/gi, ' · ')
     .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/gi, '$1/$2')
     .replace(/\\sqrt\{([^}]+)\}/gi, '√$1')
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
     .replace(/\\/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[^\S\r\n]+/g, ' ')
     .trim();
 }
 
@@ -744,8 +757,8 @@ function extractWhiteboardTags(text: string, requestedQuestion?: string, mode?: 
     while ((bMatch = blockRegex.exec(text)) !== null) {
       steps.push({
         step: learningLanguage === 'en' ? `Part ${bMatch[1]}: ${bMatch[2].trim()}` : `भाग ${bMatch[1]}: ${bMatch[2].trim()}`,
-        formula: cleanMathSymbols(bMatch[3] || (learningLanguage === 'en' ? 'Key Concept' : 'वाचन व व्याख्या')),
-        annotation: cleanMathSymbols(bMatch[4] || (learningLanguage === 'en' ? 'Explanation' : 'चरण-दर-चरण स्पष्टीकरण')),
+        formula: cleanMathSymbols(bMatch[3] || bMatch[2]?.trim() || (learningLanguage === 'en' ? 'Step-by-step Solution' : 'हल व उत्तर')),
+        annotation: cleanMathSymbols(bMatch[4] || (learningLanguage === 'en' ? 'Teacher explanation' : 'शिक्षक द्वारा स्पष्टीकरण')),
       });
     }
   }
@@ -1073,11 +1086,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   const englishKeywords = [
     'tenali', 'brinjal', 'excerpt', 'passage', 'comprehension', 'english reader', 'chapter',
     'reading', 'vocabulary', 'pronunciation', 'grammar', 'poem', 'story', 'meadow', 'speaker',
-    'advice', 'pond', 'mother', 'question', 'answer', 'literature', 'rhyme', 'stanza'
+    'advice', 'pond', 'mother', 'literature', 'rhyme', 'stanza'
   ];
   const computerKeywords = [
     'computer', 'keyboard', 'monitor', 'cpu', 'mouse', 'software', 'hardware',
-    'internet', 'coding', 'ram', 'rom', 'binary', 'windows', 'printer', 'browser', 'algorithm', 'python'
+    'internet', 'coding', 'binary', 'windows', 'printer', 'browser', 'algorithm', 'python'
   ];
   const evsKeywords = [
     'environment', 'plants', 'animals', 'photosynthesis', 'solar system', 'water cycle',
@@ -1085,27 +1098,31 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   ];
   const mathKeywords = [
     'math', 'mathematics', 'गणित', 'जोड़', 'घटाव', 'गुणा', 'भाग', 'fraction', 'भिन्न',
-    'area', 'perimeter', 'calculate', 'समीकरण', 'angle', 'triangle'
+    'area', 'perimeter', 'calculate', 'समीकरण', 'angle', 'triangle', 'difference', 'exceed',
+    'exceeds', 'digit', 'digits', 'place value', 'rounding', 'nearest', 'thousands', 'hundreds',
+    'successor', 'predecessor', 'subtract', 'subtraction', 'sum', 'balance', 'withdrew', 'equation'
   ];
 
-  const hasEnglishKeywords = englishKeywords.some((kw) => joinedLower.includes(kw));
-  const hasComputerKeywords = computerKeywords.some((kw) => joinedLower.includes(kw));
-  const hasEvsKeywords = evsKeywords.some((kw) => joinedLower.includes(kw));
   const hasMathKeywords = mathKeywords.some((kw) => joinedLower.includes(kw));
+  const hasComputerKeywords = computerKeywords.some((kw) => joinedLower.includes(kw)) || /\b(ram|rom)\b/i.test(joinedLower);
+  const hasEnglishKeywords = englishKeywords.some((kw) => joinedLower.includes(kw));
+  const hasEvsKeywords = evsKeywords.some((kw) => joinedLower.includes(kw));
 
   const englishCharMatches = (joinedLower.match(/[a-zA-Z]/g) || []).length;
   const hindiCharMatches = (joinedLower.match(/[\u0900-\u097F]/g) || []).length;
 
-  if (!detectedSubject || detectedSubject === 'unknown' || detectedSubject === 'math') {
-    if (hasComputerKeywords) {
+  if (!detectedSubject || detectedSubject === 'unknown') {
+    if (hasMathKeywords) {
+      detectedSubject = 'math';
+    } else if (hasComputerKeywords) {
       detectedSubject = 'computer';
     } else if (hasEvsKeywords) {
       detectedSubject = 'evs';
-    } else if (hasEnglishKeywords || (englishCharMatches > 60 && englishCharMatches > hindiCharMatches * 1.5 && !hasMathKeywords)) {
+    } else if (hasEnglishKeywords || (englishCharMatches > 60 && englishCharMatches > hindiCharMatches * 1.5)) {
       detectedSubject = 'english';
     } else if (hindiCharMatches > 50 && hindiCharMatches > englishCharMatches) {
       detectedSubject = 'hindi';
-    } else if (hasMathKeywords) {
+    } else {
       detectedSubject = 'math';
     }
   }

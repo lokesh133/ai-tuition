@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  STUDENT
+  SUPER_ADMIN
+  SUB_ADMIN
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  phone        String?       @unique
+  email        String?       @unique
+  passwordHash String
+  role         Role          @default(STUDENT)
+  roleTitle    String?
+  classGrade   String?
+  board        String?       @default("RBSE")
+  medium       String?       @default("HINDI")
+  city         String?       @default("Rajasthan")
+  isSubscribed Boolean       @default(false)
+  doubtsAsked  Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  permissions   Permission?
+  subscriptions Subscription[]
+  doubts        DoubtLog[]
+}
+
+model Permission {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  overview      Boolean  @default(false)
+  syllabus      Boolean  @default(false)
+  subscriptions Boolean  @default(false)
+  students      Boolean  @default(false)
+  courses       Boolean  @default(false)
+  teachers      Boolean  @default(false)
+  roles         Boolean  @default(false)
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planName    String   @default("₹200/mo All-Access")
+  amount      Float    @default(200.0)
+  status      String   @default("ACTIVE")
+  startDate   DateTime @default(now())
+  endDate     DateTime
+  createdAt   DateTime @default(now())
+}
+
+model DoubtLog {
+  id                 String   @id @default(uuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentName        String
+  classGrade         String
+  subject            String
+  teacherName        String
+  question           String
+  aiResponseSnippet  String
+  isCached           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+}

@@ -1,0 +1,93 @@
+{
+  "students": [
+    {
+      "name": "Manish Kumar",
+      "phone": "9998887771",
+      "password": "pass",
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "medium": "HINDI",
+      "city": "Kota",
+      "isSubscribed": false,
+      "id": "STU-1004",
+      "doubtsAsked": 0,
+      "createdAt": "2026-10-19T06:32:09.333Z"
+    },
+    {
+      "id": "STU-1001",
+      "name": "आरव शर्मा (Aarav)",
+      "phone": "9829012345",
+      "classGrade": "Class 5th",
+      "board": "RBSE",
+      "medium": "HINDI",
+      "city": "Alwar, Rajasthan",
+      "isSubscribed": true,
+      "doubtsAsked": 48,
+      "createdAt": "2026-10-10T10:00:00Z"
+    },
+    {
+      "id": "STU-1002",
+      "name": "प्रिया वर्मा (Priya)",
+      "phone": "9414054321",
+      "classGrade": "Class 7th",
+      "board": "RBSE",
+      "medium": "HINDI",
+      "city": "Jaipur, Rajasthan",
+      "isSubscribed": true,
+      "doubtsAsked": 29,
+      "createdAt": "2026-10-12T14:30:00Z"
+    },
+    {
+      "id": "STU-1003",
+      "name": "रोहित मीणा (Rohit)",
+      "phone": "9887711223",
+      "classGrade": "Class 6th",
+      "board": "RBSE",
+      "medium": "HINDI",
+      "city": "Dausa, Rajasthan",
+      "isSubscribed": false,
+      "doubtsAsked": 12,
+      "createdAt": "2026-10-15T09:15:00Z"
+    }
+  ],
+  "adminUsers": [
+    {
+      "id": "ADM-001",
+      "name": "लोकेश शर्मा (Founder)",
+      "email": "admin@aituition.com",
+      "password": "admin",
+      "role": "SUPER_ADMIN",
+      "roleTitle": "Founder & Super Admin",
+      "permissions": {
+        "overview": true,
+        "syllabus": true,
+        "subscriptions": true,
+        "students": true,
+        "courses": true,
+        "teachers": true,
+        "roles": true
+      },
+      "createdAt": "2026-10-01T00:00:00Z",
+      "status": "ACTIVE"
+    },
+    {
+      "id": "ADM-002",
+      "name": "राहुल सैनी (Syllabus Lead)",
+      "email": "rahul@aituition.com",
+      "password": "staff",
+      "role": "SUB_ADMIN",
+      "roleTitle": "RBSE Syllabus Specialist",
+      "permissions": {
+        "overview": false,
+        "syllabus": true,
+        "subscriptions": false,
+        "students": true,
+        "courses": true,
+        "teachers": false,
+        "roles": false
+      },
+      "createdAt": "2026-10-14T11:00:00Z",
+      "status": "ACTIVE"
+    }
+  ]
+}
