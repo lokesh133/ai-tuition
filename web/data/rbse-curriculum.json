@@ -1860,575 +1860,408 @@
             "id": "math",
             "subject": "Mathematics",
             "subjectHindi": "गणित (Math)",
-            "bookName": "गणित (Maths - Class 4)",
+            "bookName": "Excellence in Mathematics (Class 4 - Prachi / NCERT)",
             "teacherId": "sharma",
             "teacherName": "Sharma Sir",
             "emoji": "📐",
             "chapters": [
               {
-                "id": "c4-math-1",
+                "id": "c4-math-14",
                 "chapterNumber": 1,
-                "titleEnglish": "Numbers (Up to 4-digit numbers, Place Value, Face Value)",
-                "titleHindi": "अध्याय 1: संख्याएं (Numbers - Up to 4-digit, Place & Face Value)",
+                "titleEnglish": "Shapes Around Us (2D and 3D-shapes)",
+                "titleHindi": "Shapes Around Us (2D and 3D-shapes)",
                 "concepts": [
-                  "4 अंकों तक की संख्याएं (9999 तक)",
-                  "स्थानीय मान और जातीय मान",
-                  "विस्तारित रूप व देवनागरी अंक"
+                  "2D आकृतियाँ (Square, Rectangle, Triangle, Circle)",
+                  "3D ठोस आकृतियाँ (Cube, Cuboid, Cone, Cylinder, Sphere)",
+                  "फलक, किनारे और शीर्ष (Faces, Edges, Vertices)",
+                  "डिब्बे का जाल (Nets) व पासा (Dice)",
+                  "टाइलिंग व फर्श पैटर्न",
+                  "टैंग्राम पहेली (7 Pieces)"
                 ],
                 "keyFormulas": [
-                  "3842 = 3000 + 800 + 40 + 2",
-                  "इकाई, दहाई, सैकड़ा, हजार"
+                  "घन (Cube): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "घनाभ (Cuboid): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "पासा (Dice): विपरीत फलकों का योग = 7",
+                  "शंकु (Cone): 1 समतल फलक + 1 वक्र फलक, 1 शीर्ष"
                 ],
-                "term": "half_yearly",
-                "estimatedMinutes": 45,
+                "term": "annual",
+                "estimatedMinutes": 40,
+                "startPage": 9,
+                "endPage": 30,
                 "sampleQuestions": [
                   {
-                    "question": "संख्या 4825 में अंक 8 का स्थानीय मान क्या होगा?",
+                    "question": "एक घन (Cube) में कुल कितने फलक (Faces), किनारे (Edges) और शीर्ष (Vertices) होते हैं?",
                     "type": "solve",
-                    "correctAnswer": "800",
-                    "explanation": "8 सैकड़े के स्थान पर है, अतः 8 × 100 = 800।"
-                  }
-                ],
-                "startPage": 1,
-                "endPage": 12
-              },
-              {
-                "id": "c4-math-2",
-                "chapterNumber": 2,
-                "titleEnglish": "Addition and Subtraction (With Carry & Borrow)",
-                "titleHindi": "अध्याय 2: जोड़-घटाव (Addition & Subtraction)",
-                "concepts": [
-                  "4 अंकों की संख्याओं का जोड़",
-                  "हासिल वाले जोड़ और घटाव",
-                  "इबारती प्रश्न व दैनिक जीवन में हिसाब"
-                ],
-                "keyFormulas": [
-                  "योगफल = पहली संख्या + दूसरी संख्या",
-                  "शेष = कुल - खर्च"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
+                    "correctAnswer": "6 फलक, 12 किनारे, 8 शीर्ष",
+                    "explanation": "घन में 6 बराबर वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: घन (Cube) की परिभाषा व फलक",
+                        "formula": "फलक (Faces) = 6 वर्गाकार सतहें",
+                        "annotation": "घन एक ऐसी 3D आकृति है जिसकी लम्बाई, चौड़ाई और ऊँचाई तीनों बराबर होती हैं। इसमें 6 बराबर चौकोर फलक होते हैं।"
+                      },
+                      {
+                        "step": "चरण 2: किनारे (Edges) और शीर्ष (Vertices)",
+                        "formula": "किनारे (Edges) = 12 | शीर्ष (Vertices/कोने) = 8",
+                        "annotation": "जहाँ दो फलक मिलते हैं वे 12 किनारे कहलाते हैं, और जहाँ तीन किनारे मिलते हैं वे 8 कोने (शीर्ष) कहलाते हैं।"
+                      },
+                      {
+                        "step": "चरण 3: अंतिम उत्तर निष्कर्ष",
+                        "formula": "घन: 6 फलक, 12 किनारे, 8 शीर्ष",
+                        "annotation": "अतः सही उत्तर: 6 फलक (Faces), 12 किनारे (Edges) और 8 शीर्ष (Vertices)।"
+                      }
+                    ]
+                  },
                   {
-                    "question": "रमेश ने 4560 रुपये की साइकिल और 1280 रुपये का सामान खरीदा। उसने कुल कितने रुपये खर्च किए?",
+                    "question": "लूडो के पासे (Dice) के विपरीत फलकों पर लिखे अंकों का योग कितना होता है? यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
                     "type": "solve",
-                    "correctAnswer": "5840",
-                    "explanation": "4560 + 1280 = 5840 रुपये।"
-                  }
-                ],
-                "startPage": 13,
-                "endPage": 24
-              },
-              {
-                "id": "c4-math-3",
-                "chapterNumber": 3,
-                "titleEnglish": "Multiplication (Single & Double Digit)",
-                "titleHindi": "अध्याय 3: गुणा (Multiplication)",
-                "concepts": [
-                  "गुणनफल की अवधारणा",
-                  "दो व तीन अंकों की संख्या का गुणा",
-                  "शून्य से गुणा का नियम"
-                ],
-                "keyFormulas": [
-                  "गुणनफल = गुण्य × गुणक",
-                  "किसी संख्या × 0 = 0"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
+                    "correctAnswer": "योग = 7, नीचे = 3",
+                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है (7 - 4 = 3)।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: लूडो के मानक पासे (Dice) का सार्वभौमिक नियम",
+                        "formula": "विपरीत फलकों का योग = 7 (Opposite Faces Sum = 7)",
+                        "annotation": "किसी भी असली मानक पासे में आमने-सामने वाले दो फलकों के अंकों का जोड़ हमेशा 7 होता है।"
+                      },
+                      {
+                        "step": "चरण 2: विपरीत फलक की गणना",
+                        "formula": "विपरीत फलक = 7 - 4 = 3",
+                        "annotation": "यदि शीर्ष पर 4 है, तो 7 में से 4 घटाने पर नीचे का अंक 3 प्राप्त होता है।"
+                      },
+                      {
+                        "step": "चरण 3: निष्कर्ष व सत्यापन",
+                        "formula": "4 + 3 = 7 (सत्यापित)",
+                        "annotation": "अतः पासे के निचले फलक पर अंक 3 होगा।"
+                      }
+                    ]
+                  },
                   {
-                    "question": "एक पेटी में 45 आम हैं। ऐसी 12 पेटियों में कुल कितने आम होंगे?",
+                    "question": "ऐसी कौन सी आकृति है जिसमें कोई कोना (Vertex) या सीधा किनारा नहीं होता?",
                     "type": "solve",
-                    "correctAnswer": "540",
-                    "explanation": "45 × 12 = 540 आम।"
+                    "correctAnswer": "गोला (Sphere) / वृत्त (Circle)",
+                    "explanation": "गोले और वृत्त में केवल वक्राकार सतह या परिधि होती है, कोई सीधा किनारा या कोना नहीं होता।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: वक्राकार आकृतियों की विशेषता",
+                        "formula": "गोला (Sphere) = पूर्ण वक्र सतह (Curved Surface Only)",
+                        "annotation": "गोले (जैसे गेंद, फुटबॉल) और वृत्त में कोई सीधी रेखा या कोना नहीं होता।"
+                      },
+                      {
+                        "step": "चरण 2: शीर्ष व किनारों की अनुपस्थिति",
+                        "formula": "शीर्ष = 0, सीधे किनारे = 0",
+                        "annotation": "यह चारों ओर से एक समान रूप से गोल होती है, इसलिए इसमें कोई कोना (Vertex) नहीं बनता।"
+                      },
+                      {
+                        "step": "चरण 3: अंतिम उत्तर",
+                        "formula": "गोला (Sphere) / वृत्त (Circle)",
+                        "annotation": "अतः गोला और वृत्त ऐसी आकृतियाँ हैं जिनमें कोई सीधा किनारा या कोना नहीं होता।"
+                      }
+                    ]
+                  },
+                  {
+                    "question": "एक जोकर की टोपी (Joker's Cap) और आइसक्रीम कोन किस 3D आकृति के उदाहरण हैं और इसमें कितने फलक होते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "शंकु (Cone), 2 फलक (1 समतल + 1 वक्र)",
+                    "explanation": "शंकु में एक वृत्ताकार समतल आधार और एक घुमावदार वक्र फलक होता है।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: जोकर की टोपी और आइसक्रीम कोन की आकृति",
+                        "formula": "3D आकृति = शंकु (Cone)",
+                        "annotation": "जोकर की टोपी और आइसक्रीम का आकार 3D में शंकु (Cone) कहलाता है।"
+                      },
+                      {
+                        "step": "चरण 2: फलकों (Faces) की गिनती",
+                        "formula": "कुल फलक = 2 (1 समतल वृत्ताकार आधार + 1 घुमावदार वक्र सतह)",
+                        "annotation": "नीचे का आधार समतल गोल होता है और ऊपर का हिस्सा घुमावदार वक्राकार होता है।"
+                      },
+                      {
+                        "step": "चरण 3: शीर्ष (Vertex)",
+                        "formula": "शीर्ष = 1 (नुकीला शीर्ष)",
+                        "annotation": "शंकु में ऊपर एक नुकीला सिरा (शीर्ष) होता है। अतः सही उत्तर: शंकु (Cone), कुल 2 फलक।"
+                      }
+                    ]
+                  },
+                  {
+                    "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "7 टुकड़े (5 त्रिभुज, 1 वर्ग, 1 समांतर चतुर्भुज)",
+                    "explanation": "पारंपरिक चीनी टैंग्राम 7 आकृतियों से मिलकर बनता है जिससे कई चित्र बनाए जा सकते हैं।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: टैंग्राम (Tangram) का परिचय",
+                        "formula": "चीनी पहेली = 7 ज्यामितीय आकृतियाँ (Pieces)",
+                        "annotation": "टैंग्राम चीन की एक प्रसिद्ध पहेली है, जिसमें एक वर्ग को काटकर 7 अलग-अलग ज्यामितीय टुकड़े बनाए जाते हैं।"
+                      },
+                      {
+                        "step": "चरण 2: टुकड़ों का वर्गीकरण",
+                        "formula": "5 त्रिभुज + 1 वर्ग + 1 समांतर चतुर्भुज (Parallelogram) = 7",
+                        "annotation": "इन 7 टुकड़ों को जोड़कर बच्चे विभिन्न प्रकार के जानवर, इंसान, और सुंदर आकार बनाते हैं।"
+                      },
+                      {
+                        "step": "चरण 3: उत्तर",
+                        "formula": "कुल 7 टुकड़े",
+                        "annotation": "अतः चीनी टैंग्राम पहेली में कुल 7 टुकड़े होते हैं।"
+                      }
+                    ]
+                  },
+                  {
+                    "question": "माचिस की डिब्बी और ईंट (Brick) किस आकृति के उदाहरण हैं?",
+                    "type": "solve",
+                    "correctAnswer": "घनाभ (Cuboid)",
+                    "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: माचिस और ईंट की ज्यामिति",
+                        "formula": "आकृति = घनाभ (Cuboid)",
+                        "annotation": "माचिस की डिब्बी और ईंट में 6 आयताकार (Rectangular) फलक होते हैं। ऐसी आकृति को घनाभ (Cuboid) कहा जाता है।"
+                      },
+                      {
+                        "step": "चरण 2: घनाभ की विमाएं",
+                        "formula": "लंबाई ≠ चौड़ाई ≠ ऊँचाई",
+                        "annotation": "घनाभ में विपरीत फलक बराबर होते हैं। इसमें भी घन की तरह 6 फलक, 12 किनारे और 8 शीर्ष होते हैं।"
+                      },
+                      {
+                        "step": "चरण 3: अंतिम उत्तर",
+                        "formula": "घनाभ (Cuboid)",
+                        "annotation": "अतः ईंट और माचिस की डिब्बी घनाभ (Cuboid) के प्रत्यक्ष उदाहरण हैं।"
+                      }
+                    ]
+                  },
+                  {
+                    "question": "🎯 [मास्टर मॉक टेस्ट] यदि किसी कमरे में एक घनाभ आकार का बक्सा रखा है, तो उसके कितने फलक फर्श को छू सकते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "1 फलक (निचला आधार)",
+                    "explanation": "एक समय में बक्से का केवल एक समतल फलक ही फर्श को छूता है।",
+                    "whiteboardSteps": [
+                      {
+                        "step": "चरण 1: फर्श और घनाभ का संपर्क",
+                        "formula": "समतल फर्श = 1 क्षैतिज तल (Flat Plane)",
+                        "annotation": "जब किसी ठोस घनाभ बक्से को समतल फर्श पर रखा जाता है, तो बक्से का केवल एक फलक (निचला आधार) ही फर्श पर टिक सकता है।"
+                      },
+                      {
+                        "step": "चरण 2: फलक विन्यास",
+                        "formula": "फर्श पर स्थित फलक = 1 आधार फलक",
+                        "annotation": "शेष 4 फलक चारों तरफ दीवार जैसे खड़े रहते हैं और 1 फलक सबसे ऊपर छत की तरफ होता है।"
+                      },
+                      {
+                        "step": "चरण 3: मास्टर निष्कर्ष",
+                        "formula": "उत्तर = केवल 1 फलक",
+                        "annotation": "अतः कमरे के फर्श को एक समय में केवल 1 फलक ही छू सकता है।"
+                      }
+                    ]
                   }
                 ],
-                "startPage": 25,
-                "endPage": 36
+                "bookPages": [
+                  {
+                    "pageNumber": 9,
+                    "pageTitle": "पेज 9: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 9 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 9 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-9.webp?v=1792520306455"
+                  },
+                  {
+                    "pageNumber": 10,
+                    "pageTitle": "पेज 10: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 10 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 10 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-10.webp?v=1792520306460"
+                  },
+                  {
+                    "pageNumber": 11,
+                    "pageTitle": "पेज 11: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 11 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 11 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-11.webp?v=1792520306464"
+                  },
+                  {
+                    "pageNumber": 12,
+                    "pageTitle": "पेज 12: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 12 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 12 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-12.webp?v=1792520306466"
+                  },
+                  {
+                    "pageNumber": 13,
+                    "pageTitle": "पेज 13: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 13 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 13 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-13.webp?v=1792520306468"
+                  },
+                  {
+                    "pageNumber": 14,
+                    "pageTitle": "पेज 14: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 14 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 14 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-14.webp?v=1792520306470"
+                  },
+                  {
+                    "pageNumber": 15,
+                    "pageTitle": "पेज 15: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 15 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 15 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-15.webp?v=1792520306472"
+                  },
+                  {
+                    "pageNumber": 16,
+                    "pageTitle": "पेज 16: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 16 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 16 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-16.webp?v=1792520306473"
+                  },
+                  {
+                    "pageNumber": 17,
+                    "pageTitle": "पेज 17: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 17 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 17 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-17.webp?v=1792520306475"
+                  },
+                  {
+                    "pageNumber": 18,
+                    "pageTitle": "पेज 18: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 18 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 18 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-18.webp?v=1792520306477"
+                  },
+                  {
+                    "pageNumber": 19,
+                    "pageTitle": "पेज 19: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 19 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 19 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-19.webp?v=1792520306479"
+                  },
+                  {
+                    "pageNumber": 20,
+                    "pageTitle": "पेज 20: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 20 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 20 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-20.webp?v=1792520306481"
+                  },
+                  {
+                    "pageNumber": 21,
+                    "pageTitle": "पेज 21: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 21 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 21 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-21.webp?v=1792520306483"
+                  },
+                  {
+                    "pageNumber": 22,
+                    "pageTitle": "पेज 22: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 22 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 22 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-22.webp?v=1792520306484"
+                  },
+                  {
+                    "pageNumber": 23,
+                    "pageTitle": "पेज 23: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 23 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 23 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-23.webp?v=1792520306486"
+                  },
+                  {
+                    "pageNumber": 24,
+                    "pageTitle": "पेज 24: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 24 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 24 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-24.webp?v=1792520306488"
+                  },
+                  {
+                    "pageNumber": 25,
+                    "pageTitle": "पेज 25: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 25 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 25 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-25.webp?v=1792520306490"
+                  },
+                  {
+                    "pageNumber": 26,
+                    "pageTitle": "पेज 26: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 26 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 26 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-26.webp?v=1792520306492"
+                  },
+                  {
+                    "pageNumber": 27,
+                    "pageTitle": "पेज 27: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 27 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 27 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-27.webp?v=1792520306496"
+                  },
+                  {
+                    "pageNumber": 28,
+                    "pageTitle": "पेज 28: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 28 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 28 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-28.webp?v=1792520306498"
+                  },
+                  {
+                    "pageNumber": 29,
+                    "pageTitle": "पेज 29: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 29 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 29 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-29.webp?v=1792520306500"
+                  },
+                  {
+                    "pageNumber": 30,
+                    "pageTitle": "पेज 30: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 30 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 30 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-30.webp?v=1792520306501"
+                  }
+                ]
               },
               {
                 "id": "c4-math-4",
                 "chapterNumber": 4,
-                "titleEnglish": "Division (Sharing & Remainders)",
-                "titleHindi": "अध्याय 4: भाग (Division)",
-                "concepts": [
-                  "समान बांटना (Equal Distribution)",
-                  "भाज्य, भाजक, भागफल और शेषफल",
-                  "जांच सूत्र"
-                ],
-                "keyFormulas": [
-                  "भाज्य = (भाजक × भागफल) + शेषफल"
-                ],
+                "titleEnglish": "Chapter 4: Division (Sharing & Equal Groups)",
+                "titleHindi": "अध्याय 4: भाग (बराबर बंटवारा व समूह)",
+                "startPage": 1,
+                "endPage": 27,
+                "totalPages": 27,
                 "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "72 कॉपियों को 8 बच्चों में बराबर-बराबर बांटने पर प्रत्येक को कितनी कॉपियां मिलेंगी?",
-                    "type": "solve",
-                    "correctAnswer": "9",
-                    "explanation": "72 ÷ 8 = 9 कॉपियां।"
-                  }
-                ],
-                "startPage": 37,
-                "endPage": 48
-              },
-              {
-                "id": "c4-math-5",
-                "chapterNumber": 5,
-                "titleEnglish": "Vedic Math Basics (Ekadhikena Purvena)",
-                "titleHindi": "अध्याय 5: वैदिक गणित (Vedic Math Basics)",
-                "concepts": [
-                  "एकाधिक और एकन्यून की समझ",
-                  "परम मित्र अंक (योग = 10)",
-                  "एकाधिकेन पूर्वेण विधि से जोड़"
-                ],
-                "keyFormulas": [
-                  "7 का परम मित्र अंक = 3 (7+3=10)",
-                  "4 का एकाधिक = 5"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "वैदिक गणित में अंक 6 का परम मित्र अंक क्या है?",
-                    "type": "mcq",
-                    "options": [
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
-                    "correctAnswer": "4",
-                    "explanation": "जिन दो अंकों का योग 10 होता है वे परम मित्र कहलाते हैं (6 + 4 = 10)।"
-                  }
-                ],
-                "startPage": 49,
-                "endPage": 58
-              },
-              {
-                "id": "c4-math-6",
-                "chapterNumber": 6,
-                "titleEnglish": "Fractions (Simple Fractions, Numerator & Denominator)",
-                "titleHindi": "अध्याय 6: भिन्न (Fractions - Numerator & Denominator)",
-                "concepts": [
-                  "आधा (1/2), एक-चौथाई (1/4), तीन-चौथाई (3/4)",
-                  "अंश और हर की पहचान",
-                  "चित्रों में छायांकित भिन्न"
-                ],
-                "keyFormulas": [
-                  "भिन्न = अंश / हर (Numerator / Denominator)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "भिन्न 3/4 में अंश (Numerator) कौन सा अंक है?",
-                    "type": "mcq",
-                    "options": [
-                      "3",
-                      "4",
-                      "7",
-                      "1"
-                    ],
-                    "correctAnswer": "3",
-                    "explanation": "ऊपर वाली संख्या को अंश कहते हैं, इसलिए 3 अंश है।"
-                  }
-                ],
-                "startPage": 59,
-                "endPage": 70
-              },
-              {
-                "id": "c4-math-7",
-                "chapterNumber": 7,
-                "titleEnglish": "Measurement (Length: Meter, Centimeter)",
-                "titleHindi": "अध्याय 7: मापन (Measurement - Length: Meter, Centimeter)",
-                "concepts": [
-                  "सेंटीमीटर (cm) और मीटर (m) की समझ",
-                  "स्केल (पैमाने) से रेखाखंड मापना",
-                  "इकाइयों का रूपांतरण"
-                ],
-                "keyFormulas": [
-                  "1 मीटर = 100 सेंटीमीटर (1 m = 100 cm)",
-                  "1 किलोमीटर = 1000 मीटर"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "4 मीटर में कितने सेंटीमीटर होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "400",
-                    "explanation": "1 मीटर = 100 सेमी, अतः 4 मीटर = 4 × 100 = 400 सेमी।"
-                  }
-                ],
-                "startPage": 71,
-                "endPage": 82
-              },
-              {
-                "id": "c4-math-8",
-                "chapterNumber": 8,
-                "titleEnglish": "Weight / Measurement of Mass (Gram, Kilogram)",
-                "titleHindi": "अध्याय 8: भार / तौल (Weight - Gram, Kilogram)",
-                "concepts": [
-                  "ग्राम (g) और किलोग्राम (kg)",
-                  "तराजू और मानक बांट (100g, 200g, 500g, 1kg, 2kg)",
-                  "इकाई रूपांतरण (1 kg = 1000 g)",
-                  "दैनिक जीवन में भार का जोड़ और घटाव",
-                  "किताब के अंत के अभ्यास प्रश्न"
-                ],
-                "keyFormulas": [
-                  "1 किलोग्राम = 1000 ग्राम (1 kg = 1000 g)",
-                  "आधा किलोग्राम (1/2 kg) = 500 ग्राम",
-                  "एक पाव (1/4 kg) = 250 ग्राम",
-                  "तीन पाव (3/4 kg) = 750 ग्राम"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 50,
-                "bookPages": [
-                  {
-                    "pageNumber": 1,
-                    "pageTitle": "पृष्ठ 1: तराजू और मानक बांट की पहचान",
-                    "summary": "सब्जी मंडी और किराने की दुकान पर तौल के लिए लोहे के बांट (100g, 200g, 500g, 1kg, 2kg, 5kg) और तराजू का उपयोग होता है।",
-                    "concepts": [
-                      "तराजू के दो पलड़े",
-                      "मानक बांट की पहचान",
-                      "हल्की व भारी वस्तुओं का अनुमान"
-                    ]
-                  },
-                  {
-                    "pageNumber": 2,
-                    "pageTitle": "पृष्ठ 2: किलोग्राम और ग्राम में संबंध (रूपांतरण नियम)",
-                    "summary": "1 किलोग्राम = 1000 ग्राम। जब छोटे बांट मिलकर 1000 ग्राम बनाते हैं, तब वह 1 किलोग्राम के बराबर होता है (जैसे: 500g + 500g = 1kg)।",
-                    "concepts": [
-                      "1 kg = 1000 g",
-                      "500g के 2 बांट = 1kg",
-                      "250g के 4 बांट = 1kg",
-                      "100g के 10 बांट = 1kg"
-                    ]
-                  },
-                  {
-                    "pageNumber": 3,
-                    "pageTitle": "पृष्ठ 3: दैनिक जीवन के हल उदाहरण (Solved Examples)",
-                    "summary": "सब्जी मंडी में आलू (1 kg) + टमाटर (500 g) + हरी मिर्च (250 g) = कुल भार 1 किग्रा 750 ग्राम। तराजू को संतुलित करने का तरीका।",
-                    "concepts": [
-                      "भार का जोड़",
-                      "दुकानदार द्वारा बांट रखना",
-                      "संतुलित तराजू"
-                    ]
-                  },
-                  {
-                    "pageNumber": 4,
-                    "pageTitle": "पृष्ठ 4: किताब के बीच के अभ्यास प्रश्न (Exercise 8.1)",
-                    "summary": "पाठ के बीच दिए गए अभ्यास: ग्राम को किलोग्राम में बदलना, खाली स्थान भरना और बांटों का मिलान करना।",
-                    "concepts": [
-                      "इकाई रूपांतरण अभ्यास",
-                      "खाली स्थान",
-                      "सही मिलान"
-                    ]
-                  },
-                  {
-                    "pageNumber": 5,
-                    "pageTitle": "पृष्ठ 5: 🎯 अध्याय के अंत के मुख्य प्रश्न (End-of-Chapter Questions)",
-                    "summary": "पाठ्यपुस्तक के अंतिम अभ्यास के असली परीक्षा प्रश्न: टीन में घी की बचत, कद्दू व तरबूज के भार की तुलना, और शाब्दिक समस्याएं।",
-                    "concepts": [
-                      "कठिन शाब्दिक प्रश्न",
-                      "भार का घटाव व जांच",
-                      "वार्षिक परीक्षा तैयारी"
-                    ]
-                  }
-                ],
-                "sampleQuestions": [
-                  {
-                    "question": "प्रश्न 1 (किताब का नियम): 1 किलोग्राम में कितने ग्राम होते हैं और 2 किलोग्राम में कितने?",
-                    "type": "solve",
-                    "correctAnswer": "1 किग्रा = 1000 ग्राम, 2 किग्रा = 2000 ग्राम",
-                    "explanation": "1 किलोग्राम = 1000 ग्राम, इसलिए 2 किलोग्राम = 2 × 1000 = 2000 ग्राम।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: इकाई संबंध नियम",
-                        "formula": "1 किलोग्राम (kg) = 1000 ग्राम (g)",
-                        "annotation": "शर्मा सर: 'बेटा, यह मुख्य नियम याद रखें कि 1 किलो में पूरे 1000 ग्राम होते हैं।'"
-                      },
-                      {
-                        "step": "चरण 2: 2 किलोग्राम की गणना",
-                        "formula": "2 kg = 2 × 1000 g = 2000 g",
-                        "annotation": "2 को 1000 से गुणा करने पर 2000 ग्राम उत्तर मिलता है।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम परिणाम",
-                        "formula": "✅ उत्तर: 2 किलोग्राम = 2000 ग्राम",
-                        "annotation": "शाबाश! यह पहला नियम पूरा हुआ।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 2 (अभ्यास 8.1): 1 किलोग्राम चीनी तौलने के लिए 250 ग्राम के कितने बांट रखने होंगे?",
-                    "type": "mcq",
-                    "options": [
-                      "2 बांट",
-                      "3 बांट",
-                      "4 बांट",
-                      "5 बांट"
-                    ],
-                    "correctAnswer": "4 बांट",
-                    "explanation": "1000 ÷ 250 = 4 बांट। 250 ग्राम के 4 बांट मिलकर 1000 ग्राम (1 किग्रा) बनाते हैं।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: कुल आवश्यक भार",
-                        "formula": "1 किलोग्राम = 1000 ग्राम",
-                        "annotation": "शर्मा सर: 'हमें तराजू के दूसरे पलड़े पर कुल 1000 ग्राम बनाना है।'"
-                      },
-                      {
-                        "step": "चरण 2: बांटों की संख्या की गणना",
-                        "formula": "बांटों की संख्या = 1000 g ÷ 250 g = 4",
-                        "annotation": "250 + 250 + 250 + 250 = 1000 ग्राम।"
-                      },
-                      {
-                        "step": "चरण 3: सही विकल्प",
-                        "formula": "✅ विकल्प (c): 4 बांट",
-                        "annotation": "250 ग्राम के 4 बांट एक किलो के बराबर होते हैं।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 3 (दैनिक जीवन): रमेश ने 1 किग्रा 500 ग्राम आलू और 2 किग्रा 250 ग्राम प्याज खरीदे। कुल कितना भार हुआ?",
-                    "type": "solve",
-                    "correctAnswer": "3 किग्रा 750 ग्राम",
-                    "explanation": "किलोग्राम को किलोग्राम से और ग्राम को ग्राम से जोड़ें: 1 kg + 2 kg = 3 kg, 500 g + 250 g = 750 g। कुल = 3 किग्रा 750 ग्राम।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: दी गई सामग्री अलग करें",
-                        "formula": "आलू = 1 kg 500 g  |  प्याज = 2 kg 250 g",
-                        "annotation": "शर्मा सर: 'किलोग्राम और ग्राम के अलग-अलग कॉलम बनाते हैं।'"
-                      },
-                      {
-                        "step": "चरण 2: जोड़ की गणना",
-                        "formula": "kg: 1 + 2 = 3 kg  |  g: 500 + 250 = 750 g",
-                        "annotation": "ग्राम का योग 1000 से कम (750 g) है, अतः कोई हासिल नहीं आएगी।"
-                      },
-                      {
-                        "step": "चरण 3: कुल भार",
-                        "formula": "✅ कुल भार = 3 किलोग्राम 750 ग्राम (3750 ग्राम)",
-                        "annotation": "थैले का कुल वजन 3 किग्रा 750 ग्राम हुआ।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 4 (🎯 किताब के अंत का असली प्रश्न): एक टीन में 15 किग्रा 500 ग्राम घी था। उसमें से 8 किग्रा 250 ग्राम घी खर्च हो गया। टीन में कितना घी शेष बचा?",
-                    "type": "solve",
-                    "correctAnswer": "7 किग्रा 250 ग्राम",
-                    "explanation": "15 किग्रा 500 ग्राम - 8 किग्रा 250 ग्राम = 7 किग्रा 250 ग्राम घी शेष बचा।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: कुल घी और खर्च हुआ घी",
-                        "formula": "कुल घी = 15 kg 500 g  |  खर्च घी = 8 kg 250 g",
-                        "annotation": "शर्मा सर: 'शेष निकालने के लिए कुल में से खर्च को घटाएंगे।'"
-                      },
-                      {
-                        "step": "चरण 2: घटाव की गणना",
-                        "formula": "ग्राम: 500 - 250 = 250 g  |  किलोग्राम: 15 - 8 = 7 kg",
-                        "annotation": "500 ग्राम में से 250 ग्राम घटाने पर 250 ग्राम, और 15 में से 8 घटाने पर 7 किग्रा।"
-                      },
-                      {
-                        "step": "चरण 3: शेष घी",
-                        "formula": "✅ टीन में शेष घी = 7 किलोग्राम 250 ग्राम",
-                        "annotation": "बिल्कुल सही! यह आपकी किताब के अंत का मुख्य प्रश्न है।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 5 (🎯 किताब के अंत का असली प्रश्न): एक कद्दू का भार 3 किग्रा 400 ग्राम और तरबूज का भार 4 किग्रा 100 ग्राम है। किसका भार अधिक है और कितना अधिक है?",
-                    "type": "solve",
-                    "correctAnswer": "तरबूज का भार 700 ग्राम अधिक है",
-                    "explanation": "4 किग्रा 100 ग्राम - 3 किग्रा 400 ग्राम = 700 ग्राम। तरबूज भारी है।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: दोनों के भार की तुलना",
-                        "formula": "तरबूज = 4 kg 100 g  >  कद्दू = 3 kg 400 g",
-                        "annotation": "शर्मा सर: 'तरबूज 4 किग्रा से ज्यादा है, इसलिए तरबूज अधिक भारी है।'"
-                      },
-                      {
-                        "step": "चरण 2: अंतर की गणना (हासिल के साथ घटाव)",
-                        "formula": "4 kg 100 g = 3 kg + 1100 g  →  1100 g - 400 g = 700 g",
-                        "annotation": "100 ग्राम में से 400 ग्राम नहीं घट सकता, इसलिए 1 किग्रा (1000g) उधार लिया: 1000+100 = 1100g।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम परिणाम",
-                        "formula": "✅ तरबूज का भार 700 ग्राम अधिक है",
-                        "annotation": "शाबाश! आपने हासिल वाला घटाव बहुत अच्छे से हल किया।"
-                      }
-                    ]
-                  }
-                ],
-                "startPage": 83,
-                "endPage": 96
-              },
-              {
-                "id": "c4-math-9",
-                "chapterNumber": 9,
-                "titleEnglish": "Capacity / Volume (Liter, Milliliter)",
-                "titleHindi": "अध्याय 9: धारिता / आयतन (Capacity - Liter, Milliliter)",
-                "concepts": [
-                  "लीटर (L) और मिलीलीटर (mL)",
-                  "तरल पदार्थों का मापन (दूध, तेल, पानी)",
-                  "मापक बर्तन"
-                ],
-                "keyFormulas": [
-                  "1 लीटर = 1000 मिलीलीटर (1 L = 1000 mL)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "500 मिलीलीटर के कितने माप मिलकर 1 लीटर बनाएंगे?",
-                    "type": "mcq",
-                    "options": [
-                      "2 माप",
-                      "3 माप",
-                      "4 माप",
-                      "5 माप"
-                    ],
-                    "correctAnswer": "2 माप",
-                    "explanation": "500 mL + 500 mL = 1000 mL = 1 Liter।"
-                  }
-                ],
-                "startPage": 97,
-                "endPage": 108
-              },
-              {
-                "id": "c4-math-10",
-                "chapterNumber": 10,
-                "titleEnglish": "Time (Clock Reading, Calendar, Days & Months)",
-                "titleHindi": "अध्याय 10: समय (Time - Clock Reading, Calendar, Days & Months)",
-                "concepts": [
-                  "घड़ी देखना (घंटे व मिनट की सुई)",
-                  "AM और PM",
-                  "कैलेंडर: दिन, सप्ताह और महीने"
-                ],
-                "keyFormulas": [
-                  "1 घंटा = 60 मिनट",
-                  "1 दिन = 24 घंटे",
-                  "1 वर्ष = 12 महीने"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "यदि घड़ी में छोटी सुई 3 पर और बड़ी सुई 12 पर हो, तो कितना समय हुआ?",
-                    "type": "mcq",
-                    "options": [
-                      "3:00 बजे",
-                      "12:15 बजे",
-                      "3:30 बजे",
-                      "6:00 बजे"
-                    ],
-                    "correctAnswer": "3:00 बजे",
-                    "explanation": "छोटी सुई घंटे दर्शाती है और बड़ी 12 पर होने से पूरे 3:00 बजे हैं।"
-                  }
-                ],
-                "startPage": 109,
-                "endPage": 118
-              },
-              {
-                "id": "c4-math-11",
-                "chapterNumber": 11,
-                "titleEnglish": "Money (Currency & Simple Shopping Calculations)",
-                "titleHindi": "अध्याय 11: मुद्रा (Money - Currency & Simple Shopping Calculations)",
-                "concepts": [
-                  "भारतीय रुपये और पैसे के नोट/सिक्के",
-                  "पैसे को रुपये में बदलना",
-                  "दुकानदार का बिल बनाना"
-                ],
-                "keyFormulas": [
-                  "1 रुपया = 100 पैसे"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "रवि 50 रुपये लेकर बाजार गया। उसने 35 रुपये की किताब खरीदी। उसके पास कितने रुपये बचे?",
-                    "type": "solve",
-                    "correctAnswer": "15",
-                    "explanation": "50 - 35 = 15 रुपये।"
-                  }
-                ],
-                "startPage": 119,
-                "endPage": 128
-              },
-              {
-                "id": "c4-math-12",
-                "chapterNumber": 12,
-                "titleEnglish": "Geometry (Shapes, Lines, Angles, Perimeter)",
-                "titleHindi": "अध्याय 12: ज्यामिति (Geometry - Shapes, Lines, Angles, Perimeter)",
-                "concepts": [
-                  "बिंदु, रेखा, रेखाखंड और किरण",
-                  "आयत, वर्ग, त्रिभुज और वृत्त",
-                  "परिमाप की सरल गणना"
-                ],
-                "keyFormulas": [
-                  "आयत का परिमाप = 2 × (लंबाई + चौड़ाई)",
-                  "वर्ग का परिमाप = 4 × भुजा"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "एक वर्ग की एक भुजा 5 सेमी है। उसका परिमाप कितना होगा?",
-                    "type": "solve",
-                    "correctAnswer": "20",
-                    "explanation": "वर्ग का परिमाप = 4 × भुजा = 4 × 5 = 20 सेमी।"
-                  }
-                ],
-                "startPage": 129,
-                "endPage": 138
-              },
-              {
-                "id": "c4-math-13",
-                "chapterNumber": 13,
-                "titleEnglish": "Patterns (Symmetry & Sequences)",
-                "titleHindi": "अध्याय 13: पैटर्न (Patterns)",
-                "concepts": [
-                  "आकृतियों के पैटर्न (घुमाव 1/4, 1/2)",
-                  "संख्यात्मक पैटर्न और सममिति"
-                ],
-                "keyFormulas": [
-                  "क्रमबद्धता नियम (Rule of Sequence)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "पैटर्न को पूरा करें: 5, 10, 15, 20, [ ... ]",
-                    "type": "solve",
-                    "correctAnswer": "25",
-                    "explanation": "हर बार 5 जुड़ रहा है, अतः 20 + 5 = 25।"
-                  }
-                ],
-                "startPage": 139,
-                "endPage": 144
-              },
-              {
-                "id": "c4-math-14",
-                "chapterNumber": 14,
-                "titleEnglish": "Data Handling (Simple Charts & Pictures)",
-                "titleHindi": "अध्याय 14: आंकड़े (Data Handling - Simple Charts & Pictures)",
-                "concepts": [
-                  "आंकड़ों का संकलन",
-                  "चित्र आलेख (Pictograph)",
-                  "तालिका पढ़ना और उत्तर देना"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "यदि एक 🍎 चिन्ह = 5 सेब दर्शाता है, तो 3 🍎 चिन्ह कितने सेब दर्शाएंगे?",
-                    "type": "solve",
-                    "correctAnswer": "15",
-                    "explanation": "3 × 5 = 15 सेब।"
-                  }
-                ],
-                "startPage": 145,
-                "endPage": 150
+                "estimatedMinutes": 45
               }
             ],
             "totalPages": 150,
@@ -4107,575 +3940,34 @@
             "id": "math",
             "subject": "Mathematics",
             "subjectHindi": "गणित (Math)",
-            "bookName": "गणित (Maths - Class 4)",
+            "bookName": "Excellence in Mathematics (Class 4 - Prachi / NCERT)",
             "teacherId": "sharma",
             "teacherName": "Sharma Sir",
             "emoji": "📐",
             "chapters": [
               {
-                "id": "c4-math-1",
+                "id": "c4-math-14",
                 "chapterNumber": 1,
-                "titleEnglish": "Numbers (Up to 4-digit numbers, Place Value, Face Value)",
-                "titleHindi": "अध्याय 1: संख्याएं (Numbers - Up to 4-digit, Place & Face Value)",
-                "concepts": [
-                  "4 अंकों तक की संख्याएं (9999 तक)",
-                  "स्थानीय मान और जातीय मान",
-                  "विस्तारित रूप व देवनागरी अंक"
-                ],
-                "keyFormulas": [
-                  "3842 = 3000 + 800 + 40 + 2",
-                  "इकाई, दहाई, सैकड़ा, हजार"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "संख्या 4825 में अंक 8 का स्थानीय मान क्या होगा?",
-                    "type": "solve",
-                    "correctAnswer": "800",
-                    "explanation": "8 सैकड़े के स्थान पर है, अतः 8 × 100 = 800।"
-                  }
-                ],
-                "startPage": 1,
-                "endPage": 12
-              },
-              {
-                "id": "c4-math-2",
-                "chapterNumber": 2,
-                "titleEnglish": "Addition and Subtraction (With Carry & Borrow)",
-                "titleHindi": "अध्याय 2: जोड़-घटाव (Addition & Subtraction)",
-                "concepts": [
-                  "4 अंकों की संख्याओं का जोड़",
-                  "हासिल वाले जोड़ और घटाव",
-                  "इबारती प्रश्न व दैनिक जीवन में हिसाब"
-                ],
-                "keyFormulas": [
-                  "योगफल = पहली संख्या + दूसरी संख्या",
-                  "शेष = कुल - खर्च"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "रमेश ने 4560 रुपये की साइकिल और 1280 रुपये का सामान खरीदा। उसने कुल कितने रुपये खर्च किए?",
-                    "type": "solve",
-                    "correctAnswer": "5840",
-                    "explanation": "4560 + 1280 = 5840 रुपये।"
-                  }
-                ],
-                "startPage": 13,
-                "endPage": 24
-              },
-              {
-                "id": "c4-math-3",
-                "chapterNumber": 3,
-                "titleEnglish": "Multiplication (Single & Double Digit)",
-                "titleHindi": "अध्याय 3: गुणा (Multiplication)",
-                "concepts": [
-                  "गुणनफल की अवधारणा",
-                  "दो व तीन अंकों की संख्या का गुणा",
-                  "शून्य से गुणा का नियम"
-                ],
-                "keyFormulas": [
-                  "गुणनफल = गुण्य × गुणक",
-                  "किसी संख्या × 0 = 0"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "एक पेटी में 45 आम हैं। ऐसी 12 पेटियों में कुल कितने आम होंगे?",
-                    "type": "solve",
-                    "correctAnswer": "540",
-                    "explanation": "45 × 12 = 540 आम।"
-                  }
-                ],
-                "startPage": 25,
-                "endPage": 36
+                "titleEnglish": "Shapes Around Us (2D and 3D-shapes)",
+                "titleHindi": "Shapes Around Us (2D and 3D-shapes)",
+                "concepts": [],
+                "keyFormulas": [],
+                "term": "annual",
+                "estimatedMinutes": 40,
+                "startPage": 9,
+                "endPage": 30,
+                "sampleQuestions": []
               },
               {
                 "id": "c4-math-4",
                 "chapterNumber": 4,
-                "titleEnglish": "Division (Sharing & Remainders)",
-                "titleHindi": "अध्याय 4: भाग (Division)",
-                "concepts": [
-                  "समान बांटना (Equal Distribution)",
-                  "भाज्य, भाजक, भागफल और शेषफल",
-                  "जांच सूत्र"
-                ],
-                "keyFormulas": [
-                  "भाज्य = (भाजक × भागफल) + शेषफल"
-                ],
+                "titleEnglish": "Chapter 4: Division (Sharing & Equal Groups)",
+                "titleHindi": "अध्याय 4: भाग (बराबर बंटवारा व समूह)",
+                "startPage": 1,
+                "endPage": 27,
+                "totalPages": 27,
                 "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "72 कॉपियों को 8 बच्चों में बराबर-बराबर बांटने पर प्रत्येक को कितनी कॉपियां मिलेंगी?",
-                    "type": "solve",
-                    "correctAnswer": "9",
-                    "explanation": "72 ÷ 8 = 9 कॉपियां।"
-                  }
-                ],
-                "startPage": 37,
-                "endPage": 48
-              },
-              {
-                "id": "c4-math-5",
-                "chapterNumber": 5,
-                "titleEnglish": "Vedic Math Basics (Ekadhikena Purvena)",
-                "titleHindi": "अध्याय 5: वैदिक गणित (Vedic Math Basics)",
-                "concepts": [
-                  "एकाधिक और एकन्यून की समझ",
-                  "परम मित्र अंक (योग = 10)",
-                  "एकाधिकेन पूर्वेण विधि से जोड़"
-                ],
-                "keyFormulas": [
-                  "7 का परम मित्र अंक = 3 (7+3=10)",
-                  "4 का एकाधिक = 5"
-                ],
-                "term": "half_yearly",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "वैदिक गणित में अंक 6 का परम मित्र अंक क्या है?",
-                    "type": "mcq",
-                    "options": [
-                      "2",
-                      "3",
-                      "4",
-                      "5"
-                    ],
-                    "correctAnswer": "4",
-                    "explanation": "जिन दो अंकों का योग 10 होता है वे परम मित्र कहलाते हैं (6 + 4 = 10)।"
-                  }
-                ],
-                "startPage": 49,
-                "endPage": 58
-              },
-              {
-                "id": "c4-math-6",
-                "chapterNumber": 6,
-                "titleEnglish": "Fractions (Simple Fractions, Numerator & Denominator)",
-                "titleHindi": "अध्याय 6: भिन्न (Fractions - Numerator & Denominator)",
-                "concepts": [
-                  "आधा (1/2), एक-चौथाई (1/4), तीन-चौथाई (3/4)",
-                  "अंश और हर की पहचान",
-                  "चित्रों में छायांकित भिन्न"
-                ],
-                "keyFormulas": [
-                  "भिन्न = अंश / हर (Numerator / Denominator)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "भिन्न 3/4 में अंश (Numerator) कौन सा अंक है?",
-                    "type": "mcq",
-                    "options": [
-                      "3",
-                      "4",
-                      "7",
-                      "1"
-                    ],
-                    "correctAnswer": "3",
-                    "explanation": "ऊपर वाली संख्या को अंश कहते हैं, इसलिए 3 अंश है।"
-                  }
-                ],
-                "startPage": 59,
-                "endPage": 70
-              },
-              {
-                "id": "c4-math-7",
-                "chapterNumber": 7,
-                "titleEnglish": "Measurement (Length: Meter, Centimeter)",
-                "titleHindi": "अध्याय 7: मापन (Measurement - Length: Meter, Centimeter)",
-                "concepts": [
-                  "सेंटीमीटर (cm) और मीटर (m) की समझ",
-                  "स्केल (पैमाने) से रेखाखंड मापना",
-                  "इकाइयों का रूपांतरण"
-                ],
-                "keyFormulas": [
-                  "1 मीटर = 100 सेंटीमीटर (1 m = 100 cm)",
-                  "1 किलोमीटर = 1000 मीटर"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "4 मीटर में कितने सेंटीमीटर होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "400",
-                    "explanation": "1 मीटर = 100 सेमी, अतः 4 मीटर = 4 × 100 = 400 सेमी।"
-                  }
-                ],
-                "startPage": 71,
-                "endPage": 82
-              },
-              {
-                "id": "c4-math-8",
-                "chapterNumber": 8,
-                "titleEnglish": "Weight / Measurement of Mass (Gram, Kilogram)",
-                "titleHindi": "अध्याय 8: भार / तौल (Weight - Gram, Kilogram)",
-                "concepts": [
-                  "ग्राम (g) और किलोग्राम (kg)",
-                  "तराजू और मानक बांट (100g, 200g, 500g, 1kg, 2kg)",
-                  "इकाई रूपांतरण (1 kg = 1000 g)",
-                  "दैनिक जीवन में भार का जोड़ और घटाव",
-                  "किताब के अंत के अभ्यास प्रश्न"
-                ],
-                "keyFormulas": [
-                  "1 किलोग्राम = 1000 ग्राम (1 kg = 1000 g)",
-                  "आधा किलोग्राम (1/2 kg) = 500 ग्राम",
-                  "एक पाव (1/4 kg) = 250 ग्राम",
-                  "तीन पाव (3/4 kg) = 750 ग्राम"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 50,
-                "bookPages": [
-                  {
-                    "pageNumber": 1,
-                    "pageTitle": "पृष्ठ 1: तराजू और मानक बांट की पहचान",
-                    "summary": "सब्जी मंडी और किराने की दुकान पर तौल के लिए लोहे के बांट (100g, 200g, 500g, 1kg, 2kg, 5kg) और तराजू का उपयोग होता है।",
-                    "concepts": [
-                      "तराजू के दो पलड़े",
-                      "मानक बांट की पहचान",
-                      "हल्की व भारी वस्तुओं का अनुमान"
-                    ]
-                  },
-                  {
-                    "pageNumber": 2,
-                    "pageTitle": "पृष्ठ 2: किलोग्राम और ग्राम में संबंध (रूपांतरण नियम)",
-                    "summary": "1 किलोग्राम = 1000 ग्राम। जब छोटे बांट मिलकर 1000 ग्राम बनाते हैं, तब वह 1 किलोग्राम के बराबर होता है (जैसे: 500g + 500g = 1kg)।",
-                    "concepts": [
-                      "1 kg = 1000 g",
-                      "500g के 2 बांट = 1kg",
-                      "250g के 4 बांट = 1kg",
-                      "100g के 10 बांट = 1kg"
-                    ]
-                  },
-                  {
-                    "pageNumber": 3,
-                    "pageTitle": "पृष्ठ 3: दैनिक जीवन के हल उदाहरण (Solved Examples)",
-                    "summary": "सब्जी मंडी में आलू (1 kg) + टमाटर (500 g) + हरी मिर्च (250 g) = कुल भार 1 किग्रा 750 ग्राम। तराजू को संतुलित करने का तरीका।",
-                    "concepts": [
-                      "भार का जोड़",
-                      "दुकानदार द्वारा बांट रखना",
-                      "संतुलित तराजू"
-                    ]
-                  },
-                  {
-                    "pageNumber": 4,
-                    "pageTitle": "पृष्ठ 4: किताब के बीच के अभ्यास प्रश्न (Exercise 8.1)",
-                    "summary": "पाठ के बीच दिए गए अभ्यास: ग्राम को किलोग्राम में बदलना, खाली स्थान भरना और बांटों का मिलान करना।",
-                    "concepts": [
-                      "इकाई रूपांतरण अभ्यास",
-                      "खाली स्थान",
-                      "सही मिलान"
-                    ]
-                  },
-                  {
-                    "pageNumber": 5,
-                    "pageTitle": "पृष्ठ 5: 🎯 अध्याय के अंत के मुख्य प्रश्न (End-of-Chapter Questions)",
-                    "summary": "पाठ्यपुस्तक के अंतिम अभ्यास के असली परीक्षा प्रश्न: टीन में घी की बचत, कद्दू व तरबूज के भार की तुलना, और शाब्दिक समस्याएं।",
-                    "concepts": [
-                      "कठिन शाब्दिक प्रश्न",
-                      "भार का घटाव व जांच",
-                      "वार्षिक परीक्षा तैयारी"
-                    ]
-                  }
-                ],
-                "sampleQuestions": [
-                  {
-                    "question": "प्रश्न 1 (किताब का नियम): 1 किलोग्राम में कितने ग्राम होते हैं और 2 किलोग्राम में कितने?",
-                    "type": "solve",
-                    "correctAnswer": "1 किग्रा = 1000 ग्राम, 2 किग्रा = 2000 ग्राम",
-                    "explanation": "1 किलोग्राम = 1000 ग्राम, इसलिए 2 किलोग्राम = 2 × 1000 = 2000 ग्राम।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: इकाई संबंध नियम",
-                        "formula": "1 किलोग्राम (kg) = 1000 ग्राम (g)",
-                        "annotation": "शर्मा सर: 'बेटा, यह मुख्य नियम याद रखें कि 1 किलो में पूरे 1000 ग्राम होते हैं।'"
-                      },
-                      {
-                        "step": "चरण 2: 2 किलोग्राम की गणना",
-                        "formula": "2 kg = 2 × 1000 g = 2000 g",
-                        "annotation": "2 को 1000 से गुणा करने पर 2000 ग्राम उत्तर मिलता है।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम परिणाम",
-                        "formula": "✅ उत्तर: 2 किलोग्राम = 2000 ग्राम",
-                        "annotation": "शाबाश! यह पहला नियम पूरा हुआ।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 2 (अभ्यास 8.1): 1 किलोग्राम चीनी तौलने के लिए 250 ग्राम के कितने बांट रखने होंगे?",
-                    "type": "mcq",
-                    "options": [
-                      "2 बांट",
-                      "3 बांट",
-                      "4 बांट",
-                      "5 बांट"
-                    ],
-                    "correctAnswer": "4 बांट",
-                    "explanation": "1000 ÷ 250 = 4 बांट। 250 ग्राम के 4 बांट मिलकर 1000 ग्राम (1 किग्रा) बनाते हैं।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: कुल आवश्यक भार",
-                        "formula": "1 किलोग्राम = 1000 ग्राम",
-                        "annotation": "शर्मा सर: 'हमें तराजू के दूसरे पलड़े पर कुल 1000 ग्राम बनाना है।'"
-                      },
-                      {
-                        "step": "चरण 2: बांटों की संख्या की गणना",
-                        "formula": "बांटों की संख्या = 1000 g ÷ 250 g = 4",
-                        "annotation": "250 + 250 + 250 + 250 = 1000 ग्राम।"
-                      },
-                      {
-                        "step": "चरण 3: सही विकल्प",
-                        "formula": "✅ विकल्प (c): 4 बांट",
-                        "annotation": "250 ग्राम के 4 बांट एक किलो के बराबर होते हैं।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 3 (दैनिक जीवन): रमेश ने 1 किग्रा 500 ग्राम आलू और 2 किग्रा 250 ग्राम प्याज खरीदे। कुल कितना भार हुआ?",
-                    "type": "solve",
-                    "correctAnswer": "3 किग्रा 750 ग्राम",
-                    "explanation": "किलोग्राम को किलोग्राम से और ग्राम को ग्राम से जोड़ें: 1 kg + 2 kg = 3 kg, 500 g + 250 g = 750 g। कुल = 3 किग्रा 750 ग्राम।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: दी गई सामग्री अलग करें",
-                        "formula": "आलू = 1 kg 500 g  |  प्याज = 2 kg 250 g",
-                        "annotation": "शर्मा सर: 'किलोग्राम और ग्राम के अलग-अलग कॉलम बनाते हैं।'"
-                      },
-                      {
-                        "step": "चरण 2: जोड़ की गणना",
-                        "formula": "kg: 1 + 2 = 3 kg  |  g: 500 + 250 = 750 g",
-                        "annotation": "ग्राम का योग 1000 से कम (750 g) है, अतः कोई हासिल नहीं आएगी।"
-                      },
-                      {
-                        "step": "चरण 3: कुल भार",
-                        "formula": "✅ कुल भार = 3 किलोग्राम 750 ग्राम (3750 ग्राम)",
-                        "annotation": "थैले का कुल वजन 3 किग्रा 750 ग्राम हुआ।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 4 (🎯 किताब के अंत का असली प्रश्न): एक टीन में 15 किग्रा 500 ग्राम घी था। उसमें से 8 किग्रा 250 ग्राम घी खर्च हो गया। टीन में कितना घी शेष बचा?",
-                    "type": "solve",
-                    "correctAnswer": "7 किग्रा 250 ग्राम",
-                    "explanation": "15 किग्रा 500 ग्राम - 8 किग्रा 250 ग्राम = 7 किग्रा 250 ग्राम घी शेष बचा।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: कुल घी और खर्च हुआ घी",
-                        "formula": "कुल घी = 15 kg 500 g  |  खर्च घी = 8 kg 250 g",
-                        "annotation": "शर्मा सर: 'शेष निकालने के लिए कुल में से खर्च को घटाएंगे।'"
-                      },
-                      {
-                        "step": "चरण 2: घटाव की गणना",
-                        "formula": "ग्राम: 500 - 250 = 250 g  |  किलोग्राम: 15 - 8 = 7 kg",
-                        "annotation": "500 ग्राम में से 250 ग्राम घटाने पर 250 ग्राम, और 15 में से 8 घटाने पर 7 किग्रा।"
-                      },
-                      {
-                        "step": "चरण 3: शेष घी",
-                        "formula": "✅ टीन में शेष घी = 7 किलोग्राम 250 ग्राम",
-                        "annotation": "बिल्कुल सही! यह आपकी किताब के अंत का मुख्य प्रश्न है।"
-                      }
-                    ]
-                  },
-                  {
-                    "question": "प्रश्न 5 (🎯 किताब के अंत का असली प्रश्न): एक कद्दू का भार 3 किग्रा 400 ग्राम और तरबूज का भार 4 किग्रा 100 ग्राम है। किसका भार अधिक है और कितना अधिक है?",
-                    "type": "solve",
-                    "correctAnswer": "तरबूज का भार 700 ग्राम अधिक है",
-                    "explanation": "4 किग्रा 100 ग्राम - 3 किग्रा 400 ग्राम = 700 ग्राम। तरबूज भारी है।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: दोनों के भार की तुलना",
-                        "formula": "तरबूज = 4 kg 100 g  >  कद्दू = 3 kg 400 g",
-                        "annotation": "शर्मा सर: 'तरबूज 4 किग्रा से ज्यादा है, इसलिए तरबूज अधिक भारी है।'"
-                      },
-                      {
-                        "step": "चरण 2: अंतर की गणना (हासिल के साथ घटाव)",
-                        "formula": "4 kg 100 g = 3 kg + 1100 g  →  1100 g - 400 g = 700 g",
-                        "annotation": "100 ग्राम में से 400 ग्राम नहीं घट सकता, इसलिए 1 किग्रा (1000g) उधार लिया: 1000+100 = 1100g।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम परिणाम",
-                        "formula": "✅ तरबूज का भार 700 ग्राम अधिक है",
-                        "annotation": "शाबाश! आपने हासिल वाला घटाव बहुत अच्छे से हल किया।"
-                      }
-                    ]
-                  }
-                ],
-                "startPage": 83,
-                "endPage": 96
-              },
-              {
-                "id": "c4-math-9",
-                "chapterNumber": 9,
-                "titleEnglish": "Capacity / Volume (Liter, Milliliter)",
-                "titleHindi": "अध्याय 9: धारिता / आयतन (Capacity - Liter, Milliliter)",
-                "concepts": [
-                  "लीटर (L) और मिलीलीटर (mL)",
-                  "तरल पदार्थों का मापन (दूध, तेल, पानी)",
-                  "मापक बर्तन"
-                ],
-                "keyFormulas": [
-                  "1 लीटर = 1000 मिलीलीटर (1 L = 1000 mL)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "500 मिलीलीटर के कितने माप मिलकर 1 लीटर बनाएंगे?",
-                    "type": "mcq",
-                    "options": [
-                      "2 माप",
-                      "3 माप",
-                      "4 माप",
-                      "5 माप"
-                    ],
-                    "correctAnswer": "2 माप",
-                    "explanation": "500 mL + 500 mL = 1000 mL = 1 Liter।"
-                  }
-                ],
-                "startPage": 97,
-                "endPage": 108
-              },
-              {
-                "id": "c4-math-10",
-                "chapterNumber": 10,
-                "titleEnglish": "Time (Clock Reading, Calendar, Days & Months)",
-                "titleHindi": "अध्याय 10: समय (Time - Clock Reading, Calendar, Days & Months)",
-                "concepts": [
-                  "घड़ी देखना (घंटे व मिनट की सुई)",
-                  "AM और PM",
-                  "कैलेंडर: दिन, सप्ताह और महीने"
-                ],
-                "keyFormulas": [
-                  "1 घंटा = 60 मिनट",
-                  "1 दिन = 24 घंटे",
-                  "1 वर्ष = 12 महीने"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 45,
-                "sampleQuestions": [
-                  {
-                    "question": "यदि घड़ी में छोटी सुई 3 पर और बड़ी सुई 12 पर हो, तो कितना समय हुआ?",
-                    "type": "mcq",
-                    "options": [
-                      "3:00 बजे",
-                      "12:15 बजे",
-                      "3:30 बजे",
-                      "6:00 बजे"
-                    ],
-                    "correctAnswer": "3:00 बजे",
-                    "explanation": "छोटी सुई घंटे दर्शाती है और बड़ी 12 पर होने से पूरे 3:00 बजे हैं।"
-                  }
-                ],
-                "startPage": 109,
-                "endPage": 118
-              },
-              {
-                "id": "c4-math-11",
-                "chapterNumber": 11,
-                "titleEnglish": "Money (Currency & Simple Shopping Calculations)",
-                "titleHindi": "अध्याय 11: मुद्रा (Money - Currency & Simple Shopping Calculations)",
-                "concepts": [
-                  "भारतीय रुपये और पैसे के नोट/सिक्के",
-                  "पैसे को रुपये में बदलना",
-                  "दुकानदार का बिल बनाना"
-                ],
-                "keyFormulas": [
-                  "1 रुपया = 100 पैसे"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "रवि 50 रुपये लेकर बाजार गया। उसने 35 रुपये की किताब खरीदी। उसके पास कितने रुपये बचे?",
-                    "type": "solve",
-                    "correctAnswer": "15",
-                    "explanation": "50 - 35 = 15 रुपये।"
-                  }
-                ],
-                "startPage": 119,
-                "endPage": 128
-              },
-              {
-                "id": "c4-math-12",
-                "chapterNumber": 12,
-                "titleEnglish": "Geometry (Shapes, Lines, Angles, Perimeter)",
-                "titleHindi": "अध्याय 12: ज्यामिति (Geometry - Shapes, Lines, Angles, Perimeter)",
-                "concepts": [
-                  "बिंदु, रेखा, रेखाखंड और किरण",
-                  "आयत, वर्ग, त्रिभुज और वृत्त",
-                  "परिमाप की सरल गणना"
-                ],
-                "keyFormulas": [
-                  "आयत का परिमाप = 2 × (लंबाई + चौड़ाई)",
-                  "वर्ग का परिमाप = 4 × भुजा"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 50,
-                "sampleQuestions": [
-                  {
-                    "question": "एक वर्ग की एक भुजा 5 सेमी है। उसका परिमाप कितना होगा?",
-                    "type": "solve",
-                    "correctAnswer": "20",
-                    "explanation": "वर्ग का परिमाप = 4 × भुजा = 4 × 5 = 20 सेमी।"
-                  }
-                ],
-                "startPage": 129,
-                "endPage": 138
-              },
-              {
-                "id": "c4-math-13",
-                "chapterNumber": 13,
-                "titleEnglish": "Patterns (Symmetry & Sequences)",
-                "titleHindi": "अध्याय 13: पैटर्न (Patterns)",
-                "concepts": [
-                  "आकृतियों के पैटर्न (घुमाव 1/4, 1/2)",
-                  "संख्यात्मक पैटर्न और सममिति"
-                ],
-                "keyFormulas": [
-                  "क्रमबद्धता नियम (Rule of Sequence)"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "पैटर्न को पूरा करें: 5, 10, 15, 20, [ ... ]",
-                    "type": "solve",
-                    "correctAnswer": "25",
-                    "explanation": "हर बार 5 जुड़ रहा है, अतः 20 + 5 = 25।"
-                  }
-                ],
-                "startPage": 139,
-                "endPage": 144
-              },
-              {
-                "id": "c4-math-14",
-                "chapterNumber": 14,
-                "titleEnglish": "Data Handling (Simple Charts & Pictures)",
-                "titleHindi": "अध्याय 14: आंकड़े (Data Handling - Simple Charts & Pictures)",
-                "concepts": [
-                  "आंकड़ों का संकलन",
-                  "चित्र आलेख (Pictograph)",
-                  "तालिका पढ़ना और उत्तर देना"
-                ],
-                "term": "annual",
-                "estimatedMinutes": 40,
-                "sampleQuestions": [
-                  {
-                    "question": "यदि एक 🍎 चिन्ह = 5 सेब दर्शाता है, तो 3 🍎 चिन्ह कितने सेब दर्शाएंगे?",
-                    "type": "solve",
-                    "correctAnswer": "15",
-                    "explanation": "3 × 5 = 15 सेब।"
-                  }
-                ],
-                "startPage": 145,
-                "endPage": 150
+                "estimatedMinutes": 45
               }
             ],
             "totalPages": 150,
@@ -7679,6 +6971,1014 @@
                     ],
                     "correctAnswer": "जब वे निर्गुण (दुष्ट) को प्राप्त होते हैं",
                     "explanation": "जैसे स्वादिष्ट नदियां समुद्र में मिलकर खारी (अपेय) हो जाती हैं, वैसे ही गुणहीन व्यक्ति में गुण भी दोष बन जाते हैं।"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "CBSE": {
+    "board": "CBSE",
+    "classes": {
+      "Class 4th": {
+        "english": [
+          {
+            "id": "math",
+            "subject": "Mathematics",
+            "subjectHindi": "गणित",
+            "bookName": "Excellence in Mathematics (Class 4 - Prachi / NCERT)",
+            "teacherId": "sharma",
+            "teacherName": "Sharma Sir",
+            "emoji": "📐",
+            "chapters": [
+              {
+                "id": "c4-math-14",
+                "chapterNumber": 1,
+                "titleEnglish": "Shapes Around Us (2D and 3D-shapes)",
+                "titleHindi": "Shapes Around Us (2D and 3D-shapes)",
+                "startPage": 7,
+                "endPage": 25,
+                "totalPages": 19,
+                "term": "annual",
+                "estimatedMinutes": 40,
+                "concepts": [
+                  "2D आकृतियाँ (Square, Rectangle, Triangle, Circle)",
+                  "3D ठोस आकृतियाँ (Cube, Cuboid, Cone, Cylinder, Sphere)",
+                  "फलक, किनारे और शीर्ष (Faces, Edges, Vertices)",
+                  "डिब्बे का जाल (Nets) व पासा (Dice)",
+                  "टाइलिंग व फर्श पैटर्न",
+                  "टैंग्राम पहेली (7 Pieces)"
+                ],
+                "keyFormulas": [
+                  "घन (Cube): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "घनाभ (Cuboid): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "पासा (Dice): विपरीत फलकों का योग = 7",
+                  "शंकु (Cone): 1 समतल फलक + 1 वक्र फलक, 1 शीर्ष"
+                ],
+                "bookPages": [
+                  {
+                    "pageNumber": 7,
+                    "pageTitle": "पेज 7: 2D आकृतियों का परिचय (Square, Rectangle, Triangle, Circle)",
+                    "summary": "द्विविमीय (2D) आकृतियों की पहचान, वर्ग, आयत, त्रिभुज व वृत्त के दैनिक उदाहरण।",
+                    "concepts": [
+                      "2D आकृतियाँ",
+                      "वर्ग व आयत",
+                      "त्रिभुज व वृत्त"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-7.webp?v=1792518945289"
+                  },
+                  {
+                    "pageNumber": 8,
+                    "pageTitle": "पेज 8: भुजाएँ और कोने (Sides & Vertices)",
+                    "summary": "वर्ग व आयत की 4 भुजाएं और 4 कोने, त्रिभुज के 3 कोने, वृत्त में शून्य कोना।",
+                    "concepts": [
+                      "भुजाएं (Sides)",
+                      "कोने (Vertices)",
+                      "कोनों की गिनती"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-8.webp?v=1792518945294"
+                  },
+                  {
+                    "pageNumber": 9,
+                    "pageTitle": "पेज 9: हमारे चारों ओर 2D आकृतियाँ (Real-world 2D Shapes)",
+                    "summary": "किताब, ब्लैकबोर्ड, सिक्के, खिड़की व पहिये में 2D आकृतियों की पहचान।",
+                    "concepts": [
+                      "दैनिक उदाहरण",
+                      "समतल सतह",
+                      "आकृति मिलान"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-9.webp?v=1792520306455"
+                  },
+                  {
+                    "pageNumber": 10,
+                    "pageTitle": "पेज 10: अभ्यास 1.1 (Exercise 1.1)",
+                    "summary": "भुजाओं व कोनों की संख्या गिनने और आकृतियों को पहचानने का अभ्यास।",
+                    "concepts": [
+                      "अभ्यास 1.1",
+                      "तालिका पूर्ति",
+                      "चित्र आधारित प्रश्न"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-10.webp?v=1792520306460"
+                  },
+                  {
+                    "pageNumber": 11,
+                    "pageTitle": "पेज 11: 3D आकृतियों का आगमन (Cube, Cuboid)",
+                    "summary": "त्रिविमीय (3D) ठोस आकृतियाँ: घन (Cube) और घनाभ (Cuboid) का परिचय।",
+                    "concepts": [
+                      "3D ठोस आकृतियाँ",
+                      "घन (Cube)",
+                      "घनाभ (Cuboid)"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-11.webp?v=1792520306464"
+                  },
+                  {
+                    "pageNumber": 12,
+                    "pageTitle": "पेज 12: फलक, किनारे और शीर्ष (Faces, Edges & Vertices)",
+                    "summary": "घन व घनाभ में 6 फलक, 12 किनारे और 8 शीर्ष की विस्तृत समझ।",
+                    "concepts": [
+                      "6 फलक (Faces)",
+                      "12 किनारे (Edges)",
+                      "8 शीर्ष (Vertices)"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-12.webp?v=1792520306466"
+                  },
+                  {
+                    "pageNumber": 13,
+                    "pageTitle": "पेज 13: बेलन और शंकु (Cylinder & Cone)",
+                    "summary": "बेलन (समतल व वक्र सतह) तथा शंकु (जोकर की टोपी) की सतहों की पहचान।",
+                    "concepts": [
+                      "बेलन (Cylinder)",
+                      "शंकु (Cone)",
+                      "वक्र व समतल सतह"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-13.webp?v=1792520306468"
+                  },
+                  {
+                    "pageNumber": 14,
+                    "pageTitle": "पेज 14: गोला और अर्धगोला (Sphere & Hemisphere)",
+                    "summary": "फुटबॉल, गेंद और नीम्बू से गोले की पूर्ण वक्र सतह और शून्य कोने की समझ।",
+                    "concepts": [
+                      "गोला (Sphere)",
+                      "अर्धगोला",
+                      "वक्र सतह"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-14.webp?v=1792520306470"
+                  },
+                  {
+                    "pageNumber": 15,
+                    "pageTitle": "पेज 15: अभ्यास 1.2 (Exercise 1.2)",
+                    "summary": "3D आकृतियों के फलक, किनारे और शीर्षों की गणना करने के अभ्यास प्रश्न।",
+                    "concepts": [
+                      "अभ्यास 1.2",
+                      "ठोस वस्तु वर्गीकरण",
+                      "फलक गणना"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-15.webp?v=1792520306472"
+                  },
+                  {
+                    "pageNumber": 16,
+                    "pageTitle": "पेज 16: डिब्बे का जाल (Nets of 3D Shapes)",
+                    "summary": "गत्ते के डिब्बे को खोलकर जाल (Net) बनाना और 6 वर्गों से घन का जाल।",
+                    "concepts": [
+                      "आकृति का जाल (Net)",
+                      "डिब्बा खोलना",
+                      "घन का जाल"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-16.webp?v=1792520306473"
+                  },
+                  {
+                    "pageNumber": 17,
+                    "pageTitle": "पेज 17: पासा और खुले डिब्बे (Dice & Open Boxes)",
+                    "summary": "लूडो के पासे के विपरीत फलकों का योग 7 होना तथा बिना ढक्कन का खुला डिब्बा।",
+                    "concepts": [
+                      "पासा (Dice नियम)",
+                      "विपरीत फलक योग = 7",
+                      "खुला डिब्बा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-17.webp?v=1792520306475"
+                  },
+                  {
+                    "pageNumber": 18,
+                    "pageTitle": "पेज 18: फर्श के पैटर्न और टाइलिंग (Tiling & Patterns)",
+                    "summary": "ऐसी आकृतियाँ जो बिना खाली जगह छोड़े फर्श को ढकती हैं (टाइलिंग)।",
+                    "concepts": [
+                      "टाइलिंग (Tiling)",
+                      "फर्श के पैटर्न",
+                      "आकृतियों का दोहराव"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-18.webp?v=1792520306477"
+                  },
+                  {
+                    "pageNumber": 19,
+                    "pageTitle": "पेज 19: टैंग्राम पहेलियाँ (7-Piece Tangram)",
+                    "summary": "चीन की प्राचीन टैंग्राम पहेली के 7 टुकड़ों से विभिन्न आकृतियाँ बनाना।",
+                    "concepts": [
+                      "टैंग्राम (Tangram)",
+                      "7 टुकड़े",
+                      "रचनात्मक आकृतियाँ"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-19.webp?v=1792520306479"
+                  },
+                  {
+                    "pageNumber": 20,
+                    "pageTitle": "पेज 20: अभ्यास 1.3 (Exercise 1.3)",
+                    "summary": "जाल (Net), टाइलिंग और टैंग्राम पर आधारित रोमांचक अभ्यास प्रश्न।",
+                    "concepts": [
+                      "अभ्यास 1.3",
+                      "पैटर्न पहचान",
+                      "टैंग्राम रचना"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-20.webp?v=1792520306481"
+                  },
+                  {
+                    "pageNumber": 21,
+                    "pageTitle": "पेज 21: ऊपर, सामने और बगल का दृश्य (Top, Front, Side Views)",
+                    "summary": "ईंट, कप और कार को ऊपर (Top), सामने (Front) व बगल (Side) से देखना।",
+                    "concepts": [
+                      "ऊपर का दृश्य (Top View)",
+                      "सामने का दृश्य (Front View)",
+                      "बगल का दृश्य (Side View)"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-21.webp?v=1792520306483"
+                  },
+                  {
+                    "pageNumber": 22,
+                    "pageTitle": "पेज 22: बिंदु ग्रिड पर 3D आकृतियाँ खींचना (Dot Grid Drawing)",
+                    "summary": "डॉट शीट (Dot Grid) पर घन व घनाभ का 3D चित्र बनाना।",
+                    "concepts": [
+                      "डॉट ग्रिड (Dot Grid)",
+                      "3D ड्राइंग",
+                      "आइसोमेट्रिक स्केच"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-22.webp?v=1792520306484"
+                  },
+                  {
+                    "pageNumber": 23,
+                    "pageTitle": "पेज 23: मानसिक गणित व सूत्र सार (Mental Math & Formulas)",
+                    "summary": "अध्याय 1 के सभी महत्वपूर्ण सूत्र, फलक-किनारे संबंध व त्वरित गणना।",
+                    "concepts": [
+                      "मानसिक गणित",
+                      "त्वरित सूत्र सार",
+                      "स्मरण बिंदु"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-23.webp?v=1792520306486"
+                  },
+                  {
+                    "pageNumber": 24,
+                    "pageTitle": "पेज 24: पाठ समीक्षा व अभ्यास प्रश्नावली (Chapter Review Assessment)",
+                    "summary": "पाठ्यपुस्तक के अंत की पूर्ण मूल्यांकन प्रश्नावली (कक्षा 4 स्तर)।",
+                    "concepts": [
+                      "पाठ समीक्षा",
+                      "बहुविकल्पीय प्रश्न",
+                      "हल सहित प्रश्न"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-24.webp?v=1792520306488"
+                  },
+                  {
+                    "pageNumber": 25,
+                    "pageTitle": "🎯 पेज 25: मास्टर मॉक टेस्ट पेपर (Master Mock Test & Real Questions)",
+                    "summary": "पृष्ठ 7 से 25 के पूरे पाठ्यक्रम पर आधारित 100% व्यापक मॉक टेस्ट प्रश्न पत्र।",
+                    "concepts": [
+                      "मास्टर मॉक टेस्ट",
+                      "वार्षिक परीक्षा प्रश्न",
+                      "आत्म-मूल्यांकन"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-25.webp?v=1792520306490"
+                  },
+                  {
+                    "pageNumber": 26,
+                    "pageTitle": "पेज 26: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 26 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 26 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-26.webp?v=1792520306492"
+                  },
+                  {
+                    "pageNumber": 27,
+                    "pageTitle": "पेज 27: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 27 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 27 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-27.webp?v=1792520306496"
+                  },
+                  {
+                    "pageNumber": 28,
+                    "pageTitle": "पेज 28: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 28 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 28 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-28.webp?v=1792520306498"
+                  },
+                  {
+                    "pageNumber": 29,
+                    "pageTitle": "पेज 29: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 29 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 29 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-29.webp?v=1792520306500"
+                  },
+                  {
+                    "pageNumber": 30,
+                    "pageTitle": "पेज 30: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 30 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 30 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-30.webp?v=1792520306501"
+                  }
+                ],
+                "sampleQuestions": [
+                  {
+                    "question": "एक घन (Cube) में कुल कितने फलक (Faces), किनारे (Edges) और शीर्ष (Vertices) होते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "6 फलक, 12 किनारे, 8 शीर्ष",
+                    "explanation": "घन में 6 बराबर वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।"
+                  },
+                  {
+                    "question": "लूडो के पासे (Dice) के विपरीत फलकों पर लिखे अंकों का योग कितना होता है? यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
+                    "type": "solve",
+                    "correctAnswer": "योग = 7, नीचे = 3",
+                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है (7 - 4 = 3)।"
+                  },
+                  {
+                    "question": "ऐसी कौन सी आकृति है जिसमें कोई कोना (Vertex) या सीधा किनारा नहीं होता?",
+                    "type": "solve",
+                    "correctAnswer": "गोला (Sphere) / वृत्त (Circle)",
+                    "explanation": "गोले और वृत्त में केवल वक्राकार सतह या परिधि होती है, कोई सीधा किनारा या कोना नहीं होता।"
+                  },
+                  {
+                    "question": "एक जोकर की टोपी (Joker's Cap) और आइसक्रीम कोन किस 3D आकृति के उदाहरण हैं और इसमें कितने फलक होते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "शंकु (Cone), 2 फलक (1 समतल + 1 वक्र)",
+                    "explanation": "शंकु में एक वृत्ताकार समतल आधार और एक घुमावदार वक्र फलक होता है।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "7 टुकड़े (5 त्रिभुज, 1 वर्ग, 1 समांतर चतुर्भुज)",
+                    "explanation": "पारंपरिक चीनी टैंग्राम 7 आकृतियों से मिलकर बनता है जिससे कई चित्र बनाए जा सकते हैं।"
+                  },
+                  {
+                    "question": "माचिस की डिब्बी और ईंट (Brick) किस आकृति के उदाहरण हैं?",
+                    "type": "solve",
+                    "correctAnswer": "घनाभ (Cuboid)",
+                    "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।"
+                  },
+                  {
+                    "question": "🎯 [मास्टर मॉक टेस्ट] यदि किसी कमरे में एक घनाभ आकार का बक्सा रखा है, तो उसके कितने फलक फर्श को छू सकते हैं?",
+                    "type": "solve",
+                    "correctAnswer": "1 फलक (निचला आधार)",
+                    "explanation": "एक समय में बक्से का केवल एक समतल फलक ही फर्श को छूता है।"
+                  }
+                ]
+              },
+              {
+                "id": "c4-math-4",
+                "chapterNumber": 4,
+                "titleEnglish": "Chapter 4: Division (Sharing & Equal Groups)",
+                "titleHindi": "अध्याय 4: भाग (Division)",
+                "startPage": 1,
+                "endPage": 27,
+                "totalPages": 27,
+                "concepts": [
+                  "समान बंटवारा (Equal Distribution)",
+                  "भाज्य, भाजक, भागफल और शेषफल",
+                  "जांच सूत्र: भाज्य = भाजक × भागफल + शेषफल",
+                  "दीर्घ विभाजन विधि (Long Division)",
+                  "इबारती प्रश्न व दैनिक जीवन उदाहरण"
+                ],
+                "keyFormulas": [
+                  "भाज्य (Dividend) = (भाजक × भागफल) + शेषफल",
+                  "संख्या ÷ 1 = संख्या | संख्या ÷ वही संख्या = 1",
+                  "0 ÷ संख्या = 0"
+                ],
+                "bookPages": [
+                  {
+                    "pageNumber": 1,
+                    "pageTitle": "पेज 1: भूमिका व दोहराव (Introduction to Division & Equal Sharing)",
+                    "summary": "समान रूप से वस्तुओं का बंटवारा करना और बार-बार घटाने की प्रक्रिया के रूप में भाग को समझना।",
+                    "concepts": [
+                      "समान बंटवारा",
+                      "भाग का चिह्न (÷)",
+                      "Repeated Subtraction"
+                    ]
+                  },
+                  {
+                    "pageNumber": 2,
+                    "pageTitle": "पेज 2: भाग के मूल पद (Dividend, Divisor, Quotient, Remainder)",
+                    "summary": "भाज्य (Dividend), भाजक (Divisor), भागफल (Quotient) और शेषफल (Remainder) की पहचान।",
+                    "concepts": [
+                      "भाज्य (Dividend)",
+                      "भाजक (Divisor)",
+                      "भागफल व शेषफल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 3,
+                    "pageTitle": "पेज 3: महत्वपूर्ण नियम व गुणधर्म (Properties of Division)",
+                    "summary": "किसी संख्या को 1 से भाग देना, उसी संख्या से भाग देना और शून्य (0) से भाग के नियम।",
+                    "concepts": [
+                      "संख्या ÷ 1 = संख्या",
+                      "संख्या ÷ संख्या = 1",
+                      "0 ÷ संख्या = 0",
+                      "अपरिभाषित (Undefined)"
+                    ]
+                  },
+                  {
+                    "pageNumber": 4,
+                    "pageTitle": "पेज 4: 1-अंकीय संख्या से भाग (Division by 1-Digit Number)",
+                    "summary": "एक अंक की संख्या (2 से 9) से बिना हासिल या शेषफल के सरल भाग।",
+                    "concepts": [
+                      "Single Digit Division",
+                      "पहाड़ों का उपयोग",
+                      "सरल गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 5,
+                    "pageTitle": "पेज 5: अभ्यास 4.1 (Exercise 4.1: Basic Division Facts)",
+                    "summary": "मौखिक व लिखित भाग के 10 अभ्यास सवाल और मिलान।",
+                    "concepts": [
+                      "मौखिक भाग",
+                      "Exercise 4.1",
+                      "गुणन व भाग संबंध"
+                    ]
+                  },
+                  {
+                    "pageNumber": 6,
+                    "pageTitle": "पेज 6: लंबी भाग विधि (Long Division Method Step-by-Step)",
+                    "summary": "भाग का मानक रूप: भाग दें, गुणा करें, घटाएं और नीचे उतारें (Divide, Multiply, Subtract, Bring down).",
+                    "concepts": [
+                      "दीर्घ विभाजन विधि",
+                      "DMSB नियम",
+                      "चरणबद्ध हल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 7,
+                    "pageTitle": "पेज 7: शेषफल वाले प्रश्न (Division with Remainder)",
+                    "summary": "जब संख्या पूरी तरह नहीं कटती तो शेषफल (Remainder) बचता है। शेषफल हमेशा भाजक से छोटा होता है।",
+                    "concepts": [
+                      "शेषफल की अवधारणा",
+                      "Remainder < Divisor"
+                    ]
+                  },
+                  {
+                    "pageNumber": 8,
+                    "pageTitle": "पेज 8: उत्तर की जांच का सूत्र (Checking Division: Verification Rule)",
+                    "summary": "जांच सूत्र: भाज्य = (भाजक × भागफल) + शेषफल [Dividend = Divisor × Quotient + Remainder].",
+                    "concepts": [
+                      "जांच सूत्र",
+                      "सत्यापन विधि",
+                      "सटीक गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 9,
+                    "pageTitle": "पेज 9: अभ्यास 4.2 (Exercise 4.2: 2-Digit & 3-Digit Division)",
+                    "summary": "दो और तीन अंकों की संख्याओं को 1-अंकीय संख्या से भाग देना और उत्तर की जांच करना।",
+                    "concepts": [
+                      "Exercise 4.2",
+                      "हल व जांच"
+                    ]
+                  },
+                  {
+                    "pageNumber": 10,
+                    "pageTitle": "पेज 10: 10, 100 और 1000 से भाग (Division by 10, 100, 1000)",
+                    "summary": "शून्य वाले भाजक: 10 से भाग देने पर इकाई का अंक शेषफल बनता है, 100 से भाग देने पर अंतिम दो अंक शेषफल बनते हैं।",
+                    "concepts": [
+                      "Shortcuts by 10/100",
+                      "त्वरित गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 11,
+                    "pageTitle": "पेज 11: 2-अंकीय भाजक से भाग (Division by 2-Digit Numbers: 11 to 20)",
+                    "summary": "दो अंकों वाली संख्या (जैसे 12, 15, 18, 25) से भाग देने की विधि।",
+                    "concepts": [
+                      "2-Digit Divisor",
+                      "पहाड़ा अनुमान विधि"
+                    ]
+                  },
+                  {
+                    "pageNumber": 12,
+                    "pageTitle": "पेज 12: अभ्यास 4.3 (Exercise 4.3: 2-Digit Divisors)",
+                    "summary": "12 से 20 तक के भाजकों से 3-अंकीय व 4-अंकीय संख्याओं के भाग के सवाल।",
+                    "concepts": [
+                      "Exercise 4.3",
+                      "अभ्यास सवाल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 13,
+                    "pageTitle": "पेज 13: शून्य वाले भागफल (Zero in the Quotient)",
+                    "summary": "जब बीच का अंक भाजक से छोटा हो तो भागफल में 0 लगाने का महत्वपूर्ण नियम।",
+                    "concepts": [
+                      "भागफल में शून्य",
+                      "अक्सर होने वाली गलतियां"
+                    ]
+                  },
+                  {
+                    "pageNumber": 14,
+                    "pageTitle": "पेज 14: 4-अंकीय संख्याओं का भाग (Dividing 4-Digit Numbers)",
+                    "summary": "चार अंकों की बड़ी संख्याओं को दो अंकों की संख्या से चरणबद्ध भाग देना।",
+                    "concepts": [
+                      "बड़ी संख्या भाग",
+                      "चरण-दर-चरण अभ्यास"
+                    ]
+                  },
+                  {
+                    "pageNumber": 15,
+                    "pageTitle": "पेज 15: अभ्यास 4.4 (Exercise 4.4: Advanced Division Practice)",
+                    "summary": "बड़ी संख्याओं के विभाजन के 8 व्यापक अभ्यास प्रश्न।",
+                    "concepts": [
+                      "Exercise 4.4",
+                      "सटीक उत्तर"
+                    ]
+                  },
+                  {
+                    "pageNumber": 16,
+                    "pageTitle": "पेज 16: इबारती प्रश्न (Word Problems - Real Life Situations Part 1)",
+                    "summary": "दैनिक जीवन में समान बंटवारा: किताबें, खिलौने, फल और पैसे बराबर बांटने के सवाल।",
+                    "concepts": [
+                      "Word Problems",
+                      "भाषा समझ",
+                      "गणितीय संक्रिया"
+                    ]
+                  },
+                  {
+                    "pageNumber": 17,
+                    "pageTitle": "पेज 17: इबारती प्रश्न (Word Problems - Real Life Situations Part 2)",
+                    "summary": "खर्च, टिकट, मासिक बचत और स्कूल की यूनिफॉर्म से जुड़े व्यावहारिक सवाल।",
+                    "concepts": [
+                      "व्यावहारिक गणित",
+                      "यूनिटरी मेथड संबंध"
+                    ]
+                  },
+                  {
+                    "pageNumber": 18,
+                    "pageTitle": "पेज 18: अभ्यास 4.5 (Exercise 4.5: Word Problems Mastery)",
+                    "summary": "10 महत्वपूर्ण वर्ड प्रॉब्लम्स का अभ्यास व विस्तृत हल।",
+                    "concepts": [
+                      "Exercise 4.5",
+                      "इबारती अभ्यास"
+                    ]
+                  },
+                  {
+                    "pageNumber": 19,
+                    "pageTitle": "पेज 19: अनुमानित भागफल (Estimating Quotients)",
+                    "summary": "सन्निकटन (Rounding off) का उपयोग करके लगभग भागफल का तुरंत अनुमान लगाना।",
+                    "concepts": [
+                      "Estimation",
+                      "सन्निकटन विधि"
+                    ]
+                  },
+                  {
+                    "pageNumber": 20,
+                    "pageTitle": "पेज 20: मिश्रित संक्रियाएं (BODMAS: Mixed Operations)",
+                    "summary": "जोड़, घटाव, गुणा और भाग एक साथ आने पर पहले भाग करने का नियम।",
+                    "concepts": [
+                      "BODMAS नियम",
+                      "संक्रियाओं का क्रम"
+                    ]
+                  },
+                  {
+                    "pageNumber": 21,
+                    "pageTitle": "पेज 21: मानसिक गणित (Mental Mathematics & Fast Tricks)",
+                    "summary": "बिना पेन-कॉपी के मन में भाग देने की वैदिक व आधुनिक ट्रिक्स।",
+                    "concepts": [
+                      "Mental Math",
+                      "फास्ट कैलकुलेशन"
+                    ]
+                  },
+                  {
+                    "pageNumber": 22,
+                    "pageTitle": "पेज 22: उच्च स्तरीय प्रश्न (HOTS - Higher Order Thinking Skills)",
+                    "summary": "तार्किक चिंतन, पहेलियां और गणितीय विचारोत्तेजक प्रश्न।",
+                    "concepts": [
+                      "HOTS Questions",
+                      "तार्किक क्षमता"
+                    ]
+                  },
+                  {
+                    "pageNumber": 23,
+                    "pageTitle": "पेज 23: लैब गतिविधि व प्रोजेक्ट (Math Lab Activity: Paper Folding)",
+                    "summary": "कागज मोड़कर और ग्रिड बनाकर भाग की समझ को दृश्यात्मक रूप से परखना।",
+                    "concepts": [
+                      "Lab Activity",
+                      "प्रैक्टिकल लर्निंग"
+                    ]
+                  },
+                  {
+                    "pageNumber": 24,
+                    "pageTitle": "पेज 24: सारांश व मुख्य सूत्र तालिका (Chapter Summary & Quick Revision)",
+                    "summary": "पूरे अध्याय 4 के सभी नियम, सूत्र और मुख्य परिभाषाओं की त्वरित समीक्षा।",
+                    "concepts": [
+                      "Revision Summary",
+                      "फॉर्मूला चार्ट"
+                    ]
+                  },
+                  {
+                    "pageNumber": 25,
+                    "pageTitle": "पेज 25: बहुविकल्पीय प्रश्न (Chapter End MCQs & Quiz)",
+                    "summary": "परीक्षा में आने वाले वस्तुनिष्ठ और 4 विकल्पों वाले 8 महत्वपूर्ण प्रश्न।",
+                    "concepts": [
+                      "MCQ Test",
+                      "ऑब्जेक्टिव प्रश्न"
+                    ]
+                  },
+                  {
+                    "pageNumber": 26,
+                    "pageTitle": "पेज 26: रिक्त स्थान व सत्य/असत्य (Fill in the Blanks & True/False)",
+                    "summary": "रिक्त स्थान पूर्ति और सत्य/असत्य वाले 10 परीक्षा उपयोगी प्रश्न।",
+                    "concepts": [
+                      "Fill in the blanks",
+                      "True/False"
+                    ]
+                  },
+                  {
+                    "pageNumber": 27,
+                    "pageTitle": "पेज 27: 🎯 अध्याय 4 का मास्टर टेस्ट पेपर (Chapter 4 Master Mock Test)",
+                    "summary": "पूरे 27 पृष्ठों के आधार पर 100% व्यापक मॉक टेस्ट प्रश्न पत्र।",
+                    "concepts": [
+                      "Master Test",
+                      "अंतिम मूल्यांकन"
+                    ]
+                  }
+                ],
+                "sampleQuestions": [
+                  {
+                    "question": "72 कॉपियों को 8 बच्चों में बराबर-बराबर बांटने पर प्रत्येक को कितनी कॉपियां मिलेंगी?",
+                    "type": "solve",
+                    "correctAnswer": "9",
+                    "explanation": "72 ÷ 8 = 9 कॉपियां।"
+                  },
+                  {
+                    "question": "यदि भाजक 6, भागफल 14 और शेषफल 3 हो, तो भाज्य (Dividend) ज्ञात कीजिए।",
+                    "type": "solve",
+                    "correctAnswer": "87",
+                    "explanation": "भाज्य = (भाजक × भागफल) + शेषफल = (6 × 14) + 3 = 84 + 3 = 87."
+                  },
+                  {
+                    "question": "किसी संख्या को उसी संख्या से भाग देने पर भागफल क्या मिलता है? (उदा: 25 ÷ 25 = ?)",
+                    "type": "solve",
+                    "correctAnswer": "1",
+                    "explanation": "किसी भी संख्या को उसी संख्या से भाग देने पर भागफल सदैव 1 होता है।"
+                  },
+                  {
+                    "question": "450 ÷ 10 का भागफल और शेषफल क्या होगा?",
+                    "type": "solve",
+                    "correctAnswer": "भागफल = 45, शेषफल = 0",
+                    "explanation": "450 को 10 से भाग देने पर 45 बार पूरा भाग जाता है, शेषफल 0 बचता है।"
+                  },
+                  {
+                    "question": "एक बस में 52 यात्री बैठ सकते हैं। 416 यात्रियों को ले जाने के लिए ऐसी कितनी बसों की आवश्यकता होगी?",
+                    "type": "solve",
+                    "correctAnswer": "8 बसें",
+                    "explanation": "416 ÷ 52 = 8 बसें।"
+                  },
+                  {
+                    "question": "985 ÷ 7 में भागफल और शेषफल ज्ञात कीजिए।",
+                    "type": "solve",
+                    "correctAnswer": "भागफल = 140, शेषफल = 5",
+                    "explanation": "985 = (7 × 140) + 5. भागफल 140 और शेषफल 5 है।"
+                  },
+                  {
+                    "question": "सत्य या असत्य: शून्य (0) को किसी भी संख्या से भाग देने पर उत्तर हमेशा 0 आता है।",
+                    "type": "solve",
+                    "correctAnswer": "सत्य (True)",
+                    "explanation": "0 ÷ कोई भी संख्या = 0 होता है (जैसे 0 ÷ 8 = 0)।"
+                  },
+                  {
+                    "question": "एक दर्जी के पास 125 मीटर कपड़ा है। यदि एक कमीज में 2 मीटर कपड़ा लगता है, तो कितनी कमीजें बनेंगी और कितना कपड़ा बचेगा?",
+                    "type": "solve",
+                    "correctAnswer": "62 कमीजें बनेंगी और 1 मीटर कपड़ा बचेगा।",
+                    "explanation": "125 ÷ 2 = 62 कमीजें (भागफल) और 1 मीटर शेष (शेषफल)।"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "hindi": [
+          {
+            "id": "math",
+            "subject": "Mathematics",
+            "subjectHindi": "गणित",
+            "bookName": "Excellence in Mathematics (Class 4 - Prachi / NCERT)",
+            "teacherId": "sharma",
+            "teacherName": "Sharma Sir",
+            "emoji": "📐",
+            "chapters": [
+              {
+                "id": "c4-math-4",
+                "chapterNumber": 4,
+                "titleEnglish": "Chapter 4: Division (Sharing & Equal Groups)",
+                "titleHindi": "अध्याय 4: भाग (Division)",
+                "startPage": 1,
+                "endPage": 27,
+                "totalPages": 27,
+                "concepts": [
+                  "समान बंटवारा (Equal Distribution)",
+                  "भाज्य, भाजक, भागफल और शेषफल",
+                  "जांच सूत्र: भाज्य = भाजक × भागफल + शेषफल",
+                  "दीर्घ विभाजन विधि (Long Division)",
+                  "इबारती प्रश्न व दैनिक जीवन उदाहरण"
+                ],
+                "keyFormulas": [
+                  "भाज्य (Dividend) = (भाजक × भागफल) + शेषफल",
+                  "संख्या ÷ 1 = संख्या | संख्या ÷ वही संख्या = 1",
+                  "0 ÷ संख्या = 0"
+                ],
+                "bookPages": [
+                  {
+                    "pageNumber": 1,
+                    "pageTitle": "पेज 1: भूमिका व दोहराव (Introduction to Division & Equal Sharing)",
+                    "summary": "समान रूप से वस्तुओं का बंटवारा करना और बार-बार घटाने की प्रक्रिया के रूप में भाग को समझना।",
+                    "concepts": [
+                      "समान बंटवारा",
+                      "भाग का चिह्न (÷)",
+                      "Repeated Subtraction"
+                    ]
+                  },
+                  {
+                    "pageNumber": 2,
+                    "pageTitle": "पेज 2: भाग के मूल पद (Dividend, Divisor, Quotient, Remainder)",
+                    "summary": "भाज्य (Dividend), भाजक (Divisor), भागफल (Quotient) और शेषफल (Remainder) की पहचान।",
+                    "concepts": [
+                      "भाज्य (Dividend)",
+                      "भाजक (Divisor)",
+                      "भागफल व शेषफल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 3,
+                    "pageTitle": "पेज 3: महत्वपूर्ण नियम व गुणधर्म (Properties of Division)",
+                    "summary": "किसी संख्या को 1 से भाग देना, उसी संख्या से भाग देना और शून्य (0) से भाग के नियम।",
+                    "concepts": [
+                      "संख्या ÷ 1 = संख्या",
+                      "संख्या ÷ संख्या = 1",
+                      "0 ÷ संख्या = 0",
+                      "अपरिभाषित (Undefined)"
+                    ]
+                  },
+                  {
+                    "pageNumber": 4,
+                    "pageTitle": "पेज 4: 1-अंकीय संख्या से भाग (Division by 1-Digit Number)",
+                    "summary": "एक अंक की संख्या (2 से 9) से बिना हासिल या शेषफल के सरल भाग।",
+                    "concepts": [
+                      "Single Digit Division",
+                      "पहाड़ों का उपयोग",
+                      "सरल गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 5,
+                    "pageTitle": "पेज 5: अभ्यास 4.1 (Exercise 4.1: Basic Division Facts)",
+                    "summary": "मौखिक व लिखित भाग के 10 अभ्यास सवाल और मिलान।",
+                    "concepts": [
+                      "मौखिक भाग",
+                      "Exercise 4.1",
+                      "गुणन व भाग संबंध"
+                    ]
+                  },
+                  {
+                    "pageNumber": 6,
+                    "pageTitle": "पेज 6: लंबी भाग विधि (Long Division Method Step-by-Step)",
+                    "summary": "भाग का मानक रूप: भाग दें, गुणा करें, घटाएं और नीचे उतारें (Divide, Multiply, Subtract, Bring down).",
+                    "concepts": [
+                      "दीर्घ विभाजन विधि",
+                      "DMSB नियम",
+                      "चरणबद्ध हल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 7,
+                    "pageTitle": "पेज 7: शेषफल वाले प्रश्न (Division with Remainder)",
+                    "summary": "जब संख्या पूरी तरह नहीं कटती तो शेषफल (Remainder) बचता है। शेषफल हमेशा भाजक से छोटा होता है।",
+                    "concepts": [
+                      "शेषफल की अवधारणा",
+                      "Remainder < Divisor"
+                    ]
+                  },
+                  {
+                    "pageNumber": 8,
+                    "pageTitle": "पेज 8: उत्तर की जांच का सूत्र (Checking Division: Verification Rule)",
+                    "summary": "जांच सूत्र: भाज्य = (भाजक × भागफल) + शेषफल [Dividend = Divisor × Quotient + Remainder].",
+                    "concepts": [
+                      "जांच सूत्र",
+                      "सत्यापन विधि",
+                      "सटीक गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 9,
+                    "pageTitle": "पेज 9: अभ्यास 4.2 (Exercise 4.2: 2-Digit & 3-Digit Division)",
+                    "summary": "दो और तीन अंकों की संख्याओं को 1-अंकीय संख्या से भाग देना और उत्तर की जांच करना।",
+                    "concepts": [
+                      "Exercise 4.2",
+                      "हल व जांच"
+                    ]
+                  },
+                  {
+                    "pageNumber": 10,
+                    "pageTitle": "पेज 10: 10, 100 और 1000 से भाग (Division by 10, 100, 1000)",
+                    "summary": "शून्य वाले भाजक: 10 से भाग देने पर इकाई का अंक शेषफल बनता है, 100 से भाग देने पर अंतिम दो अंक शेषफल बनते हैं।",
+                    "concepts": [
+                      "Shortcuts by 10/100",
+                      "त्वरित गणना"
+                    ]
+                  },
+                  {
+                    "pageNumber": 11,
+                    "pageTitle": "पेज 11: 2-अंकीय भाजक से भाग (Division by 2-Digit Numbers: 11 to 20)",
+                    "summary": "दो अंकों वाली संख्या (जैसे 12, 15, 18, 25) से भाग देने की विधि।",
+                    "concepts": [
+                      "2-Digit Divisor",
+                      "पहाड़ा अनुमान विधि"
+                    ]
+                  },
+                  {
+                    "pageNumber": 12,
+                    "pageTitle": "पेज 12: अभ्यास 4.3 (Exercise 4.3: 2-Digit Divisors)",
+                    "summary": "12 से 20 तक के भाजकों से 3-अंकीय व 4-अंकीय संख्याओं के भाग के सवाल।",
+                    "concepts": [
+                      "Exercise 4.3",
+                      "अभ्यास सवाल"
+                    ]
+                  },
+                  {
+                    "pageNumber": 13,
+                    "pageTitle": "पेज 13: शून्य वाले भागफल (Zero in the Quotient)",
+                    "summary": "जब बीच का अंक भाजक से छोटा हो तो भागफल में 0 लगाने का महत्वपूर्ण नियम।",
+                    "concepts": [
+                      "भागफल में शून्य",
+                      "अक्सर होने वाली गलतियां"
+                    ]
+                  },
+                  {
+                    "pageNumber": 14,
+                    "pageTitle": "पेज 14: 4-अंकीय संख्याओं का भाग (Dividing 4-Digit Numbers)",
+                    "summary": "चार अंकों की बड़ी संख्याओं को दो अंकों की संख्या से चरणबद्ध भाग देना।",
+                    "concepts": [
+                      "बड़ी संख्या भाग",
+                      "चरण-दर-चरण अभ्यास"
+                    ]
+                  },
+                  {
+                    "pageNumber": 15,
+                    "pageTitle": "पेज 15: अभ्यास 4.4 (Exercise 4.4: Advanced Division Practice)",
+                    "summary": "बड़ी संख्याओं के विभाजन के 8 व्यापक अभ्यास प्रश्न।",
+                    "concepts": [
+                      "Exercise 4.4",
+                      "सटीक उत्तर"
+                    ]
+                  },
+                  {
+                    "pageNumber": 16,
+                    "pageTitle": "पेज 16: इबारती प्रश्न (Word Problems - Real Life Situations Part 1)",
+                    "summary": "दैनिक जीवन में समान बंटवारा: किताबें, खिलौने, फल और पैसे बराबर बांटने के सवाल।",
+                    "concepts": [
+                      "Word Problems",
+                      "भाषा समझ",
+                      "गणितीय संक्रिया"
+                    ]
+                  },
+                  {
+                    "pageNumber": 17,
+                    "pageTitle": "पेज 17: इबारती प्रश्न (Word Problems - Real Life Situations Part 2)",
+                    "summary": "खर्च, टिकट, मासिक बचत और स्कूल की यूनिफॉर्म से जुड़े व्यावहारिक सवाल।",
+                    "concepts": [
+                      "व्यावहारिक गणित",
+                      "यूनिटरी मेथड संबंध"
+                    ]
+                  },
+                  {
+                    "pageNumber": 18,
+                    "pageTitle": "पेज 18: अभ्यास 4.5 (Exercise 4.5: Word Problems Mastery)",
+                    "summary": "10 महत्वपूर्ण वर्ड प्रॉब्लम्स का अभ्यास व विस्तृत हल।",
+                    "concepts": [
+                      "Exercise 4.5",
+                      "इबारती अभ्यास"
+                    ]
+                  },
+                  {
+                    "pageNumber": 19,
+                    "pageTitle": "पेज 19: अनुमानित भागफल (Estimating Quotients)",
+                    "summary": "सन्निकटन (Rounding off) का उपयोग करके लगभग भागफल का तुरंत अनुमान लगाना।",
+                    "concepts": [
+                      "Estimation",
+                      "सन्निकटन विधि"
+                    ]
+                  },
+                  {
+                    "pageNumber": 20,
+                    "pageTitle": "पेज 20: मिश्रित संक्रियाएं (BODMAS: Mixed Operations)",
+                    "summary": "जोड़, घटाव, गुणा और भाग एक साथ आने पर पहले भाग करने का नियम।",
+                    "concepts": [
+                      "BODMAS नियम",
+                      "संक्रियाओं का क्रम"
+                    ]
+                  },
+                  {
+                    "pageNumber": 21,
+                    "pageTitle": "पेज 21: मानसिक गणित (Mental Mathematics & Fast Tricks)",
+                    "summary": "बिना पेन-कॉपी के मन में भाग देने की वैदिक व आधुनिक ट्रिक्स।",
+                    "concepts": [
+                      "Mental Math",
+                      "फास्ट कैलकुलेशन"
+                    ]
+                  },
+                  {
+                    "pageNumber": 22,
+                    "pageTitle": "पेज 22: उच्च स्तरीय प्रश्न (HOTS - Higher Order Thinking Skills)",
+                    "summary": "तार्किक चिंतन, पहेलियां और गणितीय विचारोत्तेजक प्रश्न।",
+                    "concepts": [
+                      "HOTS Questions",
+                      "तार्किक क्षमता"
+                    ]
+                  },
+                  {
+                    "pageNumber": 23,
+                    "pageTitle": "पेज 23: लैब गतिविधि व प्रोजेक्ट (Math Lab Activity: Paper Folding)",
+                    "summary": "कागज मोड़कर और ग्रिड बनाकर भाग की समझ को दृश्यात्मक रूप से परखना।",
+                    "concepts": [
+                      "Lab Activity",
+                      "प्रैक्टिकल लर्निंग"
+                    ]
+                  },
+                  {
+                    "pageNumber": 24,
+                    "pageTitle": "पेज 24: सारांश व मुख्य सूत्र तालिका (Chapter Summary & Quick Revision)",
+                    "summary": "पूरे अध्याय 4 के सभी नियम, सूत्र और मुख्य परिभाषाओं की त्वरित समीक्षा।",
+                    "concepts": [
+                      "Revision Summary",
+                      "फॉर्मूला चार्ट"
+                    ]
+                  },
+                  {
+                    "pageNumber": 25,
+                    "pageTitle": "पेज 25: बहुविकल्पीय प्रश्न (Chapter End MCQs & Quiz)",
+                    "summary": "परीक्षा में आने वाले वस्तुनिष्ठ और 4 विकल्पों वाले 8 महत्वपूर्ण प्रश्न।",
+                    "concepts": [
+                      "MCQ Test",
+                      "ऑब्जेक्टिव प्रश्न"
+                    ]
+                  },
+                  {
+                    "pageNumber": 26,
+                    "pageTitle": "पेज 26: रिक्त स्थान व सत्य/असत्य (Fill in the Blanks & True/False)",
+                    "summary": "रिक्त स्थान पूर्ति और सत्य/असत्य वाले 10 परीक्षा उपयोगी प्रश्न।",
+                    "concepts": [
+                      "Fill in the blanks",
+                      "True/False"
+                    ]
+                  },
+                  {
+                    "pageNumber": 27,
+                    "pageTitle": "पेज 27: 🎯 अध्याय 4 का मास्टर टेस्ट पेपर (Chapter 4 Master Mock Test)",
+                    "summary": "पूरे 27 पृष्ठों के आधार पर 100% व्यापक मॉक टेस्ट प्रश्न पत्र।",
+                    "concepts": [
+                      "Master Test",
+                      "अंतिम मूल्यांकन"
+                    ]
+                  }
+                ],
+                "sampleQuestions": [
+                  {
+                    "question": "72 कॉपियों को 8 बच्चों में बराबर-बराबर बांटने पर प्रत्येक को कितनी कॉपियां मिलेंगी?",
+                    "type": "solve",
+                    "correctAnswer": "9",
+                    "explanation": "72 ÷ 8 = 9 कॉपियां।"
+                  },
+                  {
+                    "question": "यदि भाजक 6, भागफल 14 और शेषफल 3 हो, तो भाज्य (Dividend) ज्ञात कीजिए।",
+                    "type": "solve",
+                    "correctAnswer": "87",
+                    "explanation": "भाज्य = (भाजक × भागफल) + शेषफल = (6 × 14) + 3 = 84 + 3 = 87."
+                  },
+                  {
+                    "question": "किसी संख्या को उसी संख्या से भाग देने पर भागफल क्या मिलता है? (उदा: 25 ÷ 25 = ?)",
+                    "type": "solve",
+                    "correctAnswer": "1",
+                    "explanation": "किसी भी संख्या को उसी संख्या से भाग देने पर भागफल सदैव 1 होता है।"
+                  },
+                  {
+                    "question": "450 ÷ 10 का भागफल और शेषफल क्या होगा?",
+                    "type": "solve",
+                    "correctAnswer": "भागफल = 45, शेषफल = 0",
+                    "explanation": "450 को 10 से भाग देने पर 45 बार पूरा भाग जाता है, शेषफल 0 बचता है।"
+                  },
+                  {
+                    "question": "एक बस में 52 यात्री बैठ सकते हैं। 416 यात्रियों को ले जाने के लिए ऐसी कितनी बसों की आवश्यकता होगी?",
+                    "type": "solve",
+                    "correctAnswer": "8 बसें",
+                    "explanation": "416 ÷ 52 = 8 बसें।"
+                  },
+                  {
+                    "question": "985 ÷ 7 में भागफल और शेषफल ज्ञात कीजिए।",
+                    "type": "solve",
+                    "correctAnswer": "भागफल = 140, शेषफल = 5",
+                    "explanation": "985 = (7 × 140) + 5. भागफल 140 और शेषफल 5 है।"
+                  },
+                  {
+                    "question": "सत्य या असत्य: शून्य (0) को किसी भी संख्या से भाग देने पर उत्तर हमेशा 0 आता है।",
+                    "type": "solve",
+                    "correctAnswer": "सत्य (True)",
+                    "explanation": "0 ÷ कोई भी संख्या = 0 होता है (जैसे 0 ÷ 8 = 0)।"
+                  },
+                  {
+                    "question": "एक दर्जी के पास 125 मीटर कपड़ा है। यदि एक कमीज में 2 मीटर कपड़ा लगता है, तो कितनी कमीजें बनेंगी और कितना कपड़ा बचेगा?",
+                    "type": "solve",
+                    "correctAnswer": "62 कमीजें बनेंगी और 1 मीटर कपड़ा बचेगा।",
+                    "explanation": "125 ÷ 2 = 62 कमीजें (भागफल) और 1 मीटर शेष (शेषफल)।"
                   }
                 ]
               }

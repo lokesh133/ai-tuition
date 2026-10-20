@@ -31,6 +31,7 @@ export interface Chapter {
     pageTitle: string;
     summary: string;
     concepts?: string[];
+    imageUrl?: string;
   }[];
 }
 

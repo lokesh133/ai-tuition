@@ -96,7 +96,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { action, board = 'RBSE', className, subjectId, data: payload } = body;
+    const payload = body.data || body.payload;
+    const { action, board = 'RBSE', className, subjectId } = body;
 
     let fullData = getCurriculumFile();
     if (!fullData) {

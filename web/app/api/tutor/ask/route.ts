@@ -751,11 +751,41 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   if (!raw) return { question: '' };
   const trimmed = raw.trim();
 
-  // Pattern 1: Heading ending with a colon or dash before question number (e.g. "Identify the following from the story: 1. three proper nouns")
-  const colonMatch = trimmed.match(/^([^:\-–\n\r]+?)[:\-–]\s*(\(?\d+[\.\)]\s*.*)$/i);
-  if (colonMatch && colonMatch[1] && colonMatch[2]) {
-    const section = colonMatch[1].trim();
-    const question = colonMatch[2].trim();
+  // Helper to normalize section name so all questions in the section match exactly
+  const normalizeSection = (sec: string): string => {
+    const s = sec.trim();
+    const sLower = s.toLowerCase();
+    if (sLower.includes('fill in the blank') || sLower.includes('fill in blank') || sLower.includes('रिक्त स्थान')) {
+      return 'Fill in the blanks';
+    }
+    if (sLower.includes('multiple choice') || sLower === 'mcq' || sLower.includes('mcqs') || sLower.includes('बहुविकल्पीय')) {
+      return 'Multiple Choice Questions (MCQ)';
+    }
+    if (sLower.includes('true/false') || sLower.includes('true or false') || sLower.includes('सही या गलत') || (sLower.includes('सत्य') && sLower.includes('असत्य'))) {
+      return 'True / False';
+    }
+    if (sLower.includes('match the following') || sLower.includes('उचित मिलान') || sLower.includes('सुमेलित')) {
+      return 'Match the following';
+    }
+    if (sLower.includes('short answer') || sLower.includes('लघु उत्तरीय')) {
+      return 'Short Answer Questions';
+    }
+    if (sLower.includes('long answer') || sLower.includes('दीर्घ उत्तरीय')) {
+      return 'Long Answer Questions';
+    }
+    return s.replace(/[.:\-–]+$/, '').trim();
+  };
+
+  // Pattern 1: Known section name directly followed by question number (and optional colon/dash/space)
+  // e.g. "Fill in the blanks 2: Difference of 388765...", "Fill in the blanks 3 To decrease...", "MCQ 5: Mr. Alex...", "True/False 1: For any..."
+  const sectionTypeMatch = trimmed.match(
+    /^(Fill in the blanks?|True[\s/]*False|True or False|Multiple Choice Questions?|MCQ|Match the following|Tick the correct [a-z]+|Choose the correct [a-z]+|Short Answer Questions?|Long Answer Questions?|रिक्त स्थान(?: की पूर्ति करें| भरें)?|सही या गलत|सत्य\s*[/या]\s*असत्य|बहुविकल्पीय प्रश्न|सही विकल्प चुनें|उचित मिलान करें|सुमेलित कीजिए)\s*[:\-–]?\s*(?:#|Q\.?|प्रश्न\s*)?(\d+)[\.:\-–\)]?\s*(.*)$/i
+  );
+  if (sectionTypeMatch && sectionTypeMatch[1] && sectionTypeMatch[2]) {
+    const section = normalizeSection(sectionTypeMatch[1]);
+    const qNum = sectionTypeMatch[2].trim();
+    const qRest = sectionTypeMatch[3]?.trim() || '';
+    const question = qRest ? `${qNum}. ${qRest}` : `${qNum}.`;
     return { section, question };
   }
 
@@ -764,10 +794,29 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
     /^((?:(?:Section|Part|खंड|भाग|प्रश्न)\s*[A-Zक-ह0-9]*|[A-Z][\.\s])\s*[^0-9\n\r]+?)(?:[.:]\s*|\s+)(\(?\d+[\.\)]\s*.*)$/i
   );
   if (match && match[1] && match[2]) {
-    const section = match[1].replace(/[.:]$/, '').trim();
+    const section = normalizeSection(match[1]);
     const question = match[2].trim();
     return { section, question };
   }
+
+  // Pattern 3: Heading ending with a colon or dash before question number (e.g. "Fill in the blanks: 1. ...", "Identify the following: 1. three proper nouns")
+  const colonMatch = trimmed.match(/^([^:\-–\n\r]{3,40}?)\s*[:\-–]\s*(\(?\d+[\.\)]\s*.*)$/i);
+  if (colonMatch && colonMatch[1] && colonMatch[2]) {
+    const section = normalizeSection(colonMatch[1]);
+    const question = colonMatch[2].trim();
+    return { section, question };
+  }
+
+  // Pattern 4: General section label followed by number: e.g. "Mathematics 1: ...", "General Science 2: ..."
+  const generalMatch = trimmed.match(
+    /^((?:Section|Part|खंड|भाग|Chapter|अध्याय)\s*[A-Zक-ह0-9]*|[A-Za-z\u0900-\u097F\s]{3,35}?)\s*[:\-–]\s*(?:#|Q\.?|प्रश्न\s*)?(\d+)[\.:\-–\)]\s*(.*)$/i
+  );
+  if (generalMatch && generalMatch[1] && generalMatch[2] && generalMatch[3]) {
+    const section = normalizeSection(generalMatch[1]);
+    const question = `${generalMatch[2]}. ${generalMatch[3].trim()}`;
+    return { section, question };
+  }
+
   return { question: trimmed };
 }
 

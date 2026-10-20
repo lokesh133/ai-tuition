@@ -25,6 +25,8 @@ import {
   FileText,
   SplitSquareVertical,
   CheckCircle,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { Chapter, SubjectCurriculum } from '@/lib/curriculum-data';
 
@@ -91,6 +93,33 @@ export default function AdminSyllabusPage() {
 
   // Expandable chapter details
   const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null);
+
+  // Multi-page photo upload with auto-compression (5-10MB to ~150KB)
+  const [isPagePhotoModalOpen, setIsPagePhotoModalOpen] = useState<boolean>(false);
+  const [pagePhotoChapter, setPagePhotoChapter] = useState<Chapter | null>(null);
+  const [pagePhotoStartPage, setPagePhotoStartPage] = useState<number>(7);
+  const [pagePhotoEndPage, setPagePhotoEndPage] = useState<number>(25);
+  const [compressedPages, setCompressedPages] = useState<
+    Array<{
+      pageNumber: number;
+      dataUrl: string;
+      originalSize: number;
+      compressedSize: number;
+      name: string;
+    }>
+  >([]);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [isUploadingPages, setIsUploadingPages] = useState<boolean>(false);
+  const [uploadPagesSuccess, setUploadPagesSuccess] = useState<string | null>(null);
+
+  // Single-page replace and preview states
+  const [previewModalPage, setPreviewModalPage] = useState<{
+    pageNumber: number;
+    imageUrl: string;
+    pageTitle?: string;
+    chapter: Chapter;
+  } | null>(null);
+  const [replacingPageNum, setReplacingPageNum] = useState<number | null>(null);
 
   // Load syllabus data on change of board/class
   const loadClassSyllabus = async (b: string, c: string) => {
@@ -238,6 +267,285 @@ export default function AdminSyllabusPage() {
       alert('त्रुटि: पाठ्यक्रम सेव नहीं हो सका।');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Helper: Compress 5MB-10MB camera photo to ~150KB WebP crisp image
+  const compressImageFile = (file: File, maxDim = 1400, quality = 0.78): Promise<{
+    dataUrl: string;
+    originalSize: number;
+    compressedSize: number;
+  }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            return resolve({
+              dataUrl: e.target?.result as string,
+              originalSize: file.size,
+              compressedSize: file.size,
+            });
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/webp', quality);
+          const compressedSize = Math.round((dataUrl.length * 3) / 4);
+          resolve({
+            dataUrl,
+            originalSize: file.size,
+            compressedSize,
+          });
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleOpenPagePhotosModal = (ch: Chapter) => {
+    setPagePhotoChapter(ch);
+    setPagePhotoStartPage(ch.startPage || 7);
+    setPagePhotoEndPage(ch.endPage || 25);
+    setCompressedPages([]);
+    setUploadPagesSuccess(null);
+    setIsPagePhotoModalOpen(true);
+  };
+
+  const handleSelectPageImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setIsCompressing(true);
+    try {
+      const results: typeof compressedPages = [];
+      const start = pagePhotoStartPage || 7;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const pageNumber = start + i;
+        const res = await compressImageFile(file, 1400, 0.78);
+        results.push({
+          pageNumber,
+          dataUrl: res.dataUrl,
+          originalSize: res.originalSize,
+          compressedSize: res.compressedSize,
+          name: file.name,
+        });
+      }
+      setCompressedPages((prev) => [...prev, ...results]);
+    } catch (err) {
+      console.error('Compression error:', err);
+      alert('फोटो कंप्रेस करने में त्रुटि हुई');
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  const handleSaveUploadedPages = async () => {
+    if (!pagePhotoChapter || compressedPages.length === 0) return;
+    setIsUploadingPages(true);
+    setUploadPagesSuccess(null);
+    try {
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapterId: pagePhotoChapter.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+          pages: compressedPages.map((p) => ({
+            pageNumber: p.pageNumber,
+            dataUrl: p.dataUrl,
+            pageTitle: `पेज ${p.pageNumber}: ${pagePhotoChapter.titleHindi || pagePhotoChapter.titleEnglish}`,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUploadPagesSuccess(data.message || 'पृष्ठ सफलतापूर्वक अपलोड व सिंक हो गए!');
+        await loadClassSyllabus(board, selectedClass);
+        setTimeout(() => {
+          setIsPagePhotoModalOpen(false);
+          setUploadPagesSuccess(null);
+        }, 2500);
+      } else {
+        alert(data.message || 'अपलोड में त्रुटि हुई');
+      }
+    } catch (err: any) {
+      alert('अपलोड त्रुटि: ' + err.message);
+    } finally {
+      setIsUploadingPages(false);
+    }
+  };
+
+  // Replace single page photo
+  const handleReplaceSinglePagePhoto = async (ch: Chapter, pNum: number, file: File) => {
+    setReplacingPageNum(pNum);
+    try {
+      const compressed = await compressImageFile(file, 1400, 0.78);
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chapterId: ch.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+          pages: [
+            {
+              pageNumber: pNum,
+              dataUrl: compressed.dataUrl,
+              pageTitle: `पेज ${pNum}: ${ch.titleHindi || ch.titleEnglish}`,
+            },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadClassSyllabus(board, selectedClass);
+        alert(`✅ पेज ${pNum} की फोटो सफलतापूर्वक बदल दी गई है!`);
+      } else {
+        alert(data.message || 'त्रुटि हुई');
+      }
+    } catch (err: any) {
+      alert('फोटो बदलने में त्रुटि: ' + err.message);
+    } finally {
+      setReplacingPageNum(null);
+    }
+  };
+
+  // Delete single page photo
+  const handleDeleteSinglePagePhoto = async (ch: Chapter, pNum: number) => {
+    if (!confirm(`क्या आप पेज ${pNum} की फोटो हटाना चाहते हैं?`)) return;
+    try {
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_page_image',
+          chapterId: ch.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+          pageNumber: pNum,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadClassSyllabus(board, selectedClass);
+        alert(`पेज ${pNum} की फोटो हटा दी गई।`);
+      }
+    } catch (err: any) {
+      alert('त्रुटि: ' + err.message);
+    }
+  };
+
+  // Delete ALL page photos for this chapter at once (1 साथ डिलीट)
+  const handleDeleteAllPagePhotos = async (ch: Chapter) => {
+    const uploadedCount = (ch.bookPages || []).filter((p: any) => p.imageUrl).length;
+    if (uploadedCount === 0) {
+      alert('इस पाठ में अभी कोई फोटो अपलोड नहीं है!');
+      return;
+    }
+    if (
+      !confirm(
+        `⚠️ क्या आप "${ch.titleHindi || ch.titleEnglish}" के सभी ${uploadedCount} पृष्ठों की फोटो 1 साथ हटाना (Delete All) चाहते हैं?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete_all_page_images',
+          chapterId: ch.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadClassSyllabus(board, selectedClass);
+        alert('✅ सभी अपलोड की गई फोटो 1 साथ सफलतापूर्वक हटा दी गई हैं!');
+      } else {
+        alert(data.message || 'त्रुटि हुई');
+      }
+    } catch (err: any) {
+      alert('त्रुटि: ' + err.message);
+    }
+  };
+
+  // Edit Page Details (Title)
+  const handleEditPageDetails = async (ch: Chapter, pNum: number, currentTitle: string) => {
+    const newTitle = prompt(`पेज ${pNum} का नाम या टॉपिक बदलें:`, currentTitle);
+    if (!newTitle || newTitle === currentTitle) return;
+
+    try {
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit_page_details',
+          chapterId: ch.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+          pageNumber: pNum,
+          pageTitle: newTitle,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadClassSyllabus(board, selectedClass);
+      }
+    } catch (err: any) {
+      alert('त्रुटि: ' + err.message);
+    }
+  };
+
+  // Clear dummy sample questions & formulas
+  const handleClearSampleQuestions = async (ch: Chapter) => {
+    if (!confirm(`क्या आप "${ch.titleHindi || ch.titleEnglish}" के सभी प्रश्न व सूत्र हटाना चाहते हैं?`)) return;
+    try {
+      const res = await fetch('/api/admin/upload-pages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'clear_sample_questions',
+          chapterId: ch.id,
+          board,
+          className: selectedClass,
+          subjectId: currentSubject?.id || 'math',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadClassSyllabus(board, selectedClass);
+        alert('डमी प्रश्न और सूत्र साफ़ कर दिए गए हैं!');
+      }
+    } catch (err: any) {
+      alert('त्रुटि: ' + err.message);
     }
   };
 
@@ -897,7 +1205,16 @@ export default function AdminSyllabusPage() {
                         </div>
 
                         {/* Card Actions */}
-                        <div className="flex items-center gap-1.5 self-end md:self-center">
+                        <div className="flex items-center gap-1.5 self-end md:self-center flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPagePhotosModal(ch)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white shadow-sm transition-all hover:scale-105"
+                            title="पेज 7–25 फोटो अपलोड करें (ऑटो कंप्रेस 5-10MB → 150KB)"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>📸 {ch.startPage && ch.endPage ? `पेज ${ch.startPage}–${ch.endPage} फोटो अपलोड` : 'पेज फोटो अपलोड'}</span>
+                          </button>
                           <button
                             onClick={() =>
                               setExpandedChapterId(isExpanded ? null : ch.id)
@@ -932,6 +1249,7 @@ export default function AdminSyllabusPage() {
                       </div>
 
                       {/* Concept Tags */}
+                      {/* Concept Tags */}
                       {ch.concepts && ch.concepts.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap mt-3 pt-3 border-t border-slate-100">
                           <span className="text-[10px] font-bold text-slate-400">कॉन्सेप्ट्स:</span>
@@ -946,66 +1264,245 @@ export default function AdminSyllabusPage() {
                         </div>
                       )}
 
-                      {/* Expanded View: Formulas and Sample Questions */}
+                      {/* Expanded View: Real Uploaded Book Pages Gallery & Controls */}
                       {isExpanded && (
-                        <div className="mt-3 pt-3 border-t border-slate-200 space-y-3 bg-slate-50/70 p-3 rounded-xl">
-                          {ch.keyFormulas && ch.keyFormulas.length > 0 && (
-                            <div>
-                              <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block mb-1">
-                                मुख्य सूत्र / नियम:
-                              </span>
-                              <div className="flex flex-wrap gap-1.5">
-                                {ch.keyFormulas.map((f, fIdx) => (
-                                  <span
-                                    key={fIdx}
-                                    className="font-mono text-xs bg-indigo-50 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded-md"
-                                  >
-                                    {f}
-                                  </span>
-                                ))}
+                        <div className="mt-3 pt-4 border-t border-slate-200 space-y-4 bg-slate-50/80 p-4 rounded-2xl">
+                          {/* 1. Book Pages Gallery Header */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black">
+                                📖
                               </div>
+                              <div>
+                                <h5 className="font-black text-xs sm:text-sm text-slate-900 flex items-center gap-2">
+                                  <span>पाठ्यपुस्तक के पृष्ठ (Book Pages Gallery):</span>
+                                  <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold">
+                                    {(ch.bookPages || []).filter((p: any) => p.imageUrl).length} / {ch.bookPages?.length || (ch.endPage && ch.startPage ? ch.endPage - ch.startPage + 1 : 0)} फोटो अपलोड हैं
+                                  </span>
+                                </h5>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  छात्रों को क्लासरूम (/tutor) में यही असली पृष्ठ दिखते हैं। आप किसी भी पेज की फोटो पर क्लिक करके उसे देख या बदल (Replace) सकते हैं।
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPagePhotosModal(ch)}
+                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                              >
+                                <Camera className="w-4 h-4" />
+                                <span>📸 बल्क फोटो अपलोड करें</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAllPagePhotos(ch)}
+                                className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
+                                title="इस चैप्टर की सभी अपलोड की गई फोटो 1 साथ हटाएं"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>🗑️ 1 साथ सभी फोटो हटाएं (Delete All)</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2. Visual Grid of All Chapter Pages */}
+                          {ch.bookPages && ch.bookPages.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                              {ch.bookPages.map((bp: any, bpIdx: number) => {
+                                const pNum = bp.pageNumber || bpIdx + 1;
+                                const hasImg = !!bp.imageUrl;
+
+                                return (
+                                  <div
+                                    key={pNum}
+                                    className={`rounded-2xl border p-2 flex flex-col justify-between gap-2 transition-all ${
+                                      hasImg
+                                        ? 'bg-white border-emerald-200 shadow-xs hover:border-indigo-400'
+                                        : 'bg-white/60 border-dashed border-amber-300'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between text-[10px]">
+                                      <span className="font-black px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        पेज {pNum}
+                                      </span>
+                                      <span
+                                        className={`font-extrabold px-1.5 py-0.5 rounded ${
+                                          hasImg ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                        }`}
+                                      >
+                                        {hasImg ? '✓ सेव है' : 'बाकी है'}
+                                      </span>
+                                    </div>
+
+                                    {/* Thumbnail Preview Area */}
+                                    <div
+                                      onClick={() =>
+                                        hasImg &&
+                                        setPreviewModalPage({
+                                          pageNumber: pNum,
+                                          imageUrl: bp.imageUrl,
+                                          pageTitle: bp.pageTitle,
+                                          chapter: ch,
+                                        })
+                                      }
+                                      className={`h-36 rounded-xl overflow-hidden flex items-center justify-center relative cursor-pointer group ${
+                                        hasImg ? 'bg-slate-100' : 'bg-amber-50/50'
+                                      }`}
+                                    >
+                                      {hasImg ? (
+                                        <>
+                                          <img
+                                            src={bp.imageUrl}
+                                            alt={`पेज ${pNum}`}
+                                            className="h-full w-full object-contain transition-transform group-hover:scale-105"
+                                          />
+                                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black gap-1">
+                                            <Eye className="w-3.5 h-3.5" />
+                                            <span>बड़ा देखें</span>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="text-center p-2">
+                                          <Camera className="w-6 h-6 text-amber-500 mx-auto mb-1 opacity-70" />
+                                          <span className="text-[10px] font-bold text-slate-500 block">
+                                            फोटो नहीं है
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Page Title Label */}
+                                    <div className="flex items-center justify-between gap-1 px-0.5">
+                                      <span
+                                        className="text-[10px] font-bold text-slate-700 truncate block"
+                                        title={bp.pageTitle || `पेज ${pNum}`}
+                                      >
+                                        {bp.pageTitle || `पेज ${pNum}`}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditPageDetails(ch, pNum, bp.pageTitle || `पेज ${pNum}`)}
+                                        className="text-slate-400 hover:text-indigo-600 transition-colors"
+                                        title="पेज का नाम बदलें (Edit Title)"
+                                      >
+                                        <Edit3 className="w-3 h-3" />
+                                      </button>
+                                    </div>
+
+                                    {/* Action Buttons: Replace & Delete */}
+                                    <div className="flex items-center gap-1 pt-1.5 border-t border-slate-100">
+                                      <label className="flex-1 cursor-pointer">
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          disabled={replacingPageNum === pNum}
+                                          onChange={(e) => {
+                                            const f = e.target.files?.[0];
+                                            if (f) handleReplaceSinglePagePhoto(ch, pNum, f);
+                                          }}
+                                        />
+                                        <span className="w-full py-1.5 px-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-[10px] flex items-center justify-center gap-1 transition-all border border-indigo-200">
+                                          {replacingPageNum === pNum ? (
+                                            <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />
+                                          ) : (
+                                            <RefreshCw className="w-3 h-3 text-indigo-600" />
+                                          )}
+                                          <span>{hasImg ? 'बदलें (Replace)' : '+ फोटो जोड़ें'}</span>
+                                        </span>
+                                      </label>
+
+                                      {hasImg && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteSinglePagePhoto(ch, pNum)}
+                                          className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-all border border-rose-200"
+                                          title={`पेज ${pNum} की फोटो हटाएं`}
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="p-6 bg-white rounded-2xl border border-dashed border-slate-200 text-center">
+                              <p className="text-xs text-slate-500 font-bold mb-2">
+                                इस पाठ में अभी कोई पृष्ठ इंडेक्स नहीं हैं।
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPagePhotosModal(ch)}
+                                className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+                              >
+                                📸 पृष्ठ फोटो अपलोड करें
+                              </button>
                             </div>
                           )}
 
-                          {ch.sampleQuestions && ch.sampleQuestions.length > 0 ? (
-                            <div>
-                              <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-                                मॉडल प्रश्न (Sample Whiteboard Questions):
-                              </span>
-                              <div className="space-y-2">
-                                {ch.sampleQuestions.map((q, qIdx) => (
-                                  <div
-                                    key={qIdx}
-                                    className="p-2.5 bg-white rounded-lg border border-slate-200 text-xs"
-                                  >
-                                    <div className="font-bold text-slate-900">
-                                      प्र. {qIdx + 1}: {q.question}
-                                    </div>
-                                    {q.options && (
-                                      <div className="grid grid-cols-2 gap-1 mt-1 text-[11px] text-slate-600">
-                                        {q.options.map((opt, oIdx) => (
-                                          <span key={oIdx} className="bg-slate-50 px-2 py-0.5 rounded">
-                                            {opt}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    )}
-                                    <div className="mt-1 text-[11px] text-emerald-700 font-semibold">
-                                      उत्तर: {q.correctAnswer}
-                                    </div>
-                                    {q.explanation && (
-                                      <p className="text-[10px] text-slate-500 mt-0.5 italic">
-                                        व्याख्या: {q.explanation}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
+                          {/* 3. Formulas and Questions Section (Only shown if admin added any) */}
+                          {(ch.keyFormulas?.length > 0 || ch.sampleQuestions?.length > 0) && (
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                                <span className="text-xs font-black text-slate-900">
+                                  प्रश्न व मुख्य सूत्र (Formulas & Questions)
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearSampleQuestions(ch)}
+                                  className="text-[10px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 border border-rose-200"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>🗑️ यह डमी डेटा साफ़ करें</span>
+                                </button>
                               </div>
+
+                              {ch.keyFormulas && ch.keyFormulas.length > 0 && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block mb-1">
+                                    मुख्य सूत्र / नियम:
+                                  </span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {ch.keyFormulas.map((f, fIdx) => (
+                                      <span
+                                        key={fIdx}
+                                        className="font-mono text-xs bg-indigo-50 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded-md"
+                                      >
+                                        {f}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {ch.sampleQuestions && ch.sampleQuestions.length > 0 && (
+                                <div>
+                                  <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
+                                    मॉडल प्रश्न (Sample Whiteboard Questions):
+                                  </span>
+                                  <div className="space-y-2">
+                                    {ch.sampleQuestions.map((q, qIdx) => (
+                                      <div
+                                        key={qIdx}
+                                        className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 text-xs"
+                                      >
+                                        <div className="font-bold text-slate-900">
+                                          प्र. {qIdx + 1}: {q.question}
+                                        </div>
+                                        <div className="mt-1 text-[11px] text-emerald-700 font-semibold">
+                                          उत्तर: {q.correctAnswer}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          ) : (
-                            <p className="text-[11px] text-slate-400 italic">
-                              इस पाठ के लिए अभी कोई मॉडल प्रश्न नहीं हैं।
-                            </p>
                           )}
                         </div>
                       )}
@@ -1650,6 +2147,290 @@ export default function AdminSyllabusPage() {
               >
                 <Plus className="w-4 h-4" />
                 <span>{isSaving ? 'सेव हो रहा है...' : 'विषय बनाएं व सुरक्षित करें'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. MULTI-PAGE PHOTO UPLOAD & AUTO-COMPRESSION MODAL */}
+      {isPagePhotoModalOpen && pagePhotoChapter && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Camera className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-lg text-slate-900">
+                    पाठ्यपुस्तक पृष्ठ फोटो अपलोड (Auto-Compression)
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    {pagePhotoChapter.titleHindi || pagePhotoChapter.titleEnglish} — पेज {pagePhotoStartPage} से {pagePhotoEndPage} (कुल {pagePhotoEndPage - pagePhotoStartPage + 1} पृष्ठ)
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPagePhotoModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Smart Compression Highlight Banner */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-950 space-y-1">
+                <p className="font-extrabold">
+                  ⚡ ऑटो-कंप्रेशन इंजन (5MB–10MB ➔ ~150KB):
+                </p>
+                <p className="text-emerald-800">
+                  मोबाइल या स्कैनर से खींची गई 5–10 MB की फोटो को हमारा सिस्टम स्वचालित रूप से 150 KB की क्रिस्टल-क्लियर WebP इमेज में कंप्रेस कर देता है। 200–300 पेजों की पूरी किताब भी केवल कुछ MB में सुपरफास्ट लोड होगी!
+                </p>
+              </div>
+            </div>
+
+            {/* Page Range Configuration */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  प्रारंभिक पेज नंबर (Start Page)
+                </label>
+                <input
+                  type="number"
+                  value={pagePhotoStartPage}
+                  onChange={(e) => setPagePhotoStartPage(parseInt(e.target.value, 10) || 1)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  अंतिम पेज नंबर (End Page)
+                </label>
+                <input
+                  type="number"
+                  value={pagePhotoEndPage}
+                  onChange={(e) => setPagePhotoEndPage(parseInt(e.target.value, 10) || 1)}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* File Dropzone */}
+            <div className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl p-6 text-center bg-indigo-50/30 hover:bg-indigo-50/60 transition-all">
+              <input
+                type="file"
+                id="multi-page-file-input"
+                accept="image/*"
+                multiple
+                onChange={handleSelectPageImages}
+                className="hidden"
+              />
+              <label
+                htmlFor="multi-page-file-input"
+                className="cursor-pointer flex flex-col items-center justify-center gap-2"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center shadow-xs">
+                  <Camera className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-extrabold text-indigo-950">
+                    पेज 7 से 25 के सभी पृष्ठों की फोटो चुनें (Choose Multiple Photos)
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    आप एक साथ 19 फोटो चुन सकते हैं (JPG, PNG, WebP) — 5MB से 10MB की फोटो भी सपोर्टेड हैं।
+                  </p>
+                </div>
+                <span className="mt-1 px-4 py-2 rounded-xl bg-indigo-600 text-white font-black text-xs shadow-md shadow-indigo-600/30 hover:bg-indigo-700">
+                  📁 कंप्यूटर / मोबाइल से फोटो चुनें
+                </span>
+              </label>
+            </div>
+
+            {/* Compression Loading Indicator */}
+            {isCompressing && (
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-center gap-2 text-xs font-bold text-amber-800 animate-pulse">
+                <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
+                <span>तस्वीरों को कंप्रेस व ऑप्टिमाइज़ किया जा रहा है (5-10MB ➔ 150KB)...</span>
+              </div>
+            )}
+
+            {/* Compressed Pages Preview List */}
+            {compressedPages.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-slate-800">
+                    कंप्रेस किए गए पृष्ठ ({compressedPages.length} फोटो तैयार):
+                  </span>
+                  <div className="flex items-center gap-2 font-bold text-[11px]">
+                    <span className="text-slate-400 line-through">
+                      {(compressedPages.reduce((acc, p) => acc + p.originalSize, 0) / (1024 * 1024)).toFixed(1)} MB
+                    </span>
+                    <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      ➔ {(compressedPages.reduce((acc, p) => acc + p.compressedSize, 0) / 1024).toFixed(0)} KB (
+                      {Math.round(
+                        (1 -
+                          compressedPages.reduce((acc, p) => acc + p.compressedSize, 0) /
+                            compressedPages.reduce((acc, p) => acc + p.originalSize, 0)) *
+                          100
+                      )}% छोटा!)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto pr-1">
+                  {compressedPages.map((page, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-slate-200 rounded-xl p-2 bg-slate-50 flex flex-col justify-between gap-1.5 relative group"
+                    >
+                      <div className="h-28 w-full rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center">
+                        <img
+                          src={page.dataUrl}
+                          alt={`Page ${page.pageNumber}`}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-200">
+                          पेज {page.pageNumber}
+                        </span>
+                        <span className="font-bold text-emerald-600">
+                          {(page.compressedSize / 1024).toFixed(0)} KB
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCompressedPages((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute top-1 right-1 p-1 rounded-md bg-rose-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="हटाएं"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {uploadPagesSuccess && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{uploadPagesSuccess}</span>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsPagePhotoModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+              >
+                रद्द करें
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveUploadedPages}
+                disabled={isUploadingPages || compressedPages.length === 0}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isUploadingPages ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>अपलोड व AI सिंक हो रहा है...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    <span>
+                      {compressedPages.length > 0
+                        ? `✅ सभी ${compressedPages.length} पृष्ठ सेव व सिंक करें`
+                        : 'फोटो चुनें'}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. SINGLE PAGE FULL LIGHTBOX PREVIEW & REPLACE MODAL */}
+      {previewModalPage && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-700 font-black text-sm border border-indigo-200">
+                  पेज {previewModalPage.pageNumber}
+                </span>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    {previewModalPage.pageTitle || `पेज ${previewModalPage.pageNumber}`}
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    {previewModalPage.chapter.titleHindi || previewModalPage.chapter.titleEnglish}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Replace Button in Preview Modal */}
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={replacingPageNum === previewModalPage.pageNumber}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        await handleReplaceSinglePagePhoto(
+                          previewModalPage.chapter,
+                          previewModalPage.pageNumber,
+                          f
+                        );
+                        setPreviewModalPage(null);
+                      }
+                    }}
+                  />
+                  <span className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-sm transition-all">
+                    <RefreshCw className={`w-3.5 h-3.5 ${replacingPageNum === previewModalPage.pageNumber ? 'animate-spin' : ''}`} />
+                    <span>इस पेज की फोटो बदलें (Replace)</span>
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalPage(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* High-res Image Preview */}
+            <div className="max-h-[70vh] overflow-auto flex items-center justify-center bg-slate-900/5 rounded-2xl p-4 border border-slate-100">
+              <img
+                src={previewModalPage.imageUrl}
+                alt={`पेज ${previewModalPage.pageNumber}`}
+                className="max-h-[65vh] w-auto object-contain rounded-xl shadow-lg border border-slate-200"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+              <span>💡 यह पेज क्लासरूम में छात्रों को 100% स्पष्टता के साथ दिखाई देता है।</span>
+              <button
+                type="button"
+                onClick={() => setPreviewModalPage(null)}
+                className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+              >
+                बंद करें
               </button>
             </div>
           </div>
