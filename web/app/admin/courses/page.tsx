@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   UploadCloud,
   BookOpen,
@@ -21,6 +21,7 @@ import {
   ChevronRight,
   HelpCircle,
   Eye,
+  Link2,
 } from 'lucide-react';
 
 interface SyllabusItem {
@@ -73,6 +74,10 @@ export default function AdminCourseRAGPage() {
   const [selectedMedium, setSelectedMedium] = useState('English Medium');
   const [selectedSubject, setSelectedSubject] = useState('Mathematics');
   const [chapterTitle, setChapterTitle] = useState('');
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [subjectFilter, setSubjectFilter] = useState<'All' | 'Mathematics' | 'EVS' | 'English'>('All');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -80,10 +85,10 @@ export default function AdminCourseRAGPage() {
   const [syncSuccessMsg, setSyncSuccessMsg] = useState('');
   const [chapters, setChapters] = useState<SyllabusItem[]>(OFFICIAL_RBSE_CLASS_4_CHAPTERS);
 
-  // Upload Single Chapter
+  // Upload Single Chapter via File or URL
   const handleSimulateUpload = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chapterTitle) return;
+    const finalTitle = chapterTitle || selectedFile?.name?.replace(/\.pdf$/i, '') || (pdfUrl ? `PDF from URL (${new URL(pdfUrl).pathname.split('/').pop()})` : 'New Syllabus Chapter');
 
     setIsUploading(true);
     setTimeout(() => {
@@ -94,17 +99,19 @@ export default function AdminCourseRAGPage() {
           id: Date.now(),
           class: selectedClass,
           subject: selectedSubject,
-          title: chapterTitle,
+          title: finalTitle,
           board: selectedBoard,
           medium: selectedMedium,
-          pages: 18,
+          pages: selectedFile ? Math.max(1, Math.round(selectedFile.size / (1024 * 150))) : 20,
           indexedChunks: 140,
           status: 'Indexed',
-          concepts: 'Custom uploaded RBSE curriculum document verified by Admin',
+          concepts: uploadMode === 'url' ? `Online Indexed PDF: ${pdfUrl}` : `Local PDF: ${selectedFile?.name || 'Verified Chapter Document'}`,
         },
         ...prev,
       ]);
       setChapterTitle('');
+      setSelectedFile(null);
+      setPdfUrl('');
       setTimeout(() => setUploadSuccess(false), 3000);
     }, 1200);
   };
@@ -313,32 +320,118 @@ export default function AdminCourseRAGPage() {
             </div>
           </div>
 
+          {/* Upload Method Selector */}
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+            <span className="text-xs font-bold text-slate-500">Upload Method:</span>
+            <button
+              type="button"
+              onClick={() => setUploadMode('file')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                uploadMode === 'file'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>📁 Upload Local PDF File (फाइल चुनें)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadMode('url')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                uploadMode === 'url'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              <span>🔗 Online PDF URL (वेब लिंक डालें)</span>
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Chapter Name Input */}
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1.5">Chapter Title</label>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Chapter Title (पाठ का नाम)
+              </label>
               <input
                 type="text"
-                placeholder="e.g. Chapter 4: The Story of Amrita (Bishnoi & Khejri Tree)"
+                placeholder={selectedFile ? selectedFile.name.replace(/\.pdf$/i, '') : "e.g. Chapter 4: The Story of Amrita / Ganit Mela Ch-1"}
                 value={chapterTitle}
                 onChange={(e) => setChapterTitle(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none"
-                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 outline-none focus:border-indigo-500 focus:bg-white transition-all"
               />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                खाली छोड़ने पर PDF फाइल का नाम अपने आप ले लिया जाएगा।
+              </span>
             </div>
 
-            {/* File Drop Area */}
-            <div className="border-2 border-dashed border-indigo-200 rounded-2xl p-4 text-center bg-indigo-50/30 hover:bg-indigo-50/60 transition-all cursor-pointer flex items-center justify-center gap-3">
-              <FileText className="w-8 h-8 text-indigo-500" />
-              <div className="text-left">
-                <p className="text-xs font-bold text-slate-800">
-                  Select RBSE Textbook Chapter PDF
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  Supports .pdf up to 50MB. Text is auto-parsed and indexed into Vector DB.
-                </p>
+            {/* File Drop or URL Input based on mode */}
+            {uploadMode === 'file' ? (
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  Select PDF File (.pdf)
+                </label>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setSelectedFile(f);
+                  }}
+                  className="hidden"
+                />
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl p-4 text-center bg-indigo-50/30 hover:bg-indigo-50/60 transition-all cursor-pointer flex items-center justify-center gap-3"
+                >
+                  <FileText className="w-8 h-8 text-indigo-500 shrink-0" />
+                  <div className="text-left overflow-hidden">
+                    {selectedFile ? (
+                      <div>
+                        <p className="text-xs font-black text-indigo-900 truncate">
+                          ✅ {selectedFile.name}
+                        </p>
+                        <p className="text-[10px] text-emerald-600 font-bold">
+                          {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB • Ready for AI indexing
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">
+                          Click to select PDF from Computer / Phone
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Supports .pdf up to 50MB (Text auto-indexed into AI memory)
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                  Direct Online PDF Link (NCERT / Shala Darpan URL)
+                </label>
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus-within:border-indigo-500 focus-within:bg-white transition-all">
+                  <Link2 className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <input
+                    type="url"
+                    placeholder="https://ncert.nic.in/textbook/pdf/ddef101.pdf"
+                    value={pdfUrl}
+                    onChange={(e) => setPdfUrl(e.target.value)}
+                    className="w-full bg-transparent text-xs text-slate-800 outline-none"
+                    required={uploadMode === 'url'}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  NCERT या किसी भी वेबसाइट की PDF का सीधा लिंक यहाँ पेस्ट कर सकते हैं।
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Submit Button */}

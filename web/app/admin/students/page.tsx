@@ -102,6 +102,8 @@ export default function AdminStudentsPage() {
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [search, setSearch] = useState('');
   const [filterClass, setFilterClass] = useState('ALL');
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
+  const [updatingStudentId, setUpdatingStudentId] = useState<string | null>(null);
 
   const fetchStudents = async () => {
     setLoadingStudents(true);
@@ -121,6 +123,33 @@ export default function AdminStudentsPage() {
   useEffect(() => {
     fetchStudents();
   }, []);
+
+  const handleToggleStudentAccess = async (studentId: string, makeFree: boolean) => {
+    setUpdatingStudentId(studentId);
+    try {
+      const res = await fetch('/api/admin/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, isFree: makeFree }),
+      });
+      const data = await res.json();
+      setUpdatingStudentId(null);
+      if (data.success) {
+        setActionMsg(data.message);
+        setRegisteredStudents((prev) =>
+          prev.map((s) => (s.id === studentId ? { ...s, isSubscribed: makeFree } : s))
+        );
+        setTimeout(() => setActionMsg(null), 5000);
+      } else {
+        setActionMsg(`त्रुटि: ${data.message}`);
+        setTimeout(() => setActionMsg(null), 5000);
+      }
+    } catch {
+      setUpdatingStudentId(null);
+      setActionMsg('सर्वर से कनेक्ट करने में त्रुटि।');
+      setTimeout(() => setActionMsg(null), 5000);
+    }
+  };
 
   const filteredStudents = registeredStudents.filter((s) => {
     const matchesSearch =
@@ -169,6 +198,14 @@ export default function AdminStudentsPage() {
         </div>
       </div>
 
+      {/* Notification Toast */}
+      {actionMsg && (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 px-4 py-3.5 rounded-2xl text-xs font-black flex items-center gap-2 animate-fadeIn shadow-sm">
+          <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+          <span>{actionMsg}</span>
+        </div>
+      )}
+
       {/* Navigation Tabs */}
       <div className="flex border-b border-slate-200 gap-6">
         <button
@@ -205,6 +242,16 @@ export default function AdminStudentsPage() {
       {/* TAB 1: Registered Students Table */}
       {activeTab === 'REGISTERED_STUDENTS' && (
         <div className="space-y-4">
+          {/* Helper Note for Free vs Paid Access (Requested by User) */}
+          <div className="bg-gradient-to-r from-amber-50 via-white to-emerald-50 rounded-2xl p-4 border border-amber-200/80 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🎁</span>
+              <span className="text-slate-800 font-semibold leading-relaxed">
+                <strong>एडमिन विशेष अधिकार (गरीब छात्र सहायता एवं टेस्ट एक्सेस):</strong> जब कोई छात्र रजिस्टर करे, तो आप उसके आगे <strong className="text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded font-black">🎁 100% फ्री</strong> बटन दबाकर उसे हमेशा के लिए फ्री एक्सेस दे सकते हैं। जब तक आप वापस <strong className="text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-black">💳 पेड</strong> नहीं चुनेंगे, तब तक वह बिना किसी फीस के फ्री पढ़ेगा।
+              </span>
+            </div>
+          </div>
+
           {/* Search & Filter */}
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative flex-1 w-full">
@@ -258,7 +305,7 @@ export default function AdminStudentsPage() {
                       <th className="py-3 px-5">मोबाइल नंबर</th>
                       <th className="py-3 px-5">कक्षा एवं बोर्ड</th>
                       <th className="py-3 px-5">माध्यम / शहर</th>
-                      <th className="py-3 px-5">सब्सक्रिप्शन</th>
+                      <th className="py-3 px-5">एक्सेस कंट्रोल (फ्री / पेड)</th>
                       <th className="py-3 px-5">पूछे गए सवाल</th>
                       <th className="py-3 px-5">साइनअप तिथि</th>
                     </tr>
@@ -296,15 +343,35 @@ export default function AdminStudentsPage() {
                           <div className="text-[10px] text-slate-400">{st.city}</div>
                         </td>
                         <td className="py-4 px-5">
-                          {st.isSubscribed ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                              ✓ ₹200 सक्रिय
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
-                              फ्री ट्रायल
-                            </span>
-                          )}
+                          {/* 🎁 FREE vs 💳 PAID TOGGLE BUTTONS (Requested by User) */}
+                          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200">
+                            <button
+                              type="button"
+                              disabled={updatingStudentId === st.id}
+                              onClick={() => handleToggleStudentAccess(st.id, true)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 ${
+                                st.isSubscribed
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+                              }`}
+                              title="गरीब छात्र या खुद के टेस्ट अकाउंट के लिए 100% फ्री एक्सेस चालू करें"
+                            >
+                              <span>🎁 100% फ्री</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={updatingStudentId === st.id}
+                              onClick={() => handleToggleStudentAccess(st.id, false)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 ${
+                                !st.isSubscribed
+                                  ? 'bg-amber-500 text-slate-950 shadow-xs'
+                                  : 'text-slate-500 hover:text-slate-900 hover:bg-white/60'
+                              }`}
+                              title="सामान्य सब्सक्रिप्शन मोड (₹200 आवश्यक)"
+                            >
+                              <span>💳 पेड (₹200)</span>
+                            </button>
+                          </div>
                         </td>
                         <td className="py-4 px-5">
                           <span className="font-black text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded-md">

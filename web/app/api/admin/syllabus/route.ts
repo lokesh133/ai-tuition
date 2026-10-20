@@ -211,6 +211,69 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Action 5: Add new subject to a class
+    if (action === 'add_subject' && className && payload?.subject) {
+      if (!fullData[board].classes[className]) {
+        fullData[board].classes[className] = { english: [], hindi: [] };
+      }
+
+      const engList = fullData[board].classes[className].english || [];
+      const newSubId = (payload.id || payload.subject.toLowerCase().replace(/[^a-z0-9]/g, '-')).trim();
+
+      // Check if subject id already exists
+      const existingIdx = engList.findIndex(
+        (s: any) => s.id.toLowerCase() === newSubId.toLowerCase()
+      );
+
+      const newSubjectObj = {
+        id: newSubId,
+        subject: payload.subject,
+        subjectHindi: payload.subjectHindi || payload.subject,
+        bookName: payload.bookName || `${payload.subjectHindi || payload.subject} - ${className}`,
+        teacherId: payload.teacherId || 'sharma',
+        teacherName: payload.teacherName || 'शर्मा सर',
+        emoji: payload.emoji || '📚',
+        chapters: payload.chapters || [],
+      };
+
+      if (existingIdx >= 0) {
+        engList[existingIdx] = { ...engList[existingIdx], ...newSubjectObj };
+      } else {
+        engList.push(newSubjectObj);
+      }
+
+      fullData[board].classes[className].english = engList;
+      fullData[board].classes[className].hindi = engList;
+
+      const ok = saveCurriculumFile(fullData);
+      return NextResponse.json({
+        success: ok,
+        message: ok ? `विषय "${newSubjectObj.subjectHindi}" सफलतापूर्वक जोड़ा गया!` : 'त्रुटि हुई।',
+        subject: newSubjectObj,
+        subjects: engList,
+      });
+    }
+
+    // Action 6: Delete entire subject from a class
+    if (action === 'delete_subject' && className && subjectId) {
+      if (!fullData[board].classes[className]) {
+        return NextResponse.json({ success: false, message: 'Class not found' }, { status: 404 });
+      }
+
+      let engList = fullData[board].classes[className].english || [];
+      engList = engList.filter((s: any) => s.id.toLowerCase() !== subjectId.toLowerCase());
+
+      fullData[board].classes[className].english = engList;
+      fullData[board].classes[className].hindi = engList;
+
+      const ok = saveCurriculumFile(fullData);
+      return NextResponse.json({
+        success: ok,
+        message: ok ? 'विषय सफलतापूर्वक हटा दिया गया!' : 'त्रुटि हुई।',
+        subjects: engList,
+      });
+    }
+
     return NextResponse.json(
       { success: false, message: 'Invalid action or parameters specified' },
       { status: 400 }

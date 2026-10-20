@@ -376,3 +376,258 @@ export async function updateAdminPassword(email: string, newPassword: string): P
     return false;
   }
 }
+
+// ==========================================
+// 💳 SUBSCRIPTION & ADMIN FREE TEST PASS
+// ==========================================
+
+export interface StudentSubscriptionRecord {
+  id: string;
+  userId: string;
+  studentName: string;
+  phone: string;
+  classGrade: string;
+  planName: string;
+  amount: number;
+  status: 'ACTIVE' | 'TRIAL' | 'EXPIRING' | 'OVERDUE';
+  startDate: string;
+  endDate: string;
+  daysRemaining: number;
+  createdAt: string;
+}
+
+export async function grantSubscription(params: {
+  identifier: string; // phone, email, or user ID
+  planName?: string;
+  days?: number;
+  amount?: number;
+  paymentMethod?: string;
+  status?: 'ACTIVE' | 'TRIAL';
+}): Promise<{ success: boolean; message: string; subscription?: any }> {
+  try {
+    const {
+      identifier,
+      planName = '₹200/mo All-Access',
+      days = 30,
+      amount = 200,
+      status = 'ACTIVE',
+    } = params;
+
+    // Find student
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { phone: identifier },
+          { email: identifier },
+        ],
+      },
+    });
+
+    if (!user) {
+      // If student not found by phone/email, create a quick profile
+      user = await prisma.user.create({
+        data: {
+          name: identifier.includes('@') ? identifier.split('@')[0] : `Student (${identifier})`,
+          phone: identifier.includes('@') ? undefined : identifier,
+          email: identifier.includes('@') ? identifier : undefined,
+          passwordHash: 'tuition123',
+          role: 'STUDENT',
+          isSubscribed: true,
+        },
+      });
+    }
+
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + days);
+
+    // Update user isSubscribed flag
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { isSubscribed: true },
+    });
+
+    // Create subscription record in DB
+    const sub = await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        planName,
+        amount,
+        status,
+        startDate,
+        endDate,
+      },
+    });
+
+    return {
+      success: true,
+      message: `🎉 सब्सक्रिप्शन सफलतापूर्वक सक्रिय हो गया (${days} दिन मान्य)।`,
+      subscription: {
+        id: sub.id,
+        userId: user.id,
+        studentName: user.name,
+        phone: user.phone,
+        planName: sub.planName,
+        amount: sub.amount,
+        status: sub.status,
+        startDate: sub.startDate.toISOString(),
+        endDate: sub.endDate.toISOString(),
+        daysRemaining: days,
+      },
+    };
+  } catch (err: any) {
+    console.error('grantSubscription error:', err);
+    return { success: false, message: err?.message || 'सब्सक्रिप्शन जोड़ने में त्रुटि हुई।' };
+  }
+}
+
+export async function getSubscriptionStatus(identifier: string) {
+  try {
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { phone: identifier },
+          { email: identifier },
+        ],
+      },
+      include: {
+        subscriptions: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!user) {
+      return { isSubscribed: false, daysRemaining: 0, status: 'NOT_FOUND' };
+    }
+
+    const latestSub = user.subscriptions[0];
+    if (!latestSub) {
+      return {
+        isSubscribed: user.isSubscribed,
+        daysRemaining: user.isSubscribed ? 30 : 0,
+        status: user.isSubscribed ? 'ACTIVE' : 'NO_SUBSCRIPTION',
+      };
+    }
+
+    const now = new Date();
+    const expiry = new Date(latestSub.endDate);
+    const diffMs = expiry.getTime() - now.getTime();
+    const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const isActive = daysRemaining > 0 && latestSub.status === 'ACTIVE';
+
+    return {
+      isSubscribed: isActive,
+      daysRemaining,
+      planName: latestSub.planName,
+      status: isActive ? 'ACTIVE' : 'EXPIRED',
+      expiryDate: latestSub.endDate.toISOString(),
+      studentName: user.name,
+      phone: user.phone,
+    };
+  } catch (err) {
+    console.error('getSubscriptionStatus error:', err);
+    return { isSubscribed: false, daysRemaining: 0, status: 'ERROR' };
+  }
+}
+
+export async function getAllSubscriptions(): Promise<StudentSubscriptionRecord[]> {
+  try {
+    const subs = await prisma.subscription.findMany({
+      include: { user: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const now = new Date();
+
+    return subs.map((s) => {
+      const expiry = new Date(s.endDate);
+      const diffMs = expiry.getTime() - now.getTime();
+      const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+      let status: 'ACTIVE' | 'TRIAL' | 'EXPIRING' | 'OVERDUE' = 'ACTIVE';
+      if (s.status === 'TRIAL') status = 'TRIAL';
+      else if (daysRemaining <= 0) status = 'OVERDUE';
+      else if (daysRemaining <= 3) status = 'EXPIRING';
+
+      return {
+        id: s.id,
+        userId: s.userId,
+        studentName: s.user.name,
+        phone: s.user.phone || '',
+        classGrade: s.user.classGrade || 'Class 4th',
+        planName: s.planName,
+        amount: s.amount,
+        status,
+        startDate: s.startDate.toISOString(),
+        endDate: s.endDate.toISOString(),
+        daysRemaining,
+        createdAt: s.createdAt.toISOString(),
+      };
+    });
+  } catch (err) {
+    console.error('getAllSubscriptions error:', err);
+    return [];
+  }
+}
+
+export async function toggleStudentSubscription(studentId: string, isFree: boolean) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: studentId } });
+    if (!user) return { success: false, message: 'Student not found' };
+
+    if (isFree) {
+      // Set to 100% Free All Access (1 Year / Permanent until revoked by admin)
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setFullYear(endDate.getFullYear() + 2); // 2 years free pass
+
+      await prisma.user.update({
+        where: { id: studentId },
+        data: { isSubscribed: true },
+      });
+
+      await prisma.subscription.create({
+        data: {
+          userId: studentId,
+          planName: 'Admin Free Pass (गरीब छात्र / टेस्ट अकाउंट)',
+          amount: 0,
+          status: 'ACTIVE',
+          startDate,
+          endDate,
+        },
+      });
+
+      return {
+        success: true,
+        message: `🎉 "${user.name}" को 100% फ्री एक्सेस दिया गया है। जब तक आप इसे बदलेंगे नहीं, यह फ्री रहेगा।`,
+        isSubscribed: true,
+      };
+    } else {
+      // Revert to Paid / Subscription Required
+      await prisma.user.update({
+        where: { id: studentId },
+        data: { isSubscribed: false },
+      });
+
+      await prisma.subscription.updateMany({
+        where: { userId: studentId, status: 'ACTIVE' },
+        data: { status: 'OVERDUE' },
+      });
+
+      return {
+        success: true,
+        message: `ℹ️ "${user.name}" को सामान्य सब्सक्रिप्शन मोड (₹200 आवश्यक) में बदल दिया गया है।`,
+        isSubscribed: false,
+      };
+    }
+  } catch (err: any) {
+    console.error('toggleStudentSubscription error:', err);
+    return { success: false, message: err?.message || 'Error updating subscription' };
+  }
+}
+
+

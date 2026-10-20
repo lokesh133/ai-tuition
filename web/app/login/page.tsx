@@ -101,10 +101,30 @@ export default function StudentLoginPage() {
       setSuccess(true);
       if (typeof window !== 'undefined') {
         localStorage.setItem('student_user', JSON.stringify(data.student));
+        // Sync student's worksheets, tests, and session from the server to this PC
+        try {
+          const recRes = await fetch(
+            `/api/student/records?phone=${encodeURIComponent(cleanPhone)}&studentId=${encodeURIComponent(data.student.id || '')}`
+          );
+          if (recRes.ok) {
+            const recData = await recRes.json();
+            if (recData.worksheetHistory && recData.worksheetHistory.length > 0) {
+              localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(recData.worksheetHistory));
+            }
+            if (recData.testHistory && recData.testHistory.length > 0) {
+              localStorage.setItem('vidya_sunday_test_history_v1', JSON.stringify(recData.testHistory));
+            }
+            if (recData.currentSession) {
+              localStorage.setItem('vidya_current_session', JSON.stringify(recData.currentSession));
+            }
+          }
+        } catch (syncErr) {
+          console.warn('Student login records sync error:', syncErr);
+        }
       }
       setTimeout(() => {
         router.push('/tutor');
-      }, 1000);
+      }, 700);
     } catch (err: any) {
       setError('Could not connect to server. Please try again.');
       setLoading(false);
@@ -212,12 +232,31 @@ export default function StudentLoginPage() {
       setForgotSuccess('Password reset successfully! Logging in...');
       if (data.student && typeof window !== 'undefined') {
         localStorage.setItem('student_user', JSON.stringify(data.student));
+        try {
+          const recRes = await fetch(
+            `/api/student/records?phone=${encodeURIComponent(cleanPhone)}&studentId=${encodeURIComponent(data.student.id || '')}`
+          );
+          if (recRes.ok) {
+            const recData = await recRes.json();
+            if (recData.worksheetHistory && recData.worksheetHistory.length > 0) {
+              localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(recData.worksheetHistory));
+            }
+            if (recData.testHistory && recData.testHistory.length > 0) {
+              localStorage.setItem('vidya_sunday_test_history_v1', JSON.stringify(recData.testHistory));
+            }
+            if (recData.currentSession) {
+              localStorage.setItem('vidya_current_session', JSON.stringify(recData.currentSession));
+            }
+          }
+        } catch (syncErr) {
+          console.warn('Student forgot password records sync error:', syncErr);
+        }
       }
 
       setTimeout(() => {
         setShowForgotModal(false);
         router.push('/tutor');
-      }, 1200);
+      }, 900);
     } catch (e) {
       setForgotError('Could not reset password. Please try again.');
     } finally {
