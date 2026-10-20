@@ -539,12 +539,8 @@ export default function TuitionClassroomStudio() {
   const [isWorksheetCelebrationOpen, setIsWorksheetCelebrationOpen] = useState<boolean>(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
-  const [isSubscribed, setIsSubscribed] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('vidya_subscribed') === 'true';
-    }
-    return false;
-  });
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
 
   // 7-Day Free Trial State & 3 Free Uploads Limit
   const [studentUser, setStudentUser] = useState<any>(null);
@@ -554,8 +550,11 @@ export default function TuitionClassroomStudio() {
   const [isFourthUploadAttempt, setIsFourthUploadAttempt] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsMounted(true);
     if (typeof window === 'undefined') return;
     try {
+      const isSub = localStorage.getItem('vidya_subscribed') === 'true';
+      if (isSub) setIsSubscribed(true);
       const stored = localStorage.getItem('student_user');
       let userObj: any = null;
       if (stored) {
@@ -3400,14 +3399,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               title="पिछला सुरक्षित काम व वर्कशीट देखें"
             >
               <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>📂 पिछला काम ({worksheetHistory.length})</span>
+              <span suppressHydrationWarning>📂 पिछला काम ({isMounted ? worksheetHistory.length : 0})</span>
             </button>
           </div>
 
           {/* Right: Controls & Motivation */}
           <div className="flex items-center gap-2">
             {/* 🌟 7-Day Free Trial (3 Free Uploads) / Pro Subscription Badge */}
-            {isSubscribed ? (
+            {!isMounted ? (
+              <div className="px-2.5 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-900 font-black text-xs flex items-center gap-1.5 shadow-2xs">
+                <Flame className="w-3.5 h-3.5 fill-emerald-500 text-emerald-600" />
+                <span>🎁 7-दिन मुफ़्त ट्रायल</span>
+              </div>
+            ) : isSubscribed ? (
               <button
                 type="button"
                 onClick={() => setIsSubscriptionModalOpen(true)}
