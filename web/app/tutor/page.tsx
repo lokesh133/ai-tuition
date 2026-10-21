@@ -1893,6 +1893,13 @@ export default function TuitionClassroomStudio() {
 
   // Switch Subject (Math, EVS, English, Hindi, Computer)
   const handleSelectSubject = (sub: SubjectCurriculum) => {
+    stopAudio();
+
+    // 1. Archive previous session to history before clearing so student does not lose work
+    if (activeTargetQuestion || activeMathAnim || whiteboardSteps.length > 0 || uploadedFiles.length > 0) {
+      archiveCurrentSessionToHistory();
+    }
+
     setSelectedSubject(sub);
     const teacherMap: Record<string, any> = {
       sharma: { id: 'sharma', name: 'Sharma Sir', role: 'Class 1st-8th Math Mentor', emoji: '👨‍🏫' },
@@ -1903,6 +1910,39 @@ export default function TuitionClassroomStudio() {
     };
     const t = teacherMap[sub.teacherId] || teacherMap.sharma;
     setCurrentTeacher(t);
+
+    // 2. Clear all right-side whiteboard data from the previous subject
+    setWhiteboardSteps([]);
+    setRevealedSteps(0);
+    setActiveTargetQuestion('');
+    setActiveMathAnim(null);
+    setDetectedQuestions([]);
+    setDetectedChapter(null);
+    setSelectedMCQ(null);
+    setTypedAnswer('');
+    setAnswerStatus('idle');
+    setExpandedExplanations({});
+    setIsCheckingHomework(false);
+    setMockAnswers({});
+    setMockEvaluations({});
+    setActiveMockQIdx(0);
+    setCustomQuizQuestions([]);
+    setUploadedFiles([]);
+    setActiveFileId('');
+    setPageDataMap({});
+
+    // 3. Select Chapter 1 of the new subject cleanly
+    if (sub.chapters && sub.chapters.length > 0) {
+      const ch1 = sub.chapters[0];
+      setSelectedChapter(ch1);
+      const firstPage = ch1.bookPages?.[0]?.pageNumber || ch1.startPage || 1;
+      setSelectedBookPage(firstPage);
+      setActiveQuestionIdx(0);
+      setWhiteboardHeading(`पाठ 1: ${ch1.titleHindi || ch1.titleEnglish}`);
+    } else {
+      setSelectedChapter(null);
+      setWhiteboardHeading(`${sub.subjectHindi} क्लासरूम`);
+    }
 
     // Check if student studied this subject earlier in history
     const pastRecord = studyHistory.find((h) => h.subjectId === sub.id);
@@ -1928,22 +1968,24 @@ export default function TuitionClassroomStudio() {
     setAnswerStatus('idle');
     setActiveTargetQuestion('');
     setDetectedQuestions([]);
+    setActiveMathAnim(null);
 
     setWhiteboardHeading(`पाठ ${ch.chapterNumber}: ${ch.titleHindi || ch.titleEnglish}`);
     
     // Set initial pedagogical whiteboard steps for chapter overview
     const endPg = ch.endPage || ch.bookPages?.[ch.bookPages.length - 1]?.pageNumber || 25;
+    const subName = selectedSubject?.subjectHindi || 'पाठ्यपुस्तक';
     const initialSteps: WhiteboardStepItem[] = [
       {
         question: `पाठ ${ch.chapterNumber}: ${ch.titleHindi || ch.titleEnglish}`,
         step: 'चरण 1: पाठ का परिचय व मुख्य अवधारणाएं',
-        formula: ch.keyFormulas?.[0] || '2D व 3D आकृतियाँ (फलक, किनारे और शीर्ष)',
-        annotation: `नमस्ते बेटा! आज हम गणित का पाठ ${ch.chapterNumber} "${ch.titleHindi || ch.titleEnglish}" पढ़ेंगे। इसमें पृष्ठ ${firstPage} से ${endPg} तक की मुख्य अवधारणाएं, असली पृष्ठ और अभ्यास सवाल तैयार हैं।`,
+        formula: ch.keyFormulas?.[0] || (ch.concepts?.[0] ? `मुख्य बिंदु: ${ch.concepts[0]}` : `${ch.titleHindi || ch.titleEnglish} का परिचय`),
+        annotation: `नमस्ते बेटा! आज हम ${subName} का पाठ ${ch.chapterNumber} "${ch.titleHindi || ch.titleEnglish}" पढ़ेंगे। इसमें पृष्ठ ${firstPage} से ${endPg} तक की मुख्य अवधारणाएं, असली पृष्ठ और अभ्यास सवाल तैयार हैं।`,
       },
       {
         question: `पाठ ${ch.chapterNumber}: ${ch.titleHindi || ch.titleEnglish}`,
         step: 'चरण 2: अध्ययन पृष्ठ व अभ्यास प्रश्न',
-        formula: ch.keyFormulas?.[1] || 'घन (Cube) व घनाभ (Cuboid): 6 फलक, 12 किनारे, 8 शीर्ष',
+        formula: ch.keyFormulas?.[1] || (ch.concepts?.[1] ? `अवधारणा: ${ch.concepts[1]}` : 'किताब के असली पृष्ठ और अभ्यास प्रश्न'),
         annotation: 'नीचे दी गई किताब के असली पृष्ठों की फोटो देखिए और जिस भी सवाल को समझना हो, उसपर क्लिक कीजिए!',
       },
     ];
@@ -1954,8 +1996,8 @@ export default function TuitionClassroomStudio() {
     const newRecord: StudyHistoryItem = {
       id: `h-${Date.now()}`,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      subjectId: selectedSubject?.id || 'math',
-      subjectName: selectedSubject?.subjectHindi || 'गणित',
+      subjectId: selectedSubject?.id || 'general',
+      subjectName: selectedSubject?.subjectHindi || subName,
       teacherName: currentTeacher.name,
       chapterNumber: ch.chapterNumber,
       chapterTitle: ch.titleHindi || ch.titleEnglish,
@@ -1993,8 +2035,8 @@ export default function TuitionClassroomStudio() {
           {
             question: qItem.question,
             step: 'चरण 1: प्रश्न को समझना व मुख्य नियम',
-            formula: qItem.correctAnswer ? `नियम / उत्तर: ${qItem.correctAnswer}` : 'ज्यामिति व आकृतियों के बुनियादी नियम',
-            annotation: qItem.explanation || 'पाठ 1 (2D व 3D आकृतियाँ) के अनुसार आकृति के फलक, किनारे और शीर्ष को पहचानें।',
+            formula: qItem.correctAnswer ? `नियम / उत्तर: ${qItem.correctAnswer}` : `${selectedChapter?.titleHindi || 'पाठ'} का मुख्य नियम`,
+            annotation: qItem.explanation || `बेटा, "${qItem.question}" को ध्यान से समझें और इसका सटीक उत्तर समझें।`,
           },
           {
             question: qItem.question,
