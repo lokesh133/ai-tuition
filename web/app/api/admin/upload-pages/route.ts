@@ -23,14 +23,16 @@ export async function POST(req: NextRequest) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const fullData = JSON.parse(raw);
         for (const targetBoard of ['RBSE', 'CBSE']) {
-          const engList = fullData[targetBoard]?.classes?.[className]?.english || [];
-          const sub = engList.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
-          if (sub) {
-            const ch = sub.chapters.find((c: any) => c.id === chapterId);
-            if (ch && Array.isArray(ch.bookPages)) {
-              const page = ch.bookPages.find((p: any) => p.pageNumber === pageNumber);
-              if (page) {
-                delete page.imageUrl;
+          for (const medium of ['english', 'hindi']) {
+            const list = fullData[targetBoard]?.classes?.[className]?.[medium] || [];
+            const sub = list.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
+            if (sub) {
+              const ch = sub.chapters.find((c: any) => c.id === chapterId);
+              if (ch && Array.isArray(ch.bookPages)) {
+                const page = ch.bookPages.find((p: any) => p.pageNumber === pageNumber);
+                if (page) {
+                  delete page.imageUrl;
+                }
               }
             }
           }
@@ -46,13 +48,15 @@ export async function POST(req: NextRequest) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const fullData = JSON.parse(raw);
         for (const targetBoard of ['RBSE', 'CBSE']) {
-          const engList = fullData[targetBoard]?.classes?.[className]?.english || [];
-          const sub = engList.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
-          if (sub) {
-            const ch = sub.chapters.find((c: any) => c.id === chapterId);
-            if (ch && Array.isArray(ch.bookPages)) {
-              for (const page of ch.bookPages) {
-                delete page.imageUrl;
+          for (const medium of ['english', 'hindi']) {
+            const list = fullData[targetBoard]?.classes?.[className]?.[medium] || [];
+            const sub = list.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
+            if (sub) {
+              const ch = sub.chapters.find((c: any) => c.id === chapterId);
+              if (ch && Array.isArray(ch.bookPages)) {
+                for (const page of ch.bookPages) {
+                  delete page.imageUrl;
+                }
               }
             }
           }
@@ -87,15 +91,17 @@ export async function POST(req: NextRequest) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const fullData = JSON.parse(raw);
         for (const targetBoard of ['RBSE', 'CBSE']) {
-          const engList = fullData[targetBoard]?.classes?.[className]?.english || [];
-          const sub = engList.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
-          if (sub) {
-            const ch = sub.chapters.find((c: any) => c.id === chapterId);
-            if (ch && Array.isArray(ch.bookPages)) {
-              const page = ch.bookPages.find((p: any) => p.pageNumber === pageNumber);
-              if (page) {
-                if (pageTitle !== undefined) page.pageTitle = pageTitle;
-                if (summary !== undefined) page.summary = summary;
+          for (const medium of ['english', 'hindi']) {
+            const list = fullData[targetBoard]?.classes?.[className]?.[medium] || [];
+            const sub = list.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
+            if (sub) {
+              const ch = sub.chapters.find((c: any) => c.id === chapterId);
+              if (ch && Array.isArray(ch.bookPages)) {
+                const page = ch.bookPages.find((p: any) => p.pageNumber === pageNumber);
+                if (page) {
+                  if (pageTitle !== undefined) page.pageTitle = pageTitle;
+                  if (summary !== undefined) page.summary = summary;
+                }
               }
             }
           }
@@ -114,14 +120,16 @@ export async function POST(req: NextRequest) {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const fullData = JSON.parse(raw);
         for (const targetBoard of ['RBSE', 'CBSE']) {
-          const engList = fullData[targetBoard]?.classes?.[className]?.english || [];
-          const sub = engList.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
-          if (sub) {
-            const ch = sub.chapters.find((c: any) => c.id === chapterId);
-            if (ch) {
-              ch.sampleQuestions = [];
-              ch.keyFormulas = [];
-              ch.concepts = [];
+          for (const medium of ['english', 'hindi']) {
+            const list = fullData[targetBoard]?.classes?.[className]?.[medium] || [];
+            const sub = list.find((s: any) => s.id.toLowerCase() === subjectId.toLowerCase());
+            if (sub) {
+              const ch = sub.chapters.find((c: any) => c.id === chapterId);
+              if (ch) {
+                ch.sampleQuestions = [];
+                ch.keyFormulas = [];
+                ch.concepts = [];
+              }
             }
           }
         }
@@ -178,37 +186,39 @@ export async function POST(req: NextRequest) {
       const fullData = JSON.parse(raw);
 
       for (const targetBoard of ['RBSE', 'CBSE']) {
-        const engList = fullData[targetBoard]?.classes?.[className]?.english || [];
-        const sub = engList.find(
-          (s: any) => s.id.toLowerCase() === subjectId.toLowerCase()
-        );
+        for (const medium of ['english', 'hindi']) {
+          const list = fullData[targetBoard]?.classes?.[className]?.[medium] || [];
+          const sub = list.find(
+            (s: any) => s.id.toLowerCase() === subjectId.toLowerCase()
+          );
 
-        if (sub && Array.isArray(sub.chapters)) {
-          const ch = sub.chapters.find((c: any) => c.id === chapterId);
-          if (ch) {
-            if (!Array.isArray(ch.bookPages)) {
-              ch.bookPages = [];
-            }
-
-            // Update or inject imageUrl for matched pageNumber
-            for (const [pNumStr, imgUrl] of Object.entries(savedPagesMap)) {
-              const pNum = parseInt(pNumStr, 10);
-              const existingPage = ch.bookPages.find((p: any) => p.pageNumber === pNum);
-              if (existingPage) {
-                existingPage.imageUrl = imgUrl;
-              } else {
-                ch.bookPages.push({
-                  pageNumber: pNum,
-                  pageTitle: `पेज ${pNum}: ${ch.titleHindi || ch.titleEnglish}`,
-                  summary: `${ch.titleEnglish} - पृष्ठ ${pNum} का अध्ययन सामग्री व अभ्यास।`,
-                  concepts: [`पेज ${pNum} मुख्य अवधारणा`],
-                  imageUrl: imgUrl,
-                });
+          if (sub && Array.isArray(sub.chapters)) {
+            const ch = sub.chapters.find((c: any) => c.id === chapterId);
+            if (ch) {
+              if (!Array.isArray(ch.bookPages)) {
+                ch.bookPages = [];
               }
-            }
 
-            // Sort bookPages by pageNumber
-            ch.bookPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
+              // Update or inject imageUrl for matched pageNumber
+              for (const [pNumStr, imgUrl] of Object.entries(savedPagesMap)) {
+                const pNum = parseInt(pNumStr, 10);
+                const existingPage = ch.bookPages.find((p: any) => p.pageNumber === pNum);
+                if (existingPage) {
+                  existingPage.imageUrl = imgUrl;
+                } else {
+                  ch.bookPages.push({
+                    pageNumber: pNum,
+                    pageTitle: `पेज ${pNum}: ${ch.titleHindi || ch.titleEnglish}`,
+                    summary: `${ch.titleEnglish} - पृष्ठ ${pNum} का अध्ययन सामग्री व अभ्यास।`,
+                    concepts: [`पेज ${pNum} मुख्य अवधारणा`],
+                    imageUrl: imgUrl,
+                  });
+                }
+              }
+
+              // Sort bookPages by pageNumber
+              ch.bookPages.sort((a: any, b: any) => a.pageNumber - b.pageNumber);
+            }
           }
         }
       }

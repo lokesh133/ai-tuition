@@ -1891,164 +1891,108 @@
                 "sampleQuestions": [
                   {
                     "question": "एक घन (Cube) में कुल कितने फलक (Faces), किनारे (Edges) और शीर्ष (Vertices) होते हैं?",
-                    "type": "solve",
+                    "type": "mcq",
+                    "options": [
+                      "6 फलक, 12 किनारे, 8 शीर्ष",
+                      "4 फलक, 8 किनारे, 6 शीर्ष",
+                      "8 फलक, 12 किनारे, 6 शीर्ष",
+                      "6 फलक, 8 किनारे, 12 शीर्ष"
+                    ],
                     "correctAnswer": "6 फलक, 12 किनारे, 8 शीर्ष",
-                    "explanation": "घन में 6 बराबर वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: घन (Cube) की परिभाषा व फलक",
-                        "formula": "फलक (Faces) = 6 वर्गाकार सतहें",
-                        "annotation": "घन एक ऐसी 3D आकृति है जिसकी लम्बाई, चौड़ाई और ऊँचाई तीनों बराबर होती हैं। इसमें 6 बराबर चौकोर फलक होते हैं।"
-                      },
-                      {
-                        "step": "चरण 2: किनारे (Edges) और शीर्ष (Vertices)",
-                        "formula": "किनारे (Edges) = 12 | शीर्ष (Vertices/कोने) = 8",
-                        "annotation": "जहाँ दो फलक मिलते हैं वे 12 किनारे कहलाते हैं, और जहाँ तीन किनारे मिलते हैं वे 8 कोने (शीर्ष) कहलाते हैं।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम उत्तर निष्कर्ष",
-                        "formula": "घन: 6 फलक, 12 किनारे, 8 शीर्ष",
-                        "annotation": "अतः सही उत्तर: 6 फलक (Faces), 12 किनारे (Edges) और 8 शीर्ष (Vertices)।"
-                      }
-                    ]
+                    "explanation": "घन में 6 समान वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।"
                   },
                   {
-                    "question": "लूडो के पासे (Dice) के विपरीत फलकों पर लिखे अंकों का योग कितना होता है? यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
-                    "type": "solve",
-                    "correctAnswer": "योग = 7, नीचे = 3",
-                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है (7 - 4 = 3)।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: लूडो के मानक पासे (Dice) का सार्वभौमिक नियम",
-                        "formula": "विपरीत फलकों का योग = 7 (Opposite Faces Sum = 7)",
-                        "annotation": "किसी भी असली मानक पासे में आमने-सामने वाले दो फलकों के अंकों का जोड़ हमेशा 7 होता है।"
-                      },
-                      {
-                        "step": "चरण 2: विपरीत फलक की गणना",
-                        "formula": "विपरीत फलक = 7 - 4 = 3",
-                        "annotation": "यदि शीर्ष पर 4 है, तो 7 में से 4 घटाने पर नीचे का अंक 3 प्राप्त होता है।"
-                      },
-                      {
-                        "step": "चरण 3: निष्कर्ष व सत्यापन",
-                        "formula": "4 + 3 = 7 (सत्यापित)",
-                        "annotation": "अतः पासे के निचले फलक पर अंक 3 होगा।"
-                      }
-                    ]
+                    "question": "लूडो के मानक पासे (Dice) के विपरीत फलकों का योग सदैव 7 होता है। यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
+                    "type": "mcq",
+                    "options": [
+                      "2",
+                      "3",
+                      "5",
+                      "6"
+                    ],
+                    "correctAnswer": "3",
+                    "explanation": "मानक पासे में आमने-सामने वाले फलकों का योग 7 होता है (7 - 4 = 3)।"
                   },
                   {
-                    "question": "ऐसी कौन सी आकृति है जिसमें कोई कोना (Vertex) या सीधा किनारा नहीं होता?",
-                    "type": "solve",
-                    "correctAnswer": "गोला (Sphere) / वृत्त (Circle)",
-                    "explanation": "गोले और वृत्त में केवल वक्राकार सतह या परिधि होती है, कोई सीधा किनारा या कोना नहीं होता।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: वक्राकार आकृतियों की विशेषता",
-                        "formula": "गोला (Sphere) = पूर्ण वक्र सतह (Curved Surface Only)",
-                        "annotation": "गोले (जैसे गेंद, फुटबॉल) और वृत्त में कोई सीधी रेखा या कोना नहीं होता।"
-                      },
-                      {
-                        "step": "चरण 2: शीर्ष व किनारों की अनुपस्थिति",
-                        "formula": "शीर्ष = 0, सीधे किनारे = 0",
-                        "annotation": "यह चारों ओर से एक समान रूप से गोल होती है, इसलिए इसमें कोई कोना (Vertex) नहीं बनता।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम उत्तर",
-                        "formula": "गोला (Sphere) / वृत्त (Circle)",
-                        "annotation": "अतः गोला और वृत्त ऐसी आकृतियाँ हैं जिनमें कोई सीधा किनारा या कोना नहीं होता।"
-                      }
-                    ]
+                    "question": "माचिस की डिब्बी और ईंट (Brick) किस 3D ज्यामितीय ठोस आकृति के उदाहरण हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "घनाभ (Cuboid)",
+                      "घन (Cube)",
+                      "शंकु (Cone)",
+                      "गोला (Sphere)"
+                    ],
+                    "correctAnswer": "घनाभ (Cuboid)",
+                    "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।"
                   },
                   {
-                    "question": "एक जोकर की टोपी (Joker's Cap) और आइसक्रीम कोन किस 3D आकृति के उदाहरण हैं और इसमें कितने फलक होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "शंकु (Cone), 2 फलक (1 समतल + 1 वक्र)",
-                    "explanation": "शंकु में एक वृत्ताकार समतल आधार और एक घुमावदार वक्र फलक होता है।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: जोकर की टोपी और आइसक्रीम कोन की आकृति",
-                        "formula": "3D आकृति = शंकु (Cone)",
-                        "annotation": "जोकर की टोपी और आइसक्रीम का आकार 3D में शंकु (Cone) कहलाता है।"
-                      },
-                      {
-                        "step": "चरण 2: फलकों (Faces) की गिनती",
-                        "formula": "कुल फलक = 2 (1 समतल वृत्ताकार आधार + 1 घुमावदार वक्र सतह)",
-                        "annotation": "नीचे का आधार समतल गोल होता है और ऊपर का हिस्सा घुमावदार वक्राकार होता है।"
-                      },
-                      {
-                        "step": "चरण 3: शीर्ष (Vertex)",
-                        "formula": "शीर्ष = 1 (नुकीला शीर्ष)",
-                        "annotation": "शंकु में ऊपर एक नुकीला सिरा (शीर्ष) होता है। अतः सही उत्तर: शंकु (Cone), कुल 2 फलक।"
-                      }
-                    ]
+                    "question": "ऐसी कौन सी 3D आकृति है जिसमें केवल एक वक्र फलक होता है और कोई कोना (शीर्ष) या सीधा किनारा नहीं होता?",
+                    "type": "mcq",
+                    "options": [
+                      "गोला (Sphere)",
+                      "शंकु (Cone)",
+                      "बेलन (Cylinder)",
+                      "घन (Cube)"
+                    ],
+                    "correctAnswer": "गोला (Sphere)",
+                    "explanation": "गोले (जैसे गेंद, फुटबॉल) में केवल वक्राकार सतह होती है, कोई सीधा किनारा या कोना नहीं होता।"
                   },
                   {
                     "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "7 टुकड़े (5 त्रिभुज, 1 वर्ग, 1 समांतर चतुर्भुज)",
-                    "explanation": "पारंपरिक चीनी टैंग्राम 7 आकृतियों से मिलकर बनता है जिससे कई चित्र बनाए जा सकते हैं।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: टैंग्राम (Tangram) का परिचय",
-                        "formula": "चीनी पहेली = 7 ज्यामितीय आकृतियाँ (Pieces)",
-                        "annotation": "टैंग्राम चीन की एक प्रसिद्ध पहेली है, जिसमें एक वर्ग को काटकर 7 अलग-अलग ज्यामितीय टुकड़े बनाए जाते हैं।"
-                      },
-                      {
-                        "step": "चरण 2: टुकड़ों का वर्गीकरण",
-                        "formula": "5 त्रिभुज + 1 वर्ग + 1 समांतर चतुर्भुज (Parallelogram) = 7",
-                        "annotation": "इन 7 टुकड़ों को जोड़कर बच्चे विभिन्न प्रकार के जानवर, इंसान, और सुंदर आकार बनाते हैं।"
-                      },
-                      {
-                        "step": "चरण 3: उत्तर",
-                        "formula": "कुल 7 टुकड़े",
-                        "annotation": "अतः चीनी टैंग्राम पहेली में कुल 7 टुकड़े होते हैं।"
-                      }
-                    ]
+                    "type": "mcq",
+                    "options": [
+                      "5 टुकड़े",
+                      "7 टुकड़े",
+                      "8 टुकड़े",
+                      "10 टुकड़े"
+                    ],
+                    "correctAnswer": "7 टुकड़े",
+                    "explanation": "चीनी टैंग्राम पहेली में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज मिलकर 7 टुकड़े होते हैं।"
                   },
                   {
-                    "question": "माचिस की डिब्बी और ईंट (Brick) किस आकृति के उदाहरण हैं?",
-                    "type": "solve",
-                    "correctAnswer": "घनाभ (Cuboid)",
-                    "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: माचिस और ईंट की ज्यामिति",
-                        "formula": "आकृति = घनाभ (Cuboid)",
-                        "annotation": "माचिस की डिब्बी और ईंट में 6 आयताकार (Rectangular) फलक होते हैं। ऐसी आकृति को घनाभ (Cuboid) कहा जाता है।"
-                      },
-                      {
-                        "step": "चरण 2: घनाभ की विमाएं",
-                        "formula": "लंबाई ≠ चौड़ाई ≠ ऊँचाई",
-                        "annotation": "घनाभ में विपरीत फलक बराबर होते हैं। इसमें भी घन की तरह 6 फलक, 12 किनारे और 8 शीर्ष होते हैं।"
-                      },
-                      {
-                        "step": "चरण 3: अंतिम उत्तर",
-                        "formula": "घनाभ (Cuboid)",
-                        "annotation": "अतः ईंट और माचिस की डिब्बी घनाभ (Cuboid) के प्रत्यक्ष उदाहरण हैं।"
-                      }
-                    ]
+                    "question": "एक घनाभ (Cuboid) में कुल _____ किनारे (Edges) और _____ शीर्ष (Vertices/कोने) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "12 किनारे और 8 शीर्ष",
+                    "explanation": "घनाभ में 6 फलक, 12 किनारे और 8 शीर्ष (कोने) होते हैं।"
                   },
                   {
-                    "question": "🎯 [मास्टर मॉक टेस्ट] यदि किसी कमरे में एक घनाभ आकार का बक्सा रखा है, तो उसके कितने फलक फर्श को छू सकते हैं?",
+                    "question": "जोकर की टोपी और आइसक्रीम कोन _____ (Cone) आकृति के उदाहरण हैं, जिसमें 1 समतल और 1 वक्र फलक होता है।",
+                    "type": "fill",
+                    "correctAnswer": "शंकु (Cone)",
+                    "explanation": "शंकु में एक वृत्ताकार समतल आधार, एक वक्र सतह और 1 नुकीला शीर्ष होता है।"
+                  },
+                  {
+                    "question": "लूडो के पासे (Dice) के आमने-सामने वाले दो फलकों के अंकों का कुल योग सदैव _____ होता है।",
+                    "type": "fill",
+                    "correctAnswer": "7",
+                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम पहेली में 7 टुकड़ों में से 5 टुकड़े _____ (Triangles) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "त्रिभुज (Triangles)",
+                    "explanation": "टैंग्राम में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज (कुल 7) होते हैं।"
+                  },
+                  {
+                    "question": "एक घन (Cube) और घनाभ (Cuboid) की ज्यामितीय विशेषताओं की तुलना करते हुए फलक, किनारे और शीर्ष समझाइए।",
                     "type": "solve",
-                    "correctAnswer": "1 फलक (निचला आधार)",
-                    "explanation": "एक समय में बक्से का केवल एक समतल फलक ही फर्श को छूता है।",
-                    "whiteboardSteps": [
-                      {
-                        "step": "चरण 1: फर्श और घनाभ का संपर्क",
-                        "formula": "समतल फर्श = 1 क्षैतिज तल (Flat Plane)",
-                        "annotation": "जब किसी ठोस घनाभ बक्से को समतल फर्श पर रखा जाता है, तो बक्से का केवल एक फलक (निचला आधार) ही फर्श पर टिक सकता है।"
-                      },
-                      {
-                        "step": "चरण 2: फलक विन्यास",
-                        "formula": "फर्श पर स्थित फलक = 1 आधार फलक",
-                        "annotation": "शेष 4 फलक चारों तरफ दीवार जैसे खड़े रहते हैं और 1 फलक सबसे ऊपर छत की तरफ होता है।"
-                      },
-                      {
-                        "step": "चरण 3: मास्टर निष्कर्ष",
-                        "formula": "उत्तर = केवल 1 फलक",
-                        "annotation": "अतः कमरे के फर्श को एक समय में केवल 1 फलक ही छू सकता है।"
-                      }
-                    ]
+                    "marks": 5,
+                    "correctAnswer": "घन के सभी 6 फलक वर्गाकार होते हैं, जबकि घनाभ के फलक आयताकार होते हैं। दोनों में 12 किनारे और 8 शीर्ष होते हैं।",
+                    "explanation": "घन में लंबाई=चौड़ाई=ऊंचाई होती है जबकि घनाभ में विपरीत फलक बराबर होते हैं।"
+                  },
+                  {
+                    "question": "लूडो के पासे के विपरीत फलकों का नियम समझाएं। यदि पासे के ऊपर क्रमशः 1, 2 और 5 अंक हों, तो उनके ठीक नीचे कौन-कौन से अंक होंगे? गणना सहित बताएं।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "1 के नीचे 6 (7-1=6), 2 के नीचे 5 (7-2=5), 5 के नीचे 2 (7-5=2)",
+                    "explanation": "विपरीत फलकों का योग = 7 नियम अनुसार गणना की जाती है।"
+                  },
+                  {
+                    "question": "शंकु (Cone), बेलन (Cylinder) और गोला (Sphere) की मुख्य विशेषताएं लिखिए तथा प्रत्येक के दैनिक जीवन से 2-2 उदाहरण दीजिए।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "शंकु (टोपी, आइसक्रीम - 1 शीर्ष, 2 फलक), बेलन (पाइप, ड्रम - 0 शीर्ष, 3 फलक), गोला (फुटबॉल, लड्डू - 0 शीर्ष, 1 वक्र फलक)",
+                    "explanation": "3D ठोस आकृतियों के दैनिक अनुप्रयोग और ज्यामितीय पहचान।"
                   }
                 ],
                 "bookPages": [
@@ -2250,7 +2194,8 @@
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-30.webp?v=1792520306501"
                   }
-                ]
+                ],
+                "totalPages": 22
               },
               {
                 "id": "c4-math-4",
@@ -3950,13 +3895,332 @@
                 "chapterNumber": 1,
                 "titleEnglish": "Shapes Around Us (2D and 3D-shapes)",
                 "titleHindi": "Shapes Around Us (2D and 3D-shapes)",
-                "concepts": [],
-                "keyFormulas": [],
+                "concepts": [
+                  "2D आकृतियाँ (Square, Rectangle, Triangle, Circle)",
+                  "3D ठोस आकृतियाँ (Cube, Cuboid, Cone, Cylinder, Sphere)",
+                  "फलक, किनारे और शीर्ष (Faces, Edges, Vertices)",
+                  "डिब्बे का जाल (Nets) व पासा (Dice)",
+                  "टाइलिंग व फर्श पैटर्न",
+                  "टैंग्राम पहेली (7 Pieces)"
+                ],
+                "keyFormulas": [
+                  "घन (Cube): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "घनाभ (Cuboid): 6 फलक, 12 किनारे, 8 शीर्ष",
+                  "पासा (Dice): विपरीत फलकों का योग = 7",
+                  "शंकु (Cone): 1 समतल फलक + 1 वक्र फलक, 1 शीर्ष"
+                ],
                 "term": "annual",
                 "estimatedMinutes": 40,
                 "startPage": 9,
                 "endPage": 30,
-                "sampleQuestions": []
+                "sampleQuestions": [
+                  {
+                    "question": "एक घन (Cube) में कुल कितने फलक (Faces), किनारे (Edges) और शीर्ष (Vertices) होते हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "6 फलक, 12 किनारे, 8 शीर्ष",
+                      "4 फलक, 8 किनारे, 6 शीर्ष",
+                      "8 फलक, 12 किनारे, 6 शीर्ष",
+                      "6 फलक, 8 किनारे, 12 शीर्ष"
+                    ],
+                    "correctAnswer": "6 फलक, 12 किनारे, 8 शीर्ष",
+                    "explanation": "घन में 6 समान वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।"
+                  },
+                  {
+                    "question": "लूडो के मानक पासे (Dice) के विपरीत फलकों का योग सदैव 7 होता है। यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
+                    "type": "mcq",
+                    "options": [
+                      "2",
+                      "3",
+                      "5",
+                      "6"
+                    ],
+                    "correctAnswer": "3",
+                    "explanation": "मानक पासे में आमने-सामने वाले फलकों का योग 7 होता है (7 - 4 = 3)।"
+                  },
+                  {
+                    "question": "माचिस की डिब्बी और ईंट (Brick) किस 3D ज्यामितीय ठोस आकृति के उदाहरण हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "घनाभ (Cuboid)",
+                      "घन (Cube)",
+                      "शंकु (Cone)",
+                      "गोला (Sphere)"
+                    ],
+                    "correctAnswer": "घनाभ (Cuboid)",
+                    "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।"
+                  },
+                  {
+                    "question": "ऐसी कौन सी 3D आकृति है जिसमें केवल एक वक्र फलक होता है और कोई कोना (शीर्ष) या सीधा किनारा नहीं होता?",
+                    "type": "mcq",
+                    "options": [
+                      "गोला (Sphere)",
+                      "शंकु (Cone)",
+                      "बेलन (Cylinder)",
+                      "घन (Cube)"
+                    ],
+                    "correctAnswer": "गोला (Sphere)",
+                    "explanation": "गोले (जैसे गेंद, फुटबॉल) में केवल वक्राकार सतह होती है, कोई सीधा किनारा या कोना नहीं होता।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "5 टुकड़े",
+                      "7 टुकड़े",
+                      "8 टुकड़े",
+                      "10 टुकड़े"
+                    ],
+                    "correctAnswer": "7 टुकड़े",
+                    "explanation": "चीनी टैंग्राम पहेली में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज मिलकर 7 टुकड़े होते हैं।"
+                  },
+                  {
+                    "question": "एक घनाभ (Cuboid) में कुल _____ किनारे (Edges) और _____ शीर्ष (Vertices/कोने) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "12 किनारे और 8 शीर्ष",
+                    "explanation": "घनाभ में 6 फलक, 12 किनारे और 8 शीर्ष (कोने) होते हैं।"
+                  },
+                  {
+                    "question": "जोकर की टोपी और आइसक्रीम कोन _____ (Cone) आकृति के उदाहरण हैं, जिसमें 1 समतल और 1 वक्र फलक होता है।",
+                    "type": "fill",
+                    "correctAnswer": "शंकु (Cone)",
+                    "explanation": "शंकु में एक वृत्ताकार समतल आधार, एक वक्र सतह और 1 नुकीला शीर्ष होता है।"
+                  },
+                  {
+                    "question": "लूडो के पासे (Dice) के आमने-सामने वाले दो फलकों के अंकों का कुल योग सदैव _____ होता है।",
+                    "type": "fill",
+                    "correctAnswer": "7",
+                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम पहेली में 7 टुकड़ों में से 5 टुकड़े _____ (Triangles) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "त्रिभुज (Triangles)",
+                    "explanation": "टैंग्राम में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज (कुल 7) होते हैं।"
+                  },
+                  {
+                    "question": "एक घन (Cube) और घनाभ (Cuboid) की ज्यामितीय विशेषताओं की तुलना करते हुए फलक, किनारे और शीर्ष समझाइए।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "घन के सभी 6 फलक वर्गाकार होते हैं, जबकि घनाभ के फलक आयताकार होते हैं। दोनों में 12 किनारे और 8 शीर्ष होते हैं।",
+                    "explanation": "घन में लंबाई=चौड़ाई=ऊंचाई होती है जबकि घनाभ में विपरीत फलक बराबर होते हैं।"
+                  },
+                  {
+                    "question": "लूडो के पासे के विपरीत फलकों का नियम समझाएं। यदि पासे के ऊपर क्रमशः 1, 2 और 5 अंक हों, तो उनके ठीक नीचे कौन-कौन से अंक होंगे? गणना सहित बताएं।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "1 के नीचे 6 (7-1=6), 2 के नीचे 5 (7-2=5), 5 के नीचे 2 (7-5=2)",
+                    "explanation": "विपरीत फलकों का योग = 7 नियम अनुसार गणना की जाती है।"
+                  },
+                  {
+                    "question": "शंकु (Cone), बेलन (Cylinder) और गोला (Sphere) की मुख्य विशेषताएं लिखिए तथा प्रत्येक के दैनिक जीवन से 2-2 उदाहरण दीजिए।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "शंकु (टोपी, आइसक्रीम - 1 शीर्ष, 2 फलक), बेलन (पाइप, ड्रम - 0 शीर्ष, 3 फलक), गोला (फुटबॉल, लड्डू - 0 शीर्ष, 1 वक्र फलक)",
+                    "explanation": "3D ठोस आकृतियों के दैनिक अनुप्रयोग और ज्यामितीय पहचान।"
+                  }
+                ],
+                "totalPages": 22,
+                "bookPages": [
+                  {
+                    "pageNumber": 9,
+                    "pageTitle": "पेज 9: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 9 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 9 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-9.webp?v=1792520306455"
+                  },
+                  {
+                    "pageNumber": 10,
+                    "pageTitle": "पेज 10: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 10 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 10 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-10.webp?v=1792520306460"
+                  },
+                  {
+                    "pageNumber": 11,
+                    "pageTitle": "पेज 11: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 11 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 11 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-11.webp?v=1792520306464"
+                  },
+                  {
+                    "pageNumber": 12,
+                    "pageTitle": "पेज 12: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 12 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 12 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-12.webp?v=1792520306466"
+                  },
+                  {
+                    "pageNumber": 13,
+                    "pageTitle": "पेज 13: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 13 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 13 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-13.webp?v=1792520306468"
+                  },
+                  {
+                    "pageNumber": 14,
+                    "pageTitle": "पेज 14: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 14 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 14 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-14.webp?v=1792520306470"
+                  },
+                  {
+                    "pageNumber": 15,
+                    "pageTitle": "पेज 15: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 15 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 15 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-15.webp?v=1792520306472"
+                  },
+                  {
+                    "pageNumber": 16,
+                    "pageTitle": "पेज 16: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 16 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 16 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-16.webp?v=1792520306473"
+                  },
+                  {
+                    "pageNumber": 17,
+                    "pageTitle": "पेज 17: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 17 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 17 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-17.webp?v=1792520306475"
+                  },
+                  {
+                    "pageNumber": 18,
+                    "pageTitle": "पेज 18: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 18 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 18 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-18.webp?v=1792520306477"
+                  },
+                  {
+                    "pageNumber": 19,
+                    "pageTitle": "पेज 19: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 19 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 19 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-19.webp?v=1792520306479"
+                  },
+                  {
+                    "pageNumber": 20,
+                    "pageTitle": "पेज 20: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 20 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 20 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-20.webp?v=1792520306481"
+                  },
+                  {
+                    "pageNumber": 21,
+                    "pageTitle": "पेज 21: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 21 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 21 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-21.webp?v=1792520306483"
+                  },
+                  {
+                    "pageNumber": 22,
+                    "pageTitle": "पेज 22: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 22 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 22 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-22.webp?v=1792520306484"
+                  },
+                  {
+                    "pageNumber": 23,
+                    "pageTitle": "पेज 23: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 23 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 23 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-23.webp?v=1792520306486"
+                  },
+                  {
+                    "pageNumber": 24,
+                    "pageTitle": "पेज 24: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 24 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 24 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-24.webp?v=1792520306488"
+                  },
+                  {
+                    "pageNumber": 25,
+                    "pageTitle": "पेज 25: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 25 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 25 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-25.webp?v=1792520306490"
+                  },
+                  {
+                    "pageNumber": 26,
+                    "pageTitle": "पेज 26: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 26 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 26 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-26.webp?v=1792520306492"
+                  },
+                  {
+                    "pageNumber": 27,
+                    "pageTitle": "पेज 27: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 27 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 27 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-27.webp?v=1792520306496"
+                  },
+                  {
+                    "pageNumber": 28,
+                    "pageTitle": "पेज 28: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 28 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 28 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-28.webp?v=1792520306498"
+                  },
+                  {
+                    "pageNumber": 29,
+                    "pageTitle": "पेज 29: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 29 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 29 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-29.webp?v=1792520306500"
+                  },
+                  {
+                    "pageNumber": 30,
+                    "pageTitle": "पेज 30: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 30 का अध्ययन सामग्री व अभ्यास।",
+                    "concepts": [
+                      "पेज 30 मुख्य अवधारणा"
+                    ],
+                    "imageUrl": "/uploads/book-pages/c4-math-14/page-30.webp?v=1792520306501"
+                  }
+                ]
               },
               {
                 "id": "c4-math-4",
@@ -6999,9 +7263,9 @@
                 "chapterNumber": 1,
                 "titleEnglish": "Shapes Around Us (2D and 3D-shapes)",
                 "titleHindi": "Shapes Around Us (2D and 3D-shapes)",
-                "startPage": 7,
-                "endPage": 25,
-                "totalPages": 19,
+                "startPage": 9,
+                "endPage": 30,
+                "totalPages": 22,
                 "term": "annual",
                 "estimatedMinutes": 40,
                 "concepts": [
@@ -7020,211 +7284,155 @@
                 ],
                 "bookPages": [
                   {
-                    "pageNumber": 7,
-                    "pageTitle": "पेज 7: 2D आकृतियों का परिचय (Square, Rectangle, Triangle, Circle)",
-                    "summary": "द्विविमीय (2D) आकृतियों की पहचान, वर्ग, आयत, त्रिभुज व वृत्त के दैनिक उदाहरण।",
-                    "concepts": [
-                      "2D आकृतियाँ",
-                      "वर्ग व आयत",
-                      "त्रिभुज व वृत्त"
-                    ],
-                    "imageUrl": "/uploads/book-pages/c4-math-14/page-7.webp?v=1792518945289"
-                  },
-                  {
-                    "pageNumber": 8,
-                    "pageTitle": "पेज 8: भुजाएँ और कोने (Sides & Vertices)",
-                    "summary": "वर्ग व आयत की 4 भुजाएं और 4 कोने, त्रिभुज के 3 कोने, वृत्त में शून्य कोना।",
-                    "concepts": [
-                      "भुजाएं (Sides)",
-                      "कोने (Vertices)",
-                      "कोनों की गिनती"
-                    ],
-                    "imageUrl": "/uploads/book-pages/c4-math-14/page-8.webp?v=1792518945294"
-                  },
-                  {
                     "pageNumber": 9,
-                    "pageTitle": "पेज 9: हमारे चारों ओर 2D आकृतियाँ (Real-world 2D Shapes)",
-                    "summary": "किताब, ब्लैकबोर्ड, सिक्के, खिड़की व पहिये में 2D आकृतियों की पहचान।",
+                    "pageTitle": "पेज 9: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 9 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "दैनिक उदाहरण",
-                      "समतल सतह",
-                      "आकृति मिलान"
+                      "पेज 9 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-9.webp?v=1792520306455"
                   },
                   {
                     "pageNumber": 10,
-                    "pageTitle": "पेज 10: अभ्यास 1.1 (Exercise 1.1)",
-                    "summary": "भुजाओं व कोनों की संख्या गिनने और आकृतियों को पहचानने का अभ्यास।",
+                    "pageTitle": "पेज 10: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 10 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "अभ्यास 1.1",
-                      "तालिका पूर्ति",
-                      "चित्र आधारित प्रश्न"
+                      "पेज 10 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-10.webp?v=1792520306460"
                   },
                   {
                     "pageNumber": 11,
-                    "pageTitle": "पेज 11: 3D आकृतियों का आगमन (Cube, Cuboid)",
-                    "summary": "त्रिविमीय (3D) ठोस आकृतियाँ: घन (Cube) और घनाभ (Cuboid) का परिचय।",
+                    "pageTitle": "पेज 11: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 11 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "3D ठोस आकृतियाँ",
-                      "घन (Cube)",
-                      "घनाभ (Cuboid)"
+                      "पेज 11 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-11.webp?v=1792520306464"
                   },
                   {
                     "pageNumber": 12,
-                    "pageTitle": "पेज 12: फलक, किनारे और शीर्ष (Faces, Edges & Vertices)",
-                    "summary": "घन व घनाभ में 6 फलक, 12 किनारे और 8 शीर्ष की विस्तृत समझ।",
+                    "pageTitle": "पेज 12: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 12 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "6 फलक (Faces)",
-                      "12 किनारे (Edges)",
-                      "8 शीर्ष (Vertices)"
+                      "पेज 12 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-12.webp?v=1792520306466"
                   },
                   {
                     "pageNumber": 13,
-                    "pageTitle": "पेज 13: बेलन और शंकु (Cylinder & Cone)",
-                    "summary": "बेलन (समतल व वक्र सतह) तथा शंकु (जोकर की टोपी) की सतहों की पहचान।",
+                    "pageTitle": "पेज 13: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 13 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "बेलन (Cylinder)",
-                      "शंकु (Cone)",
-                      "वक्र व समतल सतह"
+                      "पेज 13 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-13.webp?v=1792520306468"
                   },
                   {
                     "pageNumber": 14,
-                    "pageTitle": "पेज 14: गोला और अर्धगोला (Sphere & Hemisphere)",
-                    "summary": "फुटबॉल, गेंद और नीम्बू से गोले की पूर्ण वक्र सतह और शून्य कोने की समझ।",
+                    "pageTitle": "पेज 14: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 14 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "गोला (Sphere)",
-                      "अर्धगोला",
-                      "वक्र सतह"
+                      "पेज 14 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-14.webp?v=1792520306470"
                   },
                   {
                     "pageNumber": 15,
-                    "pageTitle": "पेज 15: अभ्यास 1.2 (Exercise 1.2)",
-                    "summary": "3D आकृतियों के फलक, किनारे और शीर्षों की गणना करने के अभ्यास प्रश्न।",
+                    "pageTitle": "पेज 15: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 15 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "अभ्यास 1.2",
-                      "ठोस वस्तु वर्गीकरण",
-                      "फलक गणना"
+                      "पेज 15 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-15.webp?v=1792520306472"
                   },
                   {
                     "pageNumber": 16,
-                    "pageTitle": "पेज 16: डिब्बे का जाल (Nets of 3D Shapes)",
-                    "summary": "गत्ते के डिब्बे को खोलकर जाल (Net) बनाना और 6 वर्गों से घन का जाल।",
+                    "pageTitle": "पेज 16: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 16 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "आकृति का जाल (Net)",
-                      "डिब्बा खोलना",
-                      "घन का जाल"
+                      "पेज 16 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-16.webp?v=1792520306473"
                   },
                   {
                     "pageNumber": 17,
-                    "pageTitle": "पेज 17: पासा और खुले डिब्बे (Dice & Open Boxes)",
-                    "summary": "लूडो के पासे के विपरीत फलकों का योग 7 होना तथा बिना ढक्कन का खुला डिब्बा।",
+                    "pageTitle": "पेज 17: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 17 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "पासा (Dice नियम)",
-                      "विपरीत फलक योग = 7",
-                      "खुला डिब्बा"
+                      "पेज 17 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-17.webp?v=1792520306475"
                   },
                   {
                     "pageNumber": 18,
-                    "pageTitle": "पेज 18: फर्श के पैटर्न और टाइलिंग (Tiling & Patterns)",
-                    "summary": "ऐसी आकृतियाँ जो बिना खाली जगह छोड़े फर्श को ढकती हैं (टाइलिंग)।",
+                    "pageTitle": "पेज 18: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 18 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "टाइलिंग (Tiling)",
-                      "फर्श के पैटर्न",
-                      "आकृतियों का दोहराव"
+                      "पेज 18 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-18.webp?v=1792520306477"
                   },
                   {
                     "pageNumber": 19,
-                    "pageTitle": "पेज 19: टैंग्राम पहेलियाँ (7-Piece Tangram)",
-                    "summary": "चीन की प्राचीन टैंग्राम पहेली के 7 टुकड़ों से विभिन्न आकृतियाँ बनाना।",
+                    "pageTitle": "पेज 19: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 19 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "टैंग्राम (Tangram)",
-                      "7 टुकड़े",
-                      "रचनात्मक आकृतियाँ"
+                      "पेज 19 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-19.webp?v=1792520306479"
                   },
                   {
                     "pageNumber": 20,
-                    "pageTitle": "पेज 20: अभ्यास 1.3 (Exercise 1.3)",
-                    "summary": "जाल (Net), टाइलिंग और टैंग्राम पर आधारित रोमांचक अभ्यास प्रश्न।",
+                    "pageTitle": "पेज 20: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 20 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "अभ्यास 1.3",
-                      "पैटर्न पहचान",
-                      "टैंग्राम रचना"
+                      "पेज 20 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-20.webp?v=1792520306481"
                   },
                   {
                     "pageNumber": 21,
-                    "pageTitle": "पेज 21: ऊपर, सामने और बगल का दृश्य (Top, Front, Side Views)",
-                    "summary": "ईंट, कप और कार को ऊपर (Top), सामने (Front) व बगल (Side) से देखना।",
+                    "pageTitle": "पेज 21: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 21 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "ऊपर का दृश्य (Top View)",
-                      "सामने का दृश्य (Front View)",
-                      "बगल का दृश्य (Side View)"
+                      "पेज 21 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-21.webp?v=1792520306483"
                   },
                   {
                     "pageNumber": 22,
-                    "pageTitle": "पेज 22: बिंदु ग्रिड पर 3D आकृतियाँ खींचना (Dot Grid Drawing)",
-                    "summary": "डॉट शीट (Dot Grid) पर घन व घनाभ का 3D चित्र बनाना।",
+                    "pageTitle": "पेज 22: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 22 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "डॉट ग्रिड (Dot Grid)",
-                      "3D ड्राइंग",
-                      "आइसोमेट्रिक स्केच"
+                      "पेज 22 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-22.webp?v=1792520306484"
                   },
                   {
                     "pageNumber": 23,
-                    "pageTitle": "पेज 23: मानसिक गणित व सूत्र सार (Mental Math & Formulas)",
-                    "summary": "अध्याय 1 के सभी महत्वपूर्ण सूत्र, फलक-किनारे संबंध व त्वरित गणना।",
+                    "pageTitle": "पेज 23: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 23 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "मानसिक गणित",
-                      "त्वरित सूत्र सार",
-                      "स्मरण बिंदु"
+                      "पेज 23 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-23.webp?v=1792520306486"
                   },
                   {
                     "pageNumber": 24,
-                    "pageTitle": "पेज 24: पाठ समीक्षा व अभ्यास प्रश्नावली (Chapter Review Assessment)",
-                    "summary": "पाठ्यपुस्तक के अंत की पूर्ण मूल्यांकन प्रश्नावली (कक्षा 4 स्तर)।",
+                    "pageTitle": "पेज 24: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 24 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "पाठ समीक्षा",
-                      "बहुविकल्पीय प्रश्न",
-                      "हल सहित प्रश्न"
+                      "पेज 24 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-24.webp?v=1792520306488"
                   },
                   {
                     "pageNumber": 25,
-                    "pageTitle": "🎯 पेज 25: मास्टर मॉक टेस्ट पेपर (Master Mock Test & Real Questions)",
-                    "summary": "पृष्ठ 7 से 25 के पूरे पाठ्यक्रम पर आधारित 100% व्यापक मॉक टेस्ट प्रश्न पत्र।",
+                    "pageTitle": "पेज 25: Shapes Around Us (2D and 3D-shapes)",
+                    "summary": "Shapes Around Us (2D and 3D-shapes) - पृष्ठ 25 का अध्ययन सामग्री व अभ्यास।",
                     "concepts": [
-                      "मास्टर मॉक टेस्ट",
-                      "वार्षिक परीक्षा प्रश्न",
-                      "आत्म-मूल्यांकन"
+                      "पेज 25 मुख्य अवधारणा"
                     ],
                     "imageUrl": "/uploads/book-pages/c4-math-14/page-25.webp?v=1792520306490"
                   },
@@ -7277,45 +7485,108 @@
                 "sampleQuestions": [
                   {
                     "question": "एक घन (Cube) में कुल कितने फलक (Faces), किनारे (Edges) और शीर्ष (Vertices) होते हैं?",
-                    "type": "solve",
+                    "type": "mcq",
+                    "options": [
+                      "6 फलक, 12 किनारे, 8 शीर्ष",
+                      "4 फलक, 8 किनारे, 6 शीर्ष",
+                      "8 फलक, 12 किनारे, 6 शीर्ष",
+                      "6 फलक, 8 किनारे, 12 शीर्ष"
+                    ],
                     "correctAnswer": "6 फलक, 12 किनारे, 8 शीर्ष",
-                    "explanation": "घन में 6 बराबर वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।"
+                    "explanation": "घन में 6 समान वर्गाकार फलक, 12 सीधे किनारे और 8 कोने (शीर्ष) होते हैं।"
                   },
                   {
-                    "question": "लूडो के पासे (Dice) के विपरीत फलकों पर लिखे अंकों का योग कितना होता है? यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
-                    "type": "solve",
-                    "correctAnswer": "योग = 7, नीचे = 3",
-                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है (7 - 4 = 3)।"
+                    "question": "लूडो के मानक पासे (Dice) के विपरीत फलकों का योग सदैव 7 होता है। यदि ऊपरी फलक पर 4 है, तो नीचे क्या होगा?",
+                    "type": "mcq",
+                    "options": [
+                      "2",
+                      "3",
+                      "5",
+                      "6"
+                    ],
+                    "correctAnswer": "3",
+                    "explanation": "मानक पासे में आमने-सामने वाले फलकों का योग 7 होता है (7 - 4 = 3)।"
                   },
                   {
-                    "question": "ऐसी कौन सी आकृति है जिसमें कोई कोना (Vertex) या सीधा किनारा नहीं होता?",
-                    "type": "solve",
-                    "correctAnswer": "गोला (Sphere) / वृत्त (Circle)",
-                    "explanation": "गोले और वृत्त में केवल वक्राकार सतह या परिधि होती है, कोई सीधा किनारा या कोना नहीं होता।"
-                  },
-                  {
-                    "question": "एक जोकर की टोपी (Joker's Cap) और आइसक्रीम कोन किस 3D आकृति के उदाहरण हैं और इसमें कितने फलक होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "शंकु (Cone), 2 फलक (1 समतल + 1 वक्र)",
-                    "explanation": "शंकु में एक वृत्ताकार समतल आधार और एक घुमावदार वक्र फलक होता है।"
-                  },
-                  {
-                    "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
-                    "type": "solve",
-                    "correctAnswer": "7 टुकड़े (5 त्रिभुज, 1 वर्ग, 1 समांतर चतुर्भुज)",
-                    "explanation": "पारंपरिक चीनी टैंग्राम 7 आकृतियों से मिलकर बनता है जिससे कई चित्र बनाए जा सकते हैं।"
-                  },
-                  {
-                    "question": "माचिस की डिब्बी और ईंट (Brick) किस आकृति के उदाहरण हैं?",
-                    "type": "solve",
+                    "question": "माचिस की डिब्बी और ईंट (Brick) किस 3D ज्यामितीय ठोस आकृति के उदाहरण हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "घनाभ (Cuboid)",
+                      "घन (Cube)",
+                      "शंकु (Cone)",
+                      "गोला (Sphere)"
+                    ],
                     "correctAnswer": "घनाभ (Cuboid)",
                     "explanation": "ईंट और माचिस में 6 आयताकार फलक होते हैं, इसलिए ये घनाभ (Cuboid) हैं।"
                   },
                   {
-                    "question": "🎯 [मास्टर मॉक टेस्ट] यदि किसी कमरे में एक घनाभ आकार का बक्सा रखा है, तो उसके कितने फलक फर्श को छू सकते हैं?",
+                    "question": "ऐसी कौन सी 3D आकृति है जिसमें केवल एक वक्र फलक होता है और कोई कोना (शीर्ष) या सीधा किनारा नहीं होता?",
+                    "type": "mcq",
+                    "options": [
+                      "गोला (Sphere)",
+                      "शंकु (Cone)",
+                      "बेलन (Cylinder)",
+                      "घन (Cube)"
+                    ],
+                    "correctAnswer": "गोला (Sphere)",
+                    "explanation": "गोले (जैसे गेंद, फुटबॉल) में केवल वक्राकार सतह होती है, कोई सीधा किनारा या कोना नहीं होता।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम (Tangram) पहेली में कुल कितने ज्यामितीय टुकड़े होते हैं?",
+                    "type": "mcq",
+                    "options": [
+                      "5 टुकड़े",
+                      "7 टुकड़े",
+                      "8 टुकड़े",
+                      "10 टुकड़े"
+                    ],
+                    "correctAnswer": "7 टुकड़े",
+                    "explanation": "चीनी टैंग्राम पहेली में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज मिलकर 7 टुकड़े होते हैं।"
+                  },
+                  {
+                    "question": "एक घनाभ (Cuboid) में कुल _____ किनारे (Edges) और _____ शीर्ष (Vertices/कोने) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "12 किनारे और 8 शीर्ष",
+                    "explanation": "घनाभ में 6 फलक, 12 किनारे और 8 शीर्ष (कोने) होते हैं।"
+                  },
+                  {
+                    "question": "जोकर की टोपी और आइसक्रीम कोन _____ (Cone) आकृति के उदाहरण हैं, जिसमें 1 समतल और 1 वक्र फलक होता है।",
+                    "type": "fill",
+                    "correctAnswer": "शंकु (Cone)",
+                    "explanation": "शंकु में एक वृत्ताकार समतल आधार, एक वक्र सतह और 1 नुकीला शीर्ष होता है।"
+                  },
+                  {
+                    "question": "लूडो के पासे (Dice) के आमने-सामने वाले दो फलकों के अंकों का कुल योग सदैव _____ होता है।",
+                    "type": "fill",
+                    "correctAnswer": "7",
+                    "explanation": "मानक पासे में विपरीत फलकों का योग सदैव 7 होता है।"
+                  },
+                  {
+                    "question": "चीनी टैंग्राम पहेली में 7 टुकड़ों में से 5 टुकड़े _____ (Triangles) होते हैं।",
+                    "type": "fill",
+                    "correctAnswer": "त्रिभुज (Triangles)",
+                    "explanation": "टैंग्राम में 5 त्रिभुज, 1 वर्ग और 1 समांतर चतुर्भुज (कुल 7) होते हैं।"
+                  },
+                  {
+                    "question": "एक घन (Cube) और घनाभ (Cuboid) की ज्यामितीय विशेषताओं की तुलना करते हुए फलक, किनारे और शीर्ष समझाइए।",
                     "type": "solve",
-                    "correctAnswer": "1 फलक (निचला आधार)",
-                    "explanation": "एक समय में बक्से का केवल एक समतल फलक ही फर्श को छूता है।"
+                    "marks": 5,
+                    "correctAnswer": "घन के सभी 6 फलक वर्गाकार होते हैं, जबकि घनाभ के फलक आयताकार होते हैं। दोनों में 12 किनारे और 8 शीर्ष होते हैं।",
+                    "explanation": "घन में लंबाई=चौड़ाई=ऊंचाई होती है जबकि घनाभ में विपरीत फलक बराबर होते हैं।"
+                  },
+                  {
+                    "question": "लूडो के पासे के विपरीत फलकों का नियम समझाएं। यदि पासे के ऊपर क्रमशः 1, 2 और 5 अंक हों, तो उनके ठीक नीचे कौन-कौन से अंक होंगे? गणना सहित बताएं।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "1 के नीचे 6 (7-1=6), 2 के नीचे 5 (7-2=5), 5 के नीचे 2 (7-5=2)",
+                    "explanation": "विपरीत फलकों का योग = 7 नियम अनुसार गणना की जाती है।"
+                  },
+                  {
+                    "question": "शंकु (Cone), बेलन (Cylinder) और गोला (Sphere) की मुख्य विशेषताएं लिखिए तथा प्रत्येक के दैनिक जीवन से 2-2 उदाहरण दीजिए।",
+                    "type": "solve",
+                    "marks": 5,
+                    "correctAnswer": "शंकु (टोपी, आइसक्रीम - 1 शीर्ष, 2 फलक), बेलन (पाइप, ड्रम - 0 शीर्ष, 3 फलक), गोला (फुटबॉल, लड्डू - 0 शीर्ष, 1 वक्र फलक)",
+                    "explanation": "3D ठोस आकृतियों के दैनिक अनुप्रयोग और ज्यामितीय पहचान।"
                   }
                 ]
               },

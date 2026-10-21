@@ -30,7 +30,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { getCurriculum, Chapter, SubjectCurriculum } from '@/lib/curriculum-data';
+import { getCurriculum, Chapter, SubjectCurriculum, fetchDynamicCurriculum } from '@/lib/curriculum-data';
 
 export interface TestResultRecord {
   id: string;
@@ -104,13 +104,47 @@ export default function SundayTestSeriesModal({
   // Navigation tabs in modal: 'configure' | 'exam' | 'result' | 'history'
   const [activeTab, setActiveTab] = useState<'configure' | 'exam' | 'result' | 'history'>('configure');
 
-  // Subjects & Chapters Selection State
-  const subjects = useMemo(() => {
+  // Subjects & Chapters Selection State (Local seed + Live server sync)
+  const initialSubjects = useMemo(() => {
     return getCurriculum(board, className, medium);
   }, [board, className, medium]);
 
+  const [subjects, setSubjects] = useState<SubjectCurriculum[]>(initialSubjects);
+
+  // Sync fresh curriculum from backend on load
+  useEffect(() => {
+    fetchDynamicCurriculum(board, className).then((live) => {
+      if (live && Array.isArray(live) && live.length > 0) {
+        setSubjects(live);
+      }
+    });
+  }, [board, className]);
+
+  useEffect(() => {
+    setSubjects(getCurriculum(board, className, medium));
+  }, [board, className, medium]);
+
+  // Dynamic student name from profile / localStorage
+  const [activeStudentName, setActiveStudentName] = useState<string>(studentName);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('student_user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        if (u.name && u.name.trim()) {
+          setActiveStudentName(u.name.trim());
+          return;
+        }
+      }
+    } catch {}
+    if (studentName && studentName !== 'राहुल कुमावत') {
+      setActiveStudentName(studentName);
+    }
+  }, [studentName]);
+
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
-    return initialSubjectId || subjects[0]?.id || 'c4-math';
+    return initialSubjectId || initialSubjects[0]?.id || 'c4-math';
   });
 
   const activeSubject = useMemo(() => {
@@ -267,20 +301,28 @@ export default function SundayTestSeriesModal({
         });
       });
 
-      // If chapter doesn't have MCQs, generate a conceptual MCQ
-      if (mcqs.length === 0 && ch.concepts && ch.concepts.length > 0) {
-        questions.push({
-          id: `q_${qIdCounter++}`,
-          chapterNumber: ch.chapterNumber,
-          chapterTitle: ch.titleHindi || ch.titleEnglish,
-          section: 'A',
-          sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
-          type: 'mcq',
-          marks: 1,
-          question: `${ch.titleHindi} का मुख्य नियम/विचार कौन सा है?`,
-          options: [ch.concepts[0], 'उपरोक्त में से कोई नहीं', 'नियम 2', 'नियम 3'],
-          correctAnswer: ch.concepts[0],
-          explanation: `${ch.titleHindi} में मुख्य रूप से "${ch.concepts[0]}" सिखाया गया है।`,
+      // If chapter has fewer than 4 MCQs, generate conceptual MCQs from concepts and formulas
+      if (mcqs.length < 4 && ch.concepts && ch.concepts.length > 0) {
+        const needed = 4 - mcqs.length;
+        ch.concepts.slice(0, needed).forEach((c, cIdx) => {
+          questions.push({
+            id: `q_${qIdCounter++}`,
+            chapterNumber: ch.chapterNumber,
+            chapterTitle: ch.titleHindi || ch.titleEnglish,
+            section: 'A',
+            sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
+            type: 'mcq',
+            marks: 1,
+            question: `अध्याय "${ch.titleHindi}" के अनुसार: "${c}" से संबंधित सही विकल्प चुनें:`,
+            options: [
+              c,
+              'इनमें से कोई नहीं',
+              ch.concepts[(cIdx + 1) % ch.concepts.length] !== c ? ch.concepts[(cIdx + 1) % ch.concepts.length] : 'सामान्य नियम',
+              'उपरोक्त दोनों'
+            ],
+            correctAnswer: c,
+            explanation: `पाठ्यपुस्तक के अनुसार यह "${ch.titleHindi}" का मुख्य सिद्धांत है।`,
+          });
         });
       }
     });
@@ -303,7 +345,23 @@ export default function SundayTestSeriesModal({
         });
       });
 
-      if (fills.length === 0 && ch.concepts && ch.concepts.length > 1) {
+      if (fills.length < 3 && ch.keyFormulas && ch.keyFormulas.length > 0) {
+        const needed = 3 - fills.length;
+        ch.keyFormulas.slice(0, needed).forEach((kf) => {
+          questions.push({
+            id: `q_${qIdCounter++}`,
+            chapterNumber: ch.chapterNumber,
+            chapterTitle: ch.titleHindi || ch.titleEnglish,
+            section: 'B',
+            sectionTitle: "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)",
+            type: 'fill',
+            marks: 2,
+            question: `रिक्त स्थान भरें या संक्षेप में लिखें: [ ${kf.split(':')[0]} ] के नियम को स्पष्ट करें।`,
+            correctAnswer: kf,
+            explanation: `${ch.titleHindi} का आवश्यक सूत्र।`,
+          });
+        });
+      } else if (fills.length === 0 && ch.concepts && ch.concepts.length > 1) {
         questions.push({
           id: `q_${qIdCounter++}`,
           chapterNumber: ch.chapterNumber,
@@ -493,7 +551,7 @@ export default function SundayTestSeriesModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          studentName,
+          studentName: activeStudentName,
           subjectName: activeSubject.subjectHindi || activeSubject.subject,
           classGrade: className,
           selectedChapters: chosenChapters,
@@ -880,7 +938,7 @@ export default function SundayTestSeriesModal({
                 {/* Student Details Sheet Box */}
                 <div className="border border-slate-800 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold bg-slate-50 font-sans gap-2 print:bg-transparent">
                   <div>
-                    छात्र का नाम: <span className="font-mono text-sm underline decoration-dotted">{studentName}</span>
+                    छात्र का नाम: <span className="font-mono text-sm underline decoration-dotted">{activeStudentName}</span>
                   </div>
                   <div>रोल नंबर: [ .................... ]</div>
                   <div>दिनांक: {new Date().toLocaleDateString('hi-IN')}</div>

@@ -42,10 +42,22 @@ export default function StudentAllReportPage() {
   const [lang, setLang] = useState<'hi' | 'en'>('hi');
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>('all');
   const [worksheetRecords, setWorksheetRecords] = useState<SavedWorksheetRecord[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [profileName, setProfileName] = useState<string>('');
+  const [profileClass, setProfileClass] = useState<string>('');
+  const [isClient, setIsClient] = useState<boolean>(false);
 
   useEffect(() => {
     setIsClient(true);
+    // Load student user profile
+    try {
+      const saved = localStorage.getItem('student_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u.name) setProfileName(u.name);
+        if (u.classGrade) setProfileClass(u.classGrade);
+      }
+    } catch {}
+
     // Load student's worksheet history from local storage
     try {
       const stored = localStorage.getItem('ai_tuition_worksheet_records');
@@ -121,8 +133,8 @@ export default function StudentAllReportPage() {
   const isEn = lang === 'en';
 
   const studentProfile = {
-    name: isEn ? 'Rahul Kumawat' : 'राहुल कुमावत',
-    className: isEn ? 'Class 4th (English Medium)' : 'कक्षा 4 (इंग्लिश मीडियम)',
+    name: profileName || (isEn ? 'Student' : 'छात्र'),
+    className: profileClass || (isEn ? 'Class 4th (English Medium)' : 'कक्षा 4 (इंग्लिश मीडियम)'),
     board: 'RBSE / CBSE Aligned',
     rollNo: '24',
     session: '2026-27',

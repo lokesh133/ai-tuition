@@ -41,6 +41,7 @@ import {
 // Student reports now handled centrally on /reports
 import PrintableSundayExamModal from '@/components/PrintableSundayExamModal';
 import TeacherWhiteboardAnimation from '@/components/TeacherWhiteboardAnimation';
+import MathNotebookColumnGrid, { tryParseColumnMath } from '@/components/MathNotebookColumnGrid';
 import { WorksheetHistoryModal, SavedWorksheetRecord } from '@/components/WorksheetHistoryModal';
 import { enhanceDocumentImage, compressImageForThumbnail } from '@/lib/image-enhancer';
 import { RoughWorkScratchpad } from '@/components/RoughWorkScratchpad';
@@ -1260,8 +1261,19 @@ export default function TuitionClassroomStudio() {
     return heading;
   };
 
-  const renderFormulaBlocks = (formula: string) => {
+  const renderFormulaBlocks = (formula: string, questionText: string = '') => {
     const clean = formatFormula(formula);
+
+    // 🧮 Check for School Math Notebook Column Grid (कॉपी जैसी असली कॉलम विधि)
+    const columnMathData = tryParseColumnMath(clean, questionText);
+    if (columnMathData) {
+      return (
+        <MathNotebookColumnGrid
+          data={columnMathData}
+          isDarkMode={isDarkMode || chalkboardTheme === 'green'}
+        />
+      );
+    }
 
     // Book Reading Mode: Render full story with all paragraphs unified in one continuous textbook layout
     const isBookPassage = clean.length > 250 && clean.includes('\n\n') && !clean.includes(' | ') && !clean.includes('✅');
@@ -5381,7 +5393,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         );
                                       })()}
                                       <div>
-                                        {renderFormulaBlocks(stepItem.formula)}
+                                        {renderFormulaBlocks(stepItem.formula, stepItem.question)}
                                       </div>
                                     </div>
                                   )}
@@ -5744,7 +5756,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       <PrintableSundayExamModal
         isOpen={isSundayExamModalOpen}
         onClose={() => setIsSundayExamModalOpen(false)}
-        studentName="राहुल कुमावत"
+        studentName={studentUser?.name || 'छात्र'}
         className={className}
         board={board}
         subjectName={selectedSubject?.subjectHindi || 'गणित'}

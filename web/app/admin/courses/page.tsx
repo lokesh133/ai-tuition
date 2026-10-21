@@ -408,6 +408,10 @@ export default function AdminCourseRAGPage() {
                 <option value="Class 6th">Class 6th</option>
                 <option value="Class 7th">Class 7th</option>
                 <option value="Class 8th">Class 8th</option>
+                <option value="Class 9th">Class 9th (Secondary)</option>
+                <option value="Class 10th">Class 10th (Board)</option>
+                <option value="Class 11th">Class 11th (Higher Secondary)</option>
+                <option value="Class 12th">Class 12th (Board & Senior Secondary)</option>
               </select>
             </div>
 
