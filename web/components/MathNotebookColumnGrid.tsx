@@ -336,46 +336,127 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   }
 
   // Check 3: General two-unit subtraction / addition regex detector
-  // E.g.: 42 kg 250 g - 27 kg 450 g, or 17 kg 500 g + 40 kg 225 g
-  const unitRegex = /(\d+)\s*(kg|g|l|ml|m|cm|km|rs|₹)/gi;
+  // E.g.: 500 kg 150 g + 200 kg 100 g, 42 kg 250 g - 27 kg 450 g, 2 kg 250 g + 250 kg 1000 g, etc.
+  const unitRegex = /(\d+)\s*(kg|g|l|ml|m|cm|km|rs|₹|किग्रा|ग्रा|ग्राम|किलोग्राम|लीटर|मिली|मीटर|सेमी)?/gi;
   const unitMatches: RegExpExecArray[] = [];
   let matchItem: RegExpExecArray | null;
   while ((matchItem = unitRegex.exec(combined)) !== null) {
-    unitMatches.push(matchItem);
+    if (matchItem[1]) {
+      unitMatches.push(matchItem);
+    }
   }
-  if (unitMatches.length >= 4) {
+
+  if (unitMatches.length >= 3) {
     const isSubtraction = combined.includes('subtract') || combined.includes('difference') || combined.includes('from') || combined.includes('घटा');
-    const u1 = unitMatches[0][2].toUpperCase();
-    const u2 = unitMatches[1][2].toUpperCase();
+    let u1 = (unitMatches[0][2] || 'kg').toLowerCase();
+    let u2 = (unitMatches[1][2] || 'g').toLowerCase();
+
+    // Normalize Hindi abbreviations
+    if (u1.includes('किग्रा') || u1.includes('किलो')) u1 = 'kg';
+    else if (u1.includes('ग्रा')) u1 = 'g';
+    else if (u1.includes('लीटर')) u1 = 'l';
+    else if (u1.includes('मिली')) u1 = 'ml';
+    else if (u1.includes('मीटर')) u1 = 'm';
+    else if (u1.includes('सेमी')) u1 = 'cm';
+
+    if (u2.includes('किग्रा') || u2.includes('किलो')) u2 = 'kg';
+    else if (u2.includes('ग्रा')) u2 = 'g';
+    else if (u2.includes('लीटर')) u2 = 'l';
+    else if (u2.includes('मिली')) u2 = 'ml';
+    else if (u2.includes('मीटर')) u2 = 'm';
+    else if (u2.includes('सेमी')) u2 = 'cm';
+
+    // Fix: If both units are 'g' or identical in school weight problems,
+    // column 1 is kilograms (kg) and column 2 is grams (g)
+    if (u1 === 'g' && u2 === 'g') {
+      u1 = 'kg';
+      u2 = 'g';
+    } else if (u1 === 'l' && u2 === 'l') {
+      u1 = 'l';
+      u2 = 'ml';
+    } else if (u1 === 'm' && u2 === 'm') {
+      u1 = 'm';
+      u2 = 'cm';
+    } else if (u1 === 'km' && u2 === 'km') {
+      u1 = 'km';
+      u2 = 'm';
+    }
+
     const val1_u1 = parseInt(unitMatches[0][1], 10);
     const val1_u2 = parseInt(unitMatches[1][1], 10);
     const val2_u1 = parseInt(unitMatches[2][1], 10);
-    const val2_u2 = parseInt(unitMatches[3][1], 10);
+    const val2_u2 = unitMatches[3] ? parseInt(unitMatches[3][1], 10) : 0;
 
     // If 'from', the second number is on top
     const isFrom = combined.includes('from');
-    const top_u1 = isFrom ? val2_u1 : val1_u1;
-    const top_u2 = isFrom ? val2_u2 : val1_u2;
-    const bot_u1 = isFrom ? val1_u1 : val2_u1;
-    const bot_u2 = isFrom ? val1_u2 : val2_u2;
+    let top_u1 = isFrom ? val2_u1 : val1_u1;
+    let top_u2 = isFrom ? val2_u2 : val1_u2;
+    let bot_u1 = isFrom ? val1_u1 : val2_u1;
+    let bot_u2 = isFrom ? val1_u2 : val2_u2;
 
-    const baseFactor = (u1 === 'KG' || u1 === 'L' || u1 === 'KM') ? 1000 : 100;
-    const totalTop = top_u1 * baseFactor + top_u2;
-    const totalBot = bot_u1 * baseFactor + bot_u2;
+    // Correct conversion factor (1 kg = 1000 g, 1 L = 1000 mL, 1 km = 1000 m, 1 m = 100 cm)
+    let baseFactor = 1000;
+    if (u1 === 'kg' && u2 === 'g') baseFactor = 1000;
+    else if (u1 === 'g' && u2 === 'mg') baseFactor = 1000;
+    else if (u1 === 'l' && u2 === 'ml') baseFactor = 1000;
+    else if (u1 === 'km' && u2 === 'm') baseFactor = 1000;
+    else if (u1 === 'm' && u2 === 'cm') baseFactor = 100;
+    else if (u1 === 'm' && u2 === 'mm') baseFactor = 1000;
+    else if (u1 === 'cm' && u2 === 'mm') baseFactor = 10;
+    else if (u1 === 'rs' || u1 === '₹') baseFactor = 100;
+    else {
+      // If 3-digit lower unit, baseFactor MUST be 1000!
+      baseFactor = (top_u2 >= 100 || bot_u2 >= 100) ? 1000 : 100;
+    }
 
-    const resTotal = isSubtraction ? (totalTop - totalBot) : (totalTop + totalBot);
-    const ans_u1 = Math.floor(resTotal / baseFactor);
-    const ans_u2 = resTotal % baseFactor;
+    // 🌟 Normalization: Any lower unit >= baseFactor (e.g. 1000 g = 1 kg 0 g) converts to upper unit
+    // so grams column is strictly 3 digits (000-999) and never produces a fake 4th digit (0 + 1 = 0)
+    if (top_u2 >= baseFactor) {
+      top_u1 += Math.floor(top_u2 / baseFactor);
+      top_u2 = top_u2 % baseFactor;
+    }
+    if (bot_u2 >= baseFactor) {
+      bot_u1 += Math.floor(bot_u2 / baseFactor);
+      bot_u2 = bot_u2 % baseFactor;
+    }
 
-    const row1_u1 = String(top_u1).padStart(3, '0').split('');
-    const row1_u2 = String(top_u2).padStart(3, '0').split('');
-    const row2_u1 = String(bot_u1).padStart(3, '0').split('');
-    const row2_u2 = String(bot_u2).padStart(3, '0').split('');
+    let ans_u1 = 0;
+    let ans_u2 = 0;
+    let transferCarry = 0;
 
-    let carries1: string[] = ['—', '—', '—'];
-    let carries2: string[] = ['—', '—', '—'];
-    let borrows1: string[] = ['—', '—', '—'];
-    let borrows2: string[] = ['—', '—', '—'];
+    if (!isSubtraction) {
+      const sumCol2 = top_u2 + bot_u2; // e.g. 150 + 100 = 250
+      transferCarry = Math.floor(sumCol2 / baseFactor); // 250 / 1000 = 0
+      ans_u2 = sumCol2 % baseFactor; // 250
+      ans_u1 = top_u1 + bot_u1 + transferCarry; // 500 + 200 + 0 = 700
+    } else {
+      let remTop1 = top_u1;
+      let remTop2 = top_u2;
+      if (remTop2 < bot_u2) {
+        remTop1 -= 1;
+        remTop2 += baseFactor;
+      }
+      ans_u2 = remTop2 - bot_u2;
+      ans_u1 = remTop1 - bot_u1;
+    }
+
+    // Lower unit standard width (strictly 3 digits for g/ml/m, 2 digits for cm/paise)
+    const expectedDigits2 = (baseFactor === 1000) ? 3 : (baseFactor === 100) ? 2 : (baseFactor === 10) ? 1 : 2;
+    const len1 = Math.max(3, String(Math.max(top_u1, bot_u1, ans_u1)).length);
+    const len2 = expectedDigits2;
+
+    const row1_u1 = String(top_u1).padStart(len1, '0').split('');
+    const row1_u2 = String(top_u2).padStart(len2, '0').split('');
+    const row2_u1 = String(bot_u1).padStart(len1, '0').split('');
+    const row2_u2 = String(bot_u2).padStart(len2, '0').split('');
+
+    const ans_unit1 = String(ans_u1).padStart(len1, '0').split('');
+    const ans_unit2 = String(ans_u2).padStart(len2, '0').split('');
+
+    let carries1: string[] = new Array(len1).fill('—');
+    let carries2: string[] = new Array(len2).fill('—');
+    let borrows1: string[] = new Array(len1).fill('—');
+    let borrows2: string[] = new Array(len2).fill('—');
 
     let hasAnyCarry = false;
     let hasAnyBorrow = false;
@@ -385,7 +466,7 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     let borrowCarryGuide: BorrowCarryGuide | undefined = undefined;
 
     if (!isSubtraction) {
-      // Calculate digit-by-digit addition carry from right to left
+      // Calculate digit-by-digit addition carry from right to left in u2
       let carry = 0;
       for (let i = row1_u2.length - 1; i >= 0; i--) {
         const d1 = parseInt(row1_u2[i], 10) || 0;
@@ -398,20 +479,22 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
         }
       }
 
-      if (carry > 0) {
-        carries1[row1_u1.length - 1] = String(carry);
+      // If carry out from u2 into u1
+      if (transferCarry > 0) {
+        carries1[row1_u1.length - 1] = String(transferCarry);
         hasAnyCarry = true;
-        transferArrowText = `${u2.toLowerCase()} ──1 ${u1.toLowerCase()} हासिल──> ${u1.toLowerCase()}`;
+        transferArrowText = `${u2} ──${transferCarry} ${u1} हासिल──> ${u1}`;
       }
 
+      // Digit-by-digit addition carry from right to left in u1
+      let c1 = transferCarry;
       for (let i = row1_u1.length - 1; i >= 0; i--) {
         const d1 = parseInt(row1_u1[i], 10) || 0;
         const d2 = parseInt(row2_u1[i], 10) || 0;
-        const cIn = (carries1[i] && carries1[i] !== '—') ? parseInt(carries1[i], 10) : 0;
-        const sum = d1 + d2 + cIn;
-        const nextCarry = Math.floor(sum / 10);
-        if (i > 0 && nextCarry > 0) {
-          carries1[i - 1] = String(nextCarry);
+        const sum = d1 + d2 + c1;
+        c1 = Math.floor(sum / 10);
+        if (i > 0 && c1 > 0) {
+          carries1[i - 1] = String(c1);
           hasAnyCarry = true;
         }
       }
@@ -419,68 +502,138 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
       if (hasAnyCarry) {
         borrowCarryFlow = {
           kahaSeLiTitle: '1️⃣ कहाँ से हासिल (Carry) आई?',
-          kahaSeLiSource: `${u2.toLowerCase()} कॉलम का जोड़`,
-          kahaSeLiTarget: `${u1.toLowerCase()} कॉलम में`,
+          kahaSeLiSource: transferCarry > 0 ? `${u2} कॉलम का जोड़ (${top_u2 + bot_u2} ${u2})` : 'इकाई/दहाई का जोड़',
+          kahaSeLiTarget: `${u1} कॉलम में`,
           kahaSeLiExplanation: [
-            `जब ${u2.toLowerCase()} कॉलम का जोड़ ${baseFactor} या उससे बड़ा होता है, तो 1 ${u1.toLowerCase()} हासिल बनकर बाईं ओर जाता है।`,
-            `यह हासिल अगली संख्या के ऊपर लिखी जाती है और साथ में जोड़ी जाती है!`
+            transferCarry > 0
+              ? `जब ${u2} कॉलम का जोड़ ${baseFactor} या उससे बड़ा होता है, तो ${transferCarry} ${u1} हासिल बनकर बाईं ओर जाता है।`
+              : 'जब दो अंकों का जोड़ 9 से बड़ा होता है, तो हासिल अगली संख्या पर जुड़ता है!',
+            'यह हासिल अगली संख्या के ऊपर लिखी जाती है और साथ में जोड़ी जाती है!'
           ],
           kismeMinusHuaTitle: '2️⃣ यहाँ किसमें जुड़ी?',
           subtractions: [
             {
-              columnName: `👉 ${u2.toLowerCase()} में जोड़:`,
-              equation: `${top_u2} + ${bot_u2} = ${ans_u2} ${u2.toLowerCase()}`,
-              detail: `नीचे उत्तर ${ans_u2} लिखा और 1 हासिल अगली संख्या पर गया`
+              columnName: `👉 ${u2} में जोड़:`,
+              equation: `${top_u2} + ${bot_u2} = ${top_u2 + bot_u2} ${u2}`,
+              detail: transferCarry > 0
+                ? `नीचे उत्तर ${ans_u2} लिखा और ${transferCarry} हासिल अगली संख्या पर गया`
+                : `नीचे उत्तर ${ans_u2} लिखा गया`
             },
             {
-              columnName: `👉 ${u1.toLowerCase()} में जोड़:`,
-              equation: `${top_u1} + ${bot_u1} + 1 = ${ans_u1} ${u1.toLowerCase()}`,
-              detail: `हासिल 1 के साथ जोड़कर कुल ${ans_u1} ${u1.toLowerCase()} बना`
+              columnName: `👉 ${u1} में जोड़:`,
+              equation: transferCarry > 0
+                ? `${top_u1} + ${bot_u1} + ${transferCarry} = ${ans_u1} ${u1}`
+                : `${top_u1} + ${bot_u1} = ${ans_u1} ${u1}`,
+              detail: transferCarry > 0
+                ? `हासिल ${transferCarry} के साथ जोड़कर कुल ${ans_u1} ${u1} बना`
+                : `सीधा जोड़कर कुल ${ans_u1} ${u1} बना`
             }
           ]
         };
       }
     } else {
-      // Subtraction: Exact digit-by-digit borrowing
+      // Subtraction (कॉलम विधि द्वारा घटाव - Digit-by-digit borrowing)
+      const d_u2 = row1_u2.map((ch) => parseInt(ch, 10) || 0);
+      const d_u1 = row1_u1.map((ch) => parseInt(ch, 10) || 0);
+      const s_u2 = row2_u2.map((ch) => parseInt(ch, 10) || 0);
+      const s_u1 = row2_u1.map((ch) => parseInt(ch, 10) || 0);
+
+      let u1_borrowed = false;
+      let u1_rem = top_u1;
+
+      // 1. Check if u2 needs borrowing from u1 (e.g. 150 g < 250 g)
       if (top_u2 < bot_u2) {
         hasAnyBorrow = true;
-        transferArrowText = `${u1.toLowerCase()} ──1 ${u1.toLowerCase()} (${baseFactor} ${u2.toLowerCase()}) उधार──> ${u2.toLowerCase()}`;
+        u1_borrowed = true;
+        u1_rem = top_u1 - 1;
+        transferArrowText = `${u1} ──1 ${u1} (${baseFactor} ${u2}) उधार──> ${u2}`;
 
-        const u2_hundreds = parseInt(row1_u2[0], 10) || 0;
-        borrows2[0] = String(u2_hundreds + 10); // e.g. '12'
+        // Top-most digit of u2 gets + 10
+        d_u2[0] += 10;
+        borrows2[0] = String(d_u2[0]);
 
-        const u1_rem = top_u1 - 1; // e.g. 42 - 1 = 41
-        const u1_units_digit = u1_rem % 10; // e.g. 1
-        const bot_u1_units_digit = bot_u1 % 10; // e.g. 7
-        const u1_tens_digit = Math.floor(u1_rem / 10); // e.g. 4
-
-        if (u1_units_digit < bot_u1_units_digit) {
-          borrows1[2] = String(u1_units_digit + 10); // '11'
-          borrows1[1] = String(u1_tens_digit - 1);   // '3'
-        } else {
-          borrows1[2] = String(u1_units_digit);
+        // Deduct 1 from u1
+        for (let i = d_u1.length - 1; i >= 0; i--) {
+          if (d_u1[i] > 0) {
+            d_u1[i] -= 1;
+            borrows1[i] = String(d_u1[i]);
+            break;
+          } else {
+            d_u1[i] = 9;
+            borrows1[i] = '9';
+          }
         }
+      }
 
+      // 2. Digit-by-digit borrowing within u2 (right to left)
+      for (let i = d_u2.length - 1; i >= 0; i--) {
+        if (d_u2[i] < s_u2[i]) {
+          hasAnyBorrow = true;
+          for (let j = i - 1; j >= 0; j--) {
+            if (d_u2[j] > 0) {
+              d_u2[j] -= 1;
+              borrows2[j] = String(d_u2[j]);
+              for (let k = j + 1; k < i; k++) {
+                d_u2[k] = 9;
+                borrows2[k] = '9';
+              }
+              d_u2[i] += 10;
+              borrows2[i] = String(d_u2[i]);
+              break;
+            }
+          }
+        }
+      }
+
+      // 3. Digit-by-digit borrowing within u1 (right to left)
+      for (let i = d_u1.length - 1; i >= 0; i--) {
+        if (d_u1[i] < s_u1[i]) {
+          hasAnyBorrow = true;
+          for (let j = i - 1; j >= 0; j--) {
+            if (d_u1[j] > 0) {
+              d_u1[j] -= 1;
+              borrows1[j] = String(d_u1[j]);
+              for (let k = j + 1; k < i; k++) {
+                d_u1[k] = 9;
+                borrows1[k] = '9';
+              }
+              d_u1[i] += 10;
+              borrows1[i] = String(d_u1[i]);
+              break;
+            }
+          }
+        }
+      }
+
+      if (hasAnyBorrow) {
         borrowCarryFlow = {
-          kahaSeLiTitle: '1️⃣ कहाँ से उधार (Carry/Borrow) ली?',
-          kahaSeLiSource: `${top_u1} ${u1.toLowerCase()} से 1 ${u1.toLowerCase()} उधार लिया`,
-          kahaSeLiTarget: `${top_u2} ${u2.toLowerCase()} को (+${baseFactor} ${u2.toLowerCase()} मिला)`,
+          kahaSeLiTitle: '1️⃣ कहाँ से उधार (Borrow) ली?',
+          kahaSeLiSource: u1_borrowed
+            ? `${top_u1} ${u1} से 1 ${u1} उधार लिया`
+            : 'बाईं ओर के अंक से उधार लिया',
+          kahaSeLiTarget: u1_borrowed
+            ? `${top_u2} ${u2} को (+${baseFactor} ${u2} मिला)`
+            : 'इकाई/दहाई के अंक को (+10 मिला)',
           kahaSeLiExplanation: [
-            `${top_u1} ${u1.toLowerCase()} ने 1 ${u1.toLowerCase()} उधार दिया ➔ ${top_u1} घटकर ${u1_rem} ${u1.toLowerCase()} बचा।`,
-            `${u1.toLowerCase()} में इकाई पर ${u1_units_digit} बना। ${u1_units_digit} में से ${bot_u1_units_digit} नहीं घट सकता था, तो उसने पड़ोसी से 1 उधार लिया ➔ बना ${u1_units_digit + 10}!`,
-            `${u2.toLowerCase()} में 1 ${u1.toLowerCase()} (= ${baseFactor} ${u2.toLowerCase()}) आया ➔ ${top_u2} ${u2.toLowerCase()} बना ${top_u2 + baseFactor} ${u2.toLowerCase()} (या सैकड़ा ${u2_hundreds} बना ${u2_hundreds + 10})!`
+            u1_borrowed
+              ? `${top_u1} ${u1} ने 1 ${u1} उधार दिया ➔ ${top_u1} घटकर ${u1_rem} ${u1} बचा।`
+              : 'जब ऊपर का अंक छोटा और नीचे का बड़ा होता है, तो बाईं ओर से 1 उधार लिया जाता है।',
+            'उधार देने वाला अंक 1 कम हो जाता है और उधार लेने वाले अंक में 10 जुड़ जाता है!',
+            u1_borrowed
+              ? `${u2} में 1 ${u1} (= ${baseFactor} ${u2}) आया ➔ ${top_u2} ${u2} बना ${top_u2 + baseFactor} ${u2}!`
+              : 'अब बड़े अंक से घटाना आसान हो जाता है।'
           ],
           kismeMinusHuaTitle: '2️⃣ यहाँ किसमें से माइनस (घटा) हुआ?',
           subtractions: [
             {
-              columnName: `👉 ${u2.toLowerCase()} में घटाव:`,
-              equation: `${top_u2 + baseFactor} ${u2.toLowerCase()} − ${bot_u2} ${u2.toLowerCase()} = ${ans_u2} ${u2.toLowerCase()}`,
-              detail: `सैकड़ा: ${u2_hundreds + 10} − ${row2_u2[0]} = ${ans_u2 / 100} (${top_u2 + baseFactor} − ${bot_u2} = ${ans_u2})`
+              columnName: `👉 ${u2} में घटाव:`,
+              equation: `${u1_borrowed ? top_u2 + baseFactor : top_u2} ${u2} − ${bot_u2} ${u2} = ${ans_u2} ${u2}`,
+              detail: `${u1_borrowed ? top_u2 + baseFactor : top_u2} − ${bot_u2} = ${ans_u2}`
             },
             {
-              columnName: `👉 ${u1.toLowerCase()} में घटाव:`,
-              equation: `${u1_rem} ${u1.toLowerCase()} − ${bot_u1} ${u1.toLowerCase()} = ${ans_u1} ${u1.toLowerCase()}`,
-              detail: `इकाई: ${u1_units_digit + 10} − ${bot_u1_units_digit} = ${ans_u1 % 10} | दहाई: ${u1_tens_digit - 1} − ${Math.floor(bot_u1 / 10)} = ${Math.floor(ans_u1 / 10)} (कुल: ${ans_u1})`
+              columnName: `👉 ${u1} में घटाव:`,
+              equation: `${u1_borrowed ? u1_rem : top_u1} ${u1} − ${bot_u1} ${u1} = ${ans_u1} ${u1}`,
+              detail: `${u1_borrowed ? u1_rem : top_u1} − ${bot_u1} = ${ans_u1}`
             }
           ]
         };
@@ -490,8 +643,8 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     return {
       title: isSubtraction ? 'कॉलम विधि द्वारा घटाव (Column Subtraction):' : 'कॉलम विधि द्वारा जोड़ (Column Addition):',
       operation: isSubtraction ? '-' : '+',
-      unit1: u1.toLowerCase(),
-      unit2: u2.toLowerCase(),
+      unit1: u1,
+      unit2: u2,
       transferArrowText,
       carries1,
       carries2,
@@ -501,21 +654,23 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
       row1_unit2: row1_u2,
       row2_unit1: row2_u1,
       row2_unit2: row2_u2,
-      ans_unit1: String(ans_u1).padStart(3, '0').split(''),
-      ans_unit2: String(ans_u2).padStart(3, '0').split(''),
+      ans_unit1,
+      ans_unit2,
       borrowCarryFlow,
       borrowCarryGuide,
       steps: [
         {
           title: `चरण 1: ${u2} कॉलम हल करना`,
           description: isSubtraction
-            ? `${top_u2} में से ${bot_u2} घटाने पर (यदि आवश्यकता हो तो ${u1} से 1 उधार लेकर):`
+            ? `${top_u2} में से ${bot_u2} घटाने पर (यदि आवश्यकता हो तो ${u1} से उधार लेकर):`
             : `${top_u2} और ${bot_u2} को जोड़ने पर:`,
           details: [`परिणाम = ${ans_u2} ${u2}`]
         },
         {
           title: `चरण 2: ${u1} कॉलम हल करना`,
-          description: `${u1} के मानों की गणना:`,
+          description: isSubtraction
+            ? `${top_u1} में से ${bot_u1} घटाने पर:`
+            : `${top_u1} और ${bot_u1} को जोड़ने पर${transferCarry > 0 ? ` (+${transferCarry} हासिल)` : ''}:`,
           details: [`परिणाम = ${ans_u1} ${u1}`]
         },
         {

@@ -98,6 +98,10 @@ CRITICAL EVALUATION RULES:
    - Provide the complete, unabridged, perfect answer for their notebook.
 7. TEACHER PRAISE:
    - A warm, encouraging 1-sentence message spoken by ${teacherName} in ${learningLanguage === 'en' ? 'English' : 'Hinglish'}.
+8. MATHEMATICAL POWERS & NOTATION TOLERANCE:
+   - When checking math problems, recognize that students might type powers as c2, c^2, c², 52, 5^2, or 5² (e.g. "c2 = a2+b2" means c² = a² + b² and "52=32+22" means 5² = 3² + 2² or 5² = 3² + 4² for Pythagorean triplets).
+   - NEVER count mathematical expressions, variables (like a2, b2, c2, x2, cm, m2), equations, or symbols (^, ², ³, √, π, °) as spelling mistakes!
+   - In "strengths", appreciate their method and formula steps. In "mistakes", explain calculation steps clearly.
 
 Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tags:
 <eval_result>

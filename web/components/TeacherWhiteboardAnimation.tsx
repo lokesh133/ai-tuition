@@ -22,6 +22,7 @@ export interface TeacherWhiteboardAnimationProps {
   onAudioPlay?: (text: string) => void;
   isAudioMuted?: boolean;
   onScoreUpdate?: (points: number) => void;
+  medium?: 'hindi' | 'english';
 }
 
 export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProps> = ({
@@ -34,6 +35,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
   onAudioPlay,
   isAudioMuted = false,
   onScoreUpdate,
+  medium = 'hindi',
 }) => {
   // Modes:
   // 'teach': 1. शिक्षक हल करके समझाएंगे (Auto-Teach)
@@ -393,14 +395,16 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
-                {teacherName} का लाइव ब्लैकबोर्ड
+                {medium === 'english' ? `${teacherName}'s Live Blackboard` : `${teacherName} का लाइव ब्लैकबोर्ड`}
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                {solveMode === 'teach' ? 'शिक्षक समझा रहे हैं' : 'विद्यार्थी अभ्यास मोड'}
+                {solveMode === 'teach'
+                  ? (medium === 'english' ? 'Teacher Explaining' : 'शिक्षक समझा रहे हैं')
+                  : (medium === 'english' ? 'Student Practice' : 'विद्यार्थी अभ्यास मोड')}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 font-mono">
-              विषय: {opLabelHindi} • {num1} {opSymbol} {num2}
+              {medium === 'english' ? 'Topic:' : 'विषय:'} {medium === 'english' ? (op === '+' ? 'Addition' : op === '-' ? 'Subtraction' : op === '*' ? 'Multiplication' : 'Division') : opLabelHindi} • {num1} {opSymbol} {num2}
             </p>
           </div>
         </div>
@@ -411,14 +415,14 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
             <button
               onClick={() => setIsPlaying(!isPlaying)}
               className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md active:scale-95"
-              title={isPlaying ? 'रोकें (Pause)' : 'चलाएं (Play)'}
+              title={isPlaying ? (medium === 'english' ? 'Pause' : 'रोकें (Pause)') : (medium === 'english' ? 'Play' : 'चलाएं (Play)')}
             >
               {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
             </button>
             <button
               onClick={handleReplay}
               className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
-              title="शुरू से देखें (Replay)"
+              title={medium === 'english' ? 'Replay from start' : 'शुरू से देखें (Replay)'}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -427,7 +431,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
               disabled={currentStage >= 4}
               className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1"
             >
-              <span>अगला</span>
+              <span>{medium === 'english' ? 'Next' : 'अगला'}</span>
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -440,10 +444,10 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
           <span className="text-2xl sm:text-3xl">🤔</span>
           <div>
             <h3 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-              <span>आप क्या चाहते हैं: खुद से करोगे या मैं करके समझा दूँ?</span>
+              <span>{medium === 'english' ? 'Choose: Watch teacher explanation or solve yourself?' : 'आप क्या चाहते हैं: खुद से करोगे या मैं करके समझा दूँ?'}</span>
             </h3>
             <p className="text-[11px] text-amber-200">
-              नीचे से विकल्प चुनें — शिक्षक का एनीमेशन देखें या खुद अंडरलाइन के नीचे खाली डिब्बे भरें!
+              {medium === 'english' ? 'Pick an option — watch step-by-step animation or fill in blanks!' : 'नीचे से विकल्प चुनें — शिक्षक का एनीमेशन देखें या खुद अंडरलाइन के नीचे खाली डिब्बे भरें!'}
             </p>
           </div>
         </div>
@@ -455,7 +459,10 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
               setSolveMode('teach');
               setIsPlaying(true);
               const opText = op === '+' ? 'प्लस' : op === '-' ? 'माइनस' : op === '*' ? 'गुणा' : 'भाग';
-              const msg = `बेटा, ध्यान से देखिए! मैं आपको ${num1} ${opText} ${num2} स्टेप-बाय-स्टेप हल करके समझाता हूँ।`;
+              const opWord = op === '+' ? 'plus' : op === '-' ? 'minus' : op === '*' ? 'multiplied by' : 'divided by';
+              const msg = medium === 'english'
+                ? `Watch closely! I will explain ${num1} ${opWord} ${num2} step by step.`
+                : `बेटा, ध्यान से देखिए! मैं आपको ${num1} ${opText} ${num2} स्टेप-बाय-स्टेप हल करके समझाता हूँ।`;
               if (onAudioPlay && !isAudioMuted) onAudioPlay(msg);
             }}
             className={`flex-1 md:flex-initial px-3.5 py-2 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-md ${
@@ -465,7 +472,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
             }`}
           >
             <span>👨‍🏫</span>
-            <span>1. मैं (शिक्षक) करके समझाता हूँ</span>
+            <span>{medium === 'english' ? '1. Teacher Explains' : '1. मैं (शिक्षक) करके समझाता हूँ'}</span>
           </button>
 
           <button
@@ -477,7 +484,9 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
               setUserColumnDigits({});
               setUserStepDigits({});
               setUserAns('');
-              const msg = `बहुत बढ़िया बेटा! अब आप खुद अंडरलाइन के नीचे खाली डिब्बे में उत्तर लिखकर चेक करें!`;
+              const msg = medium === 'english'
+                ? `Great! Now enter your answers in the blank boxes below the line and check!`
+                : `बहुत बढ़िया बेटा! अब आप खुद अंडरलाइन के नीचे खाली डिब्बे में उत्तर लिखकर चेक करें!`;
               if (onAudioPlay && !isAudioMuted) onAudioPlay(msg);
             }}
             className={`flex-1 md:flex-initial px-3.5 py-2 rounded-2xl font-black text-xs flex items-center justify-center gap-1.5 transition-all shadow-md ${
@@ -487,7 +496,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
             }`}
           >
             <span>✍️</span>
-            <span>2. मैं खुद हल करूँगा</span>
+            <span>{medium === 'english' ? '2. I will solve myself' : '2. मैं खुद हल करूँगा'}</span>
           </button>
         </div>
       </div>
@@ -498,7 +507,9 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
           <div className="flex items-center gap-2 text-emerald-300 font-bold">
             <Edit3 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>
-              अभ्यास मोड: अंडरलाइन के नीचे खाली डिब्बों <strong>[ ? ]</strong> में अंक लिखें और <strong>&quot;चेक करें व सेव करें&quot;</strong> दबाएं!
+              {medium === 'english'
+                ? <span>Practice Mode: Enter digits in <strong>[ ? ]</strong> boxes and tap <strong>&quot;Check & Save&quot;</strong>!</span>
+                : <span>अभ्यास मोड: अंडरलाइन के नीचे खाली डिब्बों <strong>[ ? ]</strong> में अंक लिखें और <strong>&quot;चेक करें व सेव करें&quot;</strong> दबाएं!</span>}
             </span>
           </div>
           <button
@@ -507,7 +518,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
             className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-amber-300 font-bold text-[11px] shrink-0 flex items-center gap-1 transition-all"
           >
             <HelpCircle className="w-3 h-3" />
-            <span>{showBlankHint ? 'हिंट छुपाएं' : '💡 हिंट'}</span>
+            <span>{showBlankHint ? (medium === 'english' ? 'Hide Hint' : 'हिंट छुपाएं') : (medium === 'english' ? '💡 Hint' : '💡 हिंट')}</span>
           </button>
         </div>
       )}
@@ -518,7 +529,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
           {/* Question Banner */}
           <div className="text-center mb-4">
             <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider block">
-              बोर्ड पर लिखा सवाल
+              {medium === 'english' ? 'Question on Board' : 'बोर्ड पर लिखा सवाल'}
             </span>
             <div className="text-2xl sm:text-4xl font-black font-mono tracking-wider text-white">
               {num1} {opSymbol} {num2} = ?
@@ -1016,7 +1027,7 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
                   className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-xl shadow-emerald-600/30 hover:scale-105 active:scale-95 transition-all"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>चेक करें व सेव करें (Check & Save)</span>
+                  <span>{medium === 'english' ? 'Check & Save Answer' : 'चेक करें व सेव करें (Check & Save)'}</span>
                 </button>
               )}
 
@@ -1024,17 +1035,17 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
                 <div className="w-full p-3.5 rounded-2xl bg-emerald-500/20 border-2 border-emerald-400 text-emerald-200 text-center animate-in zoom-in duration-300">
                   <div className="text-sm font-black flex items-center justify-center gap-2 text-emerald-300">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 animate-bounce" />
-                    <span>शाबाश बेटा! आपका उत्तर बिल्कुल सही है! 🎉</span>
+                    <span>{medium === 'english' ? 'Well done! Your answer is correct! 🎉' : 'शाबाश बेटा! आपका उत्तर बिल्कुल सही है! 🎉'}</span>
                   </div>
                   <p className="text-xs mt-1 text-emerald-100 font-mono">
-                    {num1} {opSymbol} {num2} = <span className="font-black text-white text-base">{result}</span> (आपको +5 अंक मिले ⭐)
+                    {num1} {opSymbol} {num2} = <span className="font-black text-white text-base">{result}</span> ({medium === 'english' ? 'You earned +5 points ⭐' : 'आपको +5 अंक मिले ⭐'})
                   </p>
                   <button
                     type="button"
                     onClick={handleTryAgain}
                     className="mt-2.5 px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-xs"
                   >
-                    नया प्रयास करें
+                    {medium === 'english' ? 'Try Again' : 'नया प्रयास करें'}
                   </button>
                 </div>
               )}
@@ -1043,10 +1054,10 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
                 <div className="w-full p-3.5 rounded-2xl bg-rose-500/20 border-2 border-rose-500/60 text-rose-200 text-center animate-in shake duration-300">
                   <div className="text-xs sm:text-sm font-black flex items-center justify-center gap-1.5 text-rose-300">
                     <span>❌</span>
-                    <span>लाल रंग वाले डिब्बे में गलत अंक हैं। दोबारा कोशिश करें!</span>
+                    <span>{medium === 'english' ? 'Incorrect digits in red boxes. Try again!' : 'लाल रंग वाले डिब्बे में गलत अंक हैं। दोबारा कोशिश करें!'}</span>
                   </div>
                   <p className="text-[11px] mt-1 text-rose-100">
-                    सभी डिब्बों को ध्यान से चेक करें या शिक्षक का हल देखें।
+                    {medium === 'english' ? 'Check all input boxes carefully or watch teacher explanation.' : 'सभी डिब्बों को ध्यान से चेक करें या शिक्षक का हल देखें।'}
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2 mt-2.5">
                     <button
