@@ -46,6 +46,8 @@ import { WorksheetHistoryModal, SavedWorksheetRecord } from '@/components/Worksh
 import { enhanceDocumentImage, compressImageForThumbnail } from '@/lib/image-enhancer';
 import { RoughWorkScratchpad } from '@/components/RoughWorkScratchpad';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
+import { HardWordsDictationCard } from '@/components/HardWordsDictationCard';
+import { MySchoolBagModal } from '@/components/MySchoolBagModal';
 import {
   CURRICULUM_DATA,
   getCurriculum,
@@ -448,6 +450,41 @@ export default function TuitionClassroomStudio() {
     } catch {}
   };
 
+  // Full Page Reset - Clears active session, open files, whiteboard, subject & starts fresh
+  const handleFullPageReset = () => {
+    const confirmReset = window.confirm(
+      'क्या आप पूरे ट्यूशन पेज को रीसेट करना चाहते हैं?\nसभी सक्रिय पेज, सवाल और क्लास साफ हो जाएंगे और आप नई शुरुआत कर सकेंगे।'
+    );
+    if (!confirmReset) return;
+
+    stopAudio();
+    setUploadedFiles([]);
+    setActiveFileId('');
+    setPageDataMap({});
+    setWhiteboardSteps([]);
+    setActiveTargetQuestion('');
+    setDetectedQuestions([]);
+    setDetectedChapter(null);
+    setCustomQuizQuestions([]);
+    setCurrentUploadMode('teach');
+    setWhiteboardHeading('आज की ट्यूशन क्लास (Ready to Teach)');
+    setActiveMathAnim(null);
+    setRevealedSteps(0);
+    setIsCheckingHomework(false);
+    setMockAnswers({});
+    setMockEvaluations({});
+    setActiveMockQIdx(0);
+    setSelectedSubject(null);
+    setSelectedChapter(null);
+    setIsChaptersOpen(false);
+    try {
+      localStorage.removeItem('vidya_current_session');
+    } catch {}
+    const welcomeMsg = 'नमस्ते बेटा! पेज रीसेट हो गया है। आज आप कौन सा विषय पढ़ना चाहते हैं? नीचे से विषय चुनें या बोलकर बताएं!';
+    setSpeechText(welcomeMsg);
+    speakText(welcomeMsg, undefined, true);
+  };
+
   // Restore active session if student navigated away (e.g. clicked "स्टूडेंट रिपोर्ट" and came back)
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -596,6 +633,8 @@ export default function TuitionClassroomStudio() {
   const [lastArchivedNotice, setLastArchivedNotice] = useState<{ title: string; count: number } | null>(null);
   const [isWorksheetCelebrationOpen, setIsWorksheetCelebrationOpen] = useState<boolean>(false);
   const [isScratchpadOpen, setIsScratchpadOpen] = useState<boolean>(false);
+  const [isSchoolBagOpen, setIsSchoolBagOpen] = useState<boolean>(false);
+  const [activeDictationTestIdx, setActiveDictationTestIdx] = useState<number | null>(null);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
@@ -766,42 +805,72 @@ export default function TuitionClassroomStudio() {
   } | null => {
     if (!q) return null;
 
-    let clean = q
-      .toLowerCase()
+    let text = q.toLowerCase();
+
+    // Map common spoken Hindi/English number words to digits
+    const numWordMap: Record<string, number> = {
+      'अट्ठारह': 18, 'अठारह': 18, 'उन्नीस': 19, 'बीस': 20,
+      'सत्रह': 17, 'सोलह': 16, 'पंद्रह': 15, 'चौदह': 14, 'तेरह': 13, 'बारह': 12, 'ग्यारह': 11,
+      'दस': 10, 'नौ': 9, 'आठ': 8, 'सात': 7, 'छह': 6, 'छः': 6, 'पांच': 5, 'पाँच': 5, 'चार': 4, 'तीन': 3, 'दो': 2, 'एक': 1
+    };
+    for (const [w, v] of Object.entries(numWordMap)) {
+      text = text.split(w).join(String(v));
+    }
+
+    let clean = text
       .replace(/कितने?\s*(होते\s*हो|होते\s*हैं|होते\s*है|होते\s*ह|होगा|होता\s*है|होता\s*ह|है|h)?/gi, '')
       .replace(/kitne?\s*(hote\s*ho|hote\s*hai|hote\s*hain|hote\s*h|honge|hoga|hota\s*hai|hota\s*h|h)?/gi, '')
+      .replace(/kitna\s*(hota\s*hai|hota\s*h|hoga|aayega|h)?/gi, '')
       .replace(/kya\s*(hota\s*hai|hota\s*h|hoga|aayega|h)/gi, '')
       .replace(/solve\s*(karke\s*dikhao|karo|please)?/gi, '')
       .replace(/हल\s*(करके\s*दिखाओ|करो|कीजिए|करें)?/gi, '')
-      .replace(/का\s*मान/gi, '')
-      .replace(/batao/gi, '')
-      .replace(/बताओ/gi, '')
+      .replace(/का\s*मान|का\s*उत्तर/gi, '')
+      .replace(/batao|बताओ/gi, '')
+      .replace(/\bko\b|\bse\b|\bको\b|\bसे\b/gi, ' ')
       .replace(/में\s*(से)?/gi, ' ')
       .replace(/me\s*(se)?/gi, ' ')
-      .replace(/jodo/gi, '+')
-      .replace(/जोड़ो|जोडो/gi, '+')
+      .replace(/jodo|जोड़ो|जोडो/gi, '+')
       .replace(/[?=]/g, '')
       .trim();
 
+    // 1. Try Infix pattern: num1 OP num2 (e.g. 18 * 2, 18 x 2, 18 guna 2, 18 into 2)
     const mathRegex =
-      /^([0-9]+(?:\.[0-9]+)?)\s*([\+\-\*\/xX×÷]|plus|minus|times|into|divide|divided\s+by|aur|और|जोड़|जोड|कम|ghatao|घटाओ|guna|गुणा|bhag|भाग)\s*([0-9]+(?:\.[0-9]+)?)$/i;
+      /([0-9]+(?:\.[0-9]+)?)\s*([\+\-\*\/xX×÷]|plus|minus|times|into|multiply|multiplied\s+by|divide|divided\s+by|aur|और|जोड़|जोड|कम|ghatao|घटाओ|guna|गुणा|गुना|bhag|भाग)\s*([0-9]+(?:\.[0-9]+)?)/i;
 
     let match = clean.match(mathRegex);
 
     if (!match) {
-      const inlineMatch = q.match(
-        /([0-9]+(?:\.[0-9]+)?)\s*([\+\-\*\/xX×÷]|plus|minus|times|into|divide|divided\s+by|aur|और|जोड़|जोड|कम|ghatao|घटाओ|guna|गुणा|bhag|भाग)\s*([0-9]+(?:\.[0-9]+)?)/i
-      );
+      const inlineMatch = text.match(mathRegex);
       if (inlineMatch) {
         match = inlineMatch;
       }
     }
 
-    if (!match) return null;
+    let num1: number | null = null;
+    let num2: number | null = null;
+    let rawOp = '+';
 
-    const num1 = parseFloat(match[1]);
-    const rawOp = match[2].toLowerCase();
-    const num2 = parseFloat(match[3]);
+    if (match) {
+      num1 = parseFloat(match[1]);
+      rawOp = match[2].toLowerCase();
+      num2 = parseFloat(match[3]);
+    } else {
+      // 2. Try Hindi SOV Voice Pattern: num1 ... num2 ... [OP] (e.g. 18 ko 2 se guna karo, 25 me 15 jodo, 50 me se 20 ghatao)
+      const allNums = text.match(/[0-9]+(?:\.[0-9]+)?/g);
+      if (allNums && allNums.length >= 2) {
+        num1 = parseFloat(allNums[0]);
+        num2 = parseFloat(allNums[1]);
+        if (text.match(/गुना|गुणा|guna|multipl|into|times|पहाड़ा|पहाड़ा/)) rawOp = '*';
+        else if (text.match(/घटा|ghata|minus|kam|कम/)) rawOp = '-';
+        else if (text.match(/भाग|bhag|divide|बटा/)) rawOp = '/';
+        else if (text.match(/जोड़|जोड|jod|plus|add|योग/)) rawOp = '+';
+        else return null;
+      } else {
+        return null;
+      }
+    }
+
+    if (num1 === null || num2 === null || isNaN(num1) || isNaN(num2)) return null;
 
     if (isNaN(num1) || isNaN(num2)) return null;
 
@@ -1243,22 +1312,22 @@ export default function TuitionClassroomStudio() {
 
   // Helper to dynamically localize whiteboard heading when medium === 'english'
   const getDisplayWhiteboardHeading = (heading: string) => {
-    if (medium !== 'english' || !heading) return heading;
-    if (heading.includes('आज की ट्यूशन क्लास')) return "Today's Tuition Class (Ready to Teach)";
-    if (heading.includes('मॉक टेस्ट') || heading.includes('परीक्षा तैयारी')) return '🎯 Exam Preparation: Worksheet Mock Test';
-    if (heading.includes('मास्टर उत्तर कुंजी') || heading.includes('Master Answer Key')) return '📋 Complete Worksheet Master Answer Key';
-    if (heading.includes('14.3') || heading.includes('Early Home')) return '📖 Chapter 14.3: My Early Home (Full 7-Paragraph Story - Textbook Reading)';
-    if (heading.includes('A.1')) return 'Practice Question A.1: Fill in the Blank';
-    if (heading.includes('A.2')) return 'Practice Question A.2: Fill in the Blank';
-    if (heading.includes('A.3')) return 'Practice Question A.3: Fill in the Blank';
-    if (heading.includes('A.4')) return 'Practice Question A.4: Fill in the Blank';
-    if (heading.startsWith('शीट हल:')) return heading.replace('शीट हल:', 'Worksheet Solution:');
-    if (heading.startsWith('सवाल समाधान:')) return heading.replace('सवाल समाधान:', 'Solution:');
-    if (heading.startsWith('दस्तावेज स्कैन:')) return heading.replace('दस्तावेज स्कैन:', 'Document Scan:');
-    if (heading.startsWith('गणित हल:')) return heading.replace('गणित हल:', 'Math Solution:');
-    if (heading.startsWith('📖 पाठ वाचन:')) return heading.replace('📖 पाठ वाचन:', '📖 Story Reading:');
-    if (heading.startsWith('वर्कशीट हल:')) return heading.replace('वर्कशीट हल:', 'Worksheet Solution:');
-    return heading;
+    if (!heading) return medium === 'english' ? "Today's Tuition Class (Ready to Teach)" : 'आज की ट्यूशन क्लास (Ready to Teach)';
+
+    // Strip raw camera/whatsapp/screenshot filenames for kid-friendly polish
+    let clean = heading.replace(/(?:WhatsApp Image|IMG[-_]|Scan[-_]|photo[-_]|Screenshot)[^.\n]+\.(?:jpe?g|png|webp|pdf)/gi, 'वर्कशीट अभ्यास');
+    clean = clean.replace(/(:\s*[^:\n]+\.(?:jpe?g|png|webp|pdf))/gi, '');
+    clean = clean.replace(/पेज #([0-9]+)\s*हल:\s*/i, 'पेज #$1: ');
+
+    if (medium === 'english') {
+      clean = clean.replace(/पेज #([0-9]+)/g, 'Page #$1');
+      clean = clean.replace(/हल/g, 'Solution');
+      clean = clean.replace('आज की ट्यूशन क्लास', "Today's Tuition Class (Ready to Teach)");
+      clean = clean.replace(/मॉक टेस्ट|परीक्षा तैयारी/g, '🎯 Exam Preparation: Worksheet Mock Test');
+      clean = clean.replace(/मास्टर उत्तर कुंजी|Master Answer Key/g, '📋 Complete Worksheet Master Answer Key');
+      clean = clean.replace(/शीट हल:|वर्कशीट हल:/g, 'Worksheet:');
+    }
+    return clean;
   };
 
   const renderFormulaBlocks = (formula: string, questionText: string = '') => {
@@ -1340,18 +1409,27 @@ export default function TuitionClassroomStudio() {
               part.toLowerCase().includes('correct option') ||
               part.toLowerCase().includes('answer:');
 
+            const isVocab =
+              !isAnswerExplicit &&
+              part.includes('=') &&
+              !/\d+\s*[\+\-\*\/×÷=]\s*\d+/.test(part) &&
+              (/[A-Za-z\u0900-\u097F]+/.test(part.split('=')[0]));
+
             const isCalculation =
               !isAnswerExplicit &&
+              !isVocab &&
               (part.toLowerCase().includes('difference') ||
                 part.includes('अंतर') ||
                 part.toLowerCase().includes('sum') ||
                 part.includes('योग') ||
                 part.toLowerCase().includes('total') ||
                 part.includes('कुल') ||
-                part.includes('='));
+                /\d+\s*[\+\-\*\/×÷]\s*\d+/.test(part) ||
+                (/\d+/.test(part) && part.includes('=')));
 
             const isRounding =
               !isAnswerExplicit &&
+              !isVocab &&
               !isCalculation &&
               (part.toLowerCase().includes('rounds to') ||
                 part.toLowerCase().includes('round off') ||
@@ -1361,6 +1439,7 @@ export default function TuitionClassroomStudio() {
 
             const isNumberFact =
               !isAnswerExplicit &&
+              !isVocab &&
               !isCalculation &&
               !isRounding &&
               (part.toLowerCase().includes('largest') ||
@@ -1371,13 +1450,15 @@ export default function TuitionClassroomStudio() {
 
             const stepBadgeText = isAnswerExplicit
               ? (medium === 'english' ? '🎯 Final Answer & Option' : '🎯 अंतिम सही उत्तर (Correct Option)')
-              : isCalculation
-                ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व अंतर (Calculation)`)
-                : isRounding
-                  ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
-                  : isNumberFact
-                    ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
-                    : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
+              : isVocab
+                ? (medium === 'english' ? `📖 Word #${pIdx + 1}: Word & Meaning` : `📖 शब्द #${pIdx + 1}: शब्दार्थ व सरल अर्थ (Vocabulary)`)
+                : isCalculation
+                  ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व अंतर (Calculation)`)
+                  : isRounding
+                    ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
+                    : isNumberFact
+                      ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
+                      : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
 
             return (
               <div
@@ -1396,13 +1477,15 @@ export default function TuitionClassroomStudio() {
                   <span
                     className={`text-[11px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full border ${isAnswerExplicit
                       ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40'
-                      : isCalculation
-                        ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20'
-                        : isRounding
-                          ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
-                          : isNumberFact
-                            ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
-                            : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
+                      : isVocab
+                        ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30'
+                        : isCalculation
+                          ? 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20'
+                          : isRounding
+                            ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
+                            : isNumberFact
+                              ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
+                              : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
                       }`}
                   >
                     {stepBadgeText}
@@ -1668,30 +1751,46 @@ export default function TuitionClassroomStudio() {
     window.speechSynthesis.onvoiceschanged = findBestHindiVoice;
   }, []);
 
-  // Unified Audio Player with Natural Google Cloud Hindi Voice + Fallback
+  // Unified Audio Player with Session ID to prevent race conditions & overlapping sounds
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioPlaySessionRef = useRef<number>(0);
 
   const stopAudio = () => {
+    // Invalidate any ongoing or upcoming audio play callbacks
+    audioPlaySessionRef.current += 1;
+
     if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
+      try {
+        currentAudioRef.current.onplay = null;
+        currentAudioRef.current.onended = null;
+        currentAudioRef.current.onerror = null;
+        currentAudioRef.current.pause();
+        currentAudioRef.current.src = '';
+      } catch {}
       currentAudioRef.current = null;
     }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
     setIsSpeaking(false);
   };
 
-  const fallbackBrowserSpeech = (clean: string, onEnded?: () => void) => {
+  const fallbackBrowserSpeech = (clean: string, onEnded?: () => void, targetSessionId?: number) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       setIsSpeaking(false);
       return;
     }
+    // If audio was cancelled or superseded by another speech, abort immediately
+    if (typeof targetSessionId === 'number' && audioPlaySessionRef.current !== targetSessionId) {
+      return;
+    }
+
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(clean);
-      utterance.lang = 'hi-IN';
+      utterance.lang = medium === 'english' ? 'en-IN' : 'hi-IN';
 
       let voiceToUse = hindiVoice;
       if (!voiceToUse && 'speechSynthesis' in window) {
@@ -1712,9 +1811,16 @@ export default function TuitionClassroomStudio() {
       utterance.rate = 0.9;
       utterance.pitch = 1.0;
 
-      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onstart = () => {
+        if (typeof targetSessionId === 'number' && audioPlaySessionRef.current !== targetSessionId) {
+          window.speechSynthesis.cancel();
+          return;
+        }
+        setIsSpeaking(true);
+      };
       utterance.onend = () => {
         setIsSpeaking(false);
+        if (typeof targetSessionId === 'number' && audioPlaySessionRef.current !== targetSessionId) return;
         if (onEnded) onEnded();
       };
       utterance.onerror = () => setIsSpeaking(false);
@@ -1736,8 +1842,9 @@ export default function TuitionClassroomStudio() {
       }
     }
 
-    // Stop any currently playing audio immediately
+    // Stop any currently playing audio immediately and grab unique session ID
     stopAudio();
+    const sessionId = audioPlaySessionRef.current;
 
     const clean = text
       .replace(/<[^>]*>/g, '')
@@ -1761,24 +1868,35 @@ export default function TuitionClassroomStudio() {
       const audio = new Audio(audioUrl);
       currentAudioRef.current = audio;
 
-      audio.onplay = () => setIsSpeaking(true);
+      audio.onplay = () => {
+        if (audioPlaySessionRef.current !== sessionId) {
+          try {
+            audio.pause();
+          } catch {}
+          return;
+        }
+        setIsSpeaking(true);
+      };
       audio.onended = () => {
+        if (audioPlaySessionRef.current !== sessionId) return;
         setIsSpeaking(false);
         currentAudioRef.current = null;
         if (onEnded) onEnded();
       };
       audio.onerror = () => {
-        fallbackBrowserSpeech(clean, onEnded);
+        if (audioPlaySessionRef.current !== sessionId) return;
+        fallbackBrowserSpeech(clean, onEnded, sessionId);
       };
 
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
-          fallbackBrowserSpeech(clean, onEnded);
+          if (audioPlaySessionRef.current !== sessionId) return;
+          fallbackBrowserSpeech(clean, onEnded, sessionId);
         });
       }
     } catch {
-      fallbackBrowserSpeech(clean, onEnded);
+      fallbackBrowserSpeech(clean, onEnded, sessionId);
     }
   };
 
@@ -1957,6 +2075,37 @@ export default function TuitionClassroomStudio() {
     speakText(msg);
   };
 
+  // Select and study a specific digital book page (0 Tokens - Instant Loading)
+  const handleSelectBookPage = (pageNumber: number, targetCh?: Chapter | null) => {
+    stopAudio();
+    setSelectedBookPage(pageNumber);
+    const ch = targetCh || selectedChapter;
+    if (!ch) return;
+
+    const pageObj = ch.bookPages?.find((p: any) => p.pageNumber === pageNumber) || ch.bookPages?.[pageNumber - 1];
+    if (!pageObj) return;
+
+    setActiveTargetQuestion(`📖 ${pageObj.pageTitle}`);
+    setWhiteboardHeading(`${ch.titleHindi || ch.titleEnglish} - ${pageObj.pageTitle}`);
+
+    if (pageObj.whiteboardSteps && pageObj.whiteboardSteps.length > 0) {
+      setWhiteboardSteps(pageObj.whiteboardSteps);
+      setRevealedSteps(pageObj.whiteboardSteps.length);
+
+      const pType = (pageObj as any).pageType;
+      const speech = pType === 'reading'
+        ? `नमस्ते बेटा! आइए "${ch.titleHindi || ch.titleEnglish}" का सस्वर पाठ करते हैं। ध्यान से सुनें और मेरे साथ-साथ दोहराएं!`
+        : pType === 'vocab'
+          ? `बेटा, यह पाठ के सबसे महत्वपूर्ण कठिन शब्दार्थ और भावार्थ हैं। इन्हें अपनी नोटबुक में नोट कर लें!`
+          : pType === 'grammar'
+            ? `बेटा, यहाँ भाषा की बात और व्याकरण के मुख्य नियम हैं - विलोम शब्द, पर्यायवाची और तुकबंदी वाले शब्द!`
+            : `बेटा, यह पृष्ठ ${pageNumber} के अभ्यास प्रश्न हैं। इनका पूरा हल व्हाइटबोर्ड पर देखिए!`;
+
+      setSpeechText(speech);
+      speakText(speech);
+    }
+  };
+
   // Start Teaching a Specific Chapter
   const handleStartChapter = (ch: Chapter, autoStartFirstQ?: boolean) => {
     setSelectedChapter(ch);
@@ -2011,7 +2160,11 @@ export default function TuitionClassroomStudio() {
     setSpeechText(welcomeMsg);
     speakText(welcomeMsg);
 
-    if (autoStartFirstQ && ch.sampleQuestions && ch.sampleQuestions.length > 0) {
+    if (ch.bookPages && ch.bookPages.length > 0) {
+      setTimeout(() => {
+        handleSelectBookPage(ch.bookPages![0].pageNumber, ch);
+      }, 300);
+    } else if (autoStartFirstQ && ch.sampleQuestions && ch.sampleQuestions.length > 0) {
       setTimeout(() => {
         handleSolveChapterQuestion(ch.sampleQuestions[0]);
       }, 1600);
@@ -2951,6 +3104,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           setWhiteboardHeading(`सवाल समाधान: "${finalHeading.length > 30 ? finalHeading.slice(0, 30) + '...' : finalHeading}"`);
           setWhiteboardSteps(cleaned);
           setRevealedSteps(cleaned.length);
+
+          // 🎓 Auto-activate Live Blackboard for Math Calculation
+          const autoMath = solveMathExpression(finalHeading, currentTeacher.name) || solveMathExpression(q, currentTeacher.name);
+          if (autoMath) {
+            setActiveMathAnim({
+              num1: autoMath.num1,
+              op: autoMath.op,
+              num2: autoMath.num2,
+              result: autoMath.result,
+            });
+          }
         }
         if (data.detected_questions && Array.isArray(data.detected_questions) && data.detected_questions.length > 0) {
           setDetectedQuestions(data.detected_questions);
@@ -3665,10 +3829,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               <button
                 type="button"
                 onClick={() => setIsSubscriptionModalOpen(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-102 cursor-pointer"
                 title="प्रो ट्यूशन पैक एक्टिव है"
               >
-                <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>⭐ प्रो ट्यूशन पैक</span>
               </button>
             ) : trialUploadCount < 3 ? (
@@ -3703,10 +3867,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <button
               type="button"
               onClick={() => setIsSundayExamModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer ${
                 isDarkMode
-                  ? 'bg-indigo-950/50 hover:bg-indigo-900/60 text-indigo-300 border-indigo-500/30'
-                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200'
+                  ? 'bg-slate-900 hover:bg-slate-800 text-indigo-300 border-slate-700'
+                  : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border-slate-200'
               }`}
               title="टेस्ट सीरीज़ दें या स्कोर व टेस्ट हिस्ट्री देखें"
             >
@@ -3766,6 +3930,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <span>Sound ON 🔊</span>
                 </>
               )}
+            </button>
+
+            {/* 🔄 Reset Page Button (रीसेट करें) */}
+            <button
+              type="button"
+              onClick={handleFullPageReset}
+              className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs hover:scale-105 active:scale-95 cursor-pointer ${
+                isDarkMode
+                  ? 'bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/60'
+                  : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100 hover:border-rose-300'
+              }`}
+              title="पूरा पेज व क्लास रीसेट करें (Start Fresh)"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
+              <span>रीसेट (Reset)</span>
             </button>
           </div>
         </div>
@@ -4203,6 +4382,74 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   </div>
                 )}
               </div>
+            ) : selectedChapter?.bookPages && selectedChapter.bookPages.length > 0 ? (
+              <div className="space-y-3">
+                {/* Active Digital Book Page Card */}
+                <div className={`p-4 rounded-2xl border text-center space-y-3.5 ${
+                  isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-gradient-to-b from-blue-50/80 via-indigo-50/40 to-white border-blue-200/90 shadow-xs'
+                }`}>
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+                    <span className="text-[11px] font-black uppercase text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                      <span>📖</span> डिजिटल पाठ्यपुस्तक
+                    </span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">
+                      पृष्ठ {selectedBookPage} / {selectedChapter.bookPages.length}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-950 border border-slate-200/90 dark:border-slate-800 shadow-2xs space-y-1">
+                    <span className="text-3xl block">
+                      {selectedChapter.bookPages.find((p: any) => p.pageNumber === selectedBookPage)?.pageType === 'reading' ? '📖' : '✍️'}
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">
+                      {selectedChapter.bookPages.find((p: any) => p.pageNumber === selectedBookPage)?.pageTitle || `पृष्ठ ${selectedBookPage}`}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                      {selectedChapter.bookPages.find((p: any) => p.pageNumber === selectedBookPage)?.summary || 'व्हाइटबोर्ड पर देखें'}
+                    </p>
+                  </div>
+
+                  {/* Previous / Next Page Navigator */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={selectedBookPage <= 1}
+                      onClick={() => handleSelectBookPage(selectedBookPage - 1)}
+                      className="flex-1 py-2 px-2.5 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-slate-700 dark:text-slate-200 shadow-2xs"
+                    >
+                      ◀ पिछला पेज
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedBookPage >= selectedChapter.bookPages.length}
+                      onClick={() => handleSelectBookPage(selectedBookPage + 1)}
+                      className="flex-1 py-2 px-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-xs"
+                    >
+                      अगला पेज ▶
+                    </button>
+                  </div>
+                </div>
+
+                {/* Upload Homework / Copy Photo Option */}
+                <label
+                  htmlFor={!isSubscribed && trialUploadCount >= 3 ? undefined : 'homework-upload-input'}
+                  onClick={(e) => {
+                    if (!isSubscribed && trialUploadCount >= 3) {
+                      e.preventDefault();
+                      setIsFourthUploadAttempt(true);
+                      setIsSubscriptionModalOpen(true);
+                    }
+                  }}
+                  className={`w-full py-3.5 px-3 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-2 cursor-pointer group text-xs font-black ${
+                    isDarkMode
+                      ? 'border-slate-700 hover:border-blue-400 bg-slate-900/60 hover:bg-blue-950/40 text-blue-300'
+                      : 'border-slate-300 hover:border-blue-400 bg-white hover:bg-blue-50/60 text-slate-700 hover:text-blue-600 shadow-2xs'
+                  }`}
+                >
+                  <Camera className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span>📸 अपनी किताब / कॉपी की फोटो अपलोड करें</span>
+                </label>
+              </div>
             ) : (
               <label
                 htmlFor={!isSubscribed && trialUploadCount >= 3 ? undefined : 'homework-upload-input'}
@@ -4288,6 +4535,43 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </div>
               </div>
 
+              {/* DIGITAL TEXTBOOK PAGES STRIP (Zero Token Page Browser) */}
+              {selectedChapter?.bookPages && selectedChapter.bookPages.length > 0 && (
+                <div className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white border-blue-200/90 shadow-2xs'
+                }`}>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-black text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                      <span>📖</span> किताब के पृष्ठ:
+                    </span>
+                    <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200">
+                      पेज {selectedBookPage} / {selectedChapter.bookPages.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-thin">
+                    {selectedChapter.bookPages.map((pg: any) => {
+                      const isPgActive = selectedBookPage === pg.pageNumber;
+                      return (
+                        <button
+                          key={pg.pageNumber}
+                          type="button"
+                          onClick={() => handleSelectBookPage(pg.pageNumber)}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs shrink-0 transition-all flex items-center gap-1.5 ${
+                            isPgActive
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400 scale-102'
+                              : 'bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300 hover:text-blue-600'
+                          }`}
+                        >
+                          <span>{pg.pageType === 'reading' ? '📖' : pg.pageType === 'vocab' ? '📚' : pg.pageType === 'grammar' ? '💡' : '✍️'}</span>
+                          <span>{pg.pageTitle}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* COLLAPSIBLE CHAPTERS GRID (Only opens when user clicks button!) */}
               {isChaptersOpen && (
                 <div className={`rounded-2xl p-5 border transition-all animate-in fade-in duration-200 space-y-3 ${isDarkMode
@@ -4349,212 +4633,33 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </div>
               )}
             </div>
-          ) : (
-            /* WELCOME SUBJECT LAUNCHPAD IF NO SUBJECT CLICKED YET */
-            <div className={`rounded-3xl p-6 border text-center space-y-4 transition-all duration-200 ${isDarkMode
-              ? 'bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
-              : 'bg-white border-slate-200 shadow-sm text-slate-900'
+          ) : uploadedFiles.length === 0 && whiteboardSteps.length === 0 ? (
+            /* COMPACT KID-FRIENDLY WELCOME STRIP (Takes Minimal Space) */
+            <div className={`rounded-2xl p-3 sm:p-3.5 border flex items-center justify-between gap-3 transition-all ${isDarkMode
+              ? 'bg-slate-900/90 border-slate-800 text-white'
+              : 'bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-white border-blue-200/80 text-slate-800'
               }`}>
-              <span className="text-4xl">👋</span>
-              <h2 className={`text-xl md:text-2xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                नमस्ते बेटा! आज ट्यूशन में क्या पढ़ना चाहते हैं?
-              </h2>
-              <p className={`text-xs max-w-lg mx-auto leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                ऊपर दिए गए 4 विषयों (Math, EVS, English, Hindi) में से कोई भी विषय चुनें, या नीचे माइक दबाकर बोलें:
-                <span className={`font-bold ${isDarkMode ? 'text-amber-300' : 'text-indigo-600'}`}> "शर्मा सर, Math का Chapter 8 पढ़ाओ"</span>
-              </p>
-
-              <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-slate-900 border border-indigo-200 dark:border-slate-800 max-w-md mx-auto text-center">
-                <p className="text-xs font-bold text-indigo-800 dark:text-indigo-300">
-                  👆 ऊपर दिए गए 4 विषयों (गणित, EVS, हिंदी, अंग्रेजी) में से किसी भी विषय पर क्लिक करें या नीचे माइक से बोलें!
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* REAL 5 BOOK PAGES VIEWER & CHAPTER EXERCISE SOLVER */}
-          {selectedChapter && (
-            <div className={`rounded-3xl p-5 border transition-all duration-200 space-y-4 ${isDarkMode
-              ? 'bg-slate-900 border-slate-800 shadow-xl'
-              : 'bg-white border-slate-200 shadow-sm'
-              }`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3 border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl shrink-0">
-                    📖
-                  </div>
-                  <div>
-                    <h3 className={`text-sm md:text-base font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'
-                      }`}>
-                      पाठ {selectedChapter.chapterNumber}: पाठ्यपुस्तक के {selectedChapter.bookPages?.length || (selectedChapter.endPage ? selectedChapter.endPage - selectedChapter.startPage + 1 : 5)} असली पृष्ठ (Real Book Pages)
-                    </h3>
-                    <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {selectedSubject?.bookName} — पृष्ठ {selectedChapter.startPage || 1} से {selectedChapter.endPage || (selectedChapter.bookPages?.length || 5)} व असली अभ्यास प्रश्न
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                  <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${isDarkMode ? 'bg-indigo-950/60 border-indigo-700/50 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                    }`}>
-                    कुल {selectedChapter.bookPages?.length || (selectedChapter.endPage ? selectedChapter.endPage - selectedChapter.startPage + 1 : 5)} पृष्ठ (Full Chapter)
-                  </span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-xl shrink-0">👋</span>
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                    नमस्ते बेटा! आज ट्यूशन में क्या पढ़ना चाहते हैं?
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    ऊपर से कोई भी विषय चुनें या नीचे 📸 फोटो खींचें / माइक से बोलें!
+                  </p>
                 </div>
               </div>
-
-              {/* DYNAMIC BOOK PAGE TABS (Supports 27 Pages & Any Chapter Size) */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-9 gap-2 pt-1 max-h-72 overflow-y-auto pr-1">
-                {(selectedChapter.bookPages || [
-                  { pageNumber: 1, pageTitle: 'पृष्ठ 1: अवधारणा व चित्र' },
-                  { pageNumber: 2, pageTitle: 'पृष्ठ 2: मुख्य सूत्र व नियम' },
-                  { pageNumber: 3, pageTitle: 'पृष्ठ 3: दैनिक जीवन उदाहरण' },
-                  { pageNumber: 4, pageTitle: 'पृष्ठ 4: अभ्यास प्रश्न 8.1' },
-                  { pageNumber: 5, pageTitle: '🎯 पृष्ठ 5: किताब के अंत के प्रश्न' },
-                ]).map((bp, pIdx) => {
-                  const pNum = bp.pageNumber || pIdx + 1;
-                  const isPageActive = selectedBookPage === pNum;
-                  const pagesList = selectedChapter.bookPages || [];
-                  const isEndPage = pIdx === (pagesList.length > 0 ? pagesList.length - 1 : 4) || pNum === selectedChapter.endPage;
-
-                  return (
-                    <button
-                      key={pNum}
-                      onClick={() => {
-                        setSelectedBookPage(pNum);
-                        if (isEndPage && selectedChapter.sampleQuestions && selectedChapter.sampleQuestions.length >= 4) {
-                          handleSolveChapterQuestion(selectedChapter.sampleQuestions[selectedChapter.sampleQuestions.length - 1]);
-                        } else if (selectedChapter.sampleQuestions && selectedChapter.sampleQuestions.length > 0) {
-                          const qIdx = pIdx % selectedChapter.sampleQuestions.length;
-                          handleSolveChapterQuestion(selectedChapter.sampleQuestions[qIdx]);
-                        }
-                      }}
-                      className={`p-2.5 rounded-2xl border text-left transition-all flex flex-col justify-between gap-1 ${isPageActive
-                        ? isEndPage
-                          ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 border-amber-400 text-amber-500 shadow-sm'
-                          : isDarkMode
-                            ? 'bg-indigo-600/20 border-indigo-400 text-white shadow-sm'
-                            : 'bg-indigo-50 border-indigo-500 text-indigo-950 shadow-xs'
-                        : isDarkMode
-                          ? 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
-                          : 'bg-slate-50 border-slate-200 hover:border-indigo-300 text-slate-700'
-                        }`}
-                    >
-                      <span className={`text-[10px] font-black uppercase ${isEndPage ? 'text-amber-500 font-extrabold' : isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
-                        {isEndPage ? '🎯 मास्टर टेस्ट' : `पेज ${pNum}`}
-                      </span>
-                      <span className="text-[11px] font-bold line-clamp-1 truncate" title={bp.pageTitle || `पृष्ठ ${pNum}`}>
-                        {bp.pageTitle || `पृष्ठ ${pNum}`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* CURRENT BOOK PAGE DETAILS & REAL EXERCISE QUESTIONS */}
-              {(() => {
-                const curPageData = selectedChapter.bookPages?.find((p) => p.pageNumber === selectedBookPage) || {
-                  pageNumber: selectedBookPage,
-                  pageTitle: `पृष्ठ ${selectedBookPage}: ${selectedChapter.titleHindi}`,
-                  summary: selectedChapter.concepts.join(', '),
-                  concepts: selectedChapter.concepts,
-                };
-
-                const pagesList = selectedChapter.bookPages || [];
-                const lastPageNum = pagesList.length > 0 ? pagesList[pagesList.length - 1].pageNumber : (selectedChapter.endPage || 5);
-                const isLastPage = selectedBookPage === lastPageNum;
-
-                return (
-                  <div className={`p-4 rounded-2xl border space-y-3 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-black flex items-center gap-1.5 ${isLastPage ? 'text-amber-500' : isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
-                        }`}>
-                        <span>{isLastPage ? '🎯' : '📄'}</span>
-                        {curPageData.pageTitle}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        NCERT / RBSE Class 4th Real Book
-                      </span>
-                    </div>
-
-                    <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                      {curPageData.summary}
-                    </p>
-
-                    {/* SCANNED/UPLOADED REAL BOOK PAGE IMAGE */}
-                    {curPageData.imageUrl && (
-                      <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-black/5 dark:bg-black/30 p-2 flex items-center justify-center max-h-[500px]">
-                        <img
-                          src={curPageData.imageUrl}
-                          alt={curPageData.pageTitle || `पेज ${curPageData.pageNumber}`}
-                          className="max-h-[480px] w-auto object-contain rounded-xl shadow-md"
-                        />
-                      </div>
-                    )}
-
-                    {/* REAL EXERCISE QUESTIONS FOR THIS CHAPTER */}
-                    <div className="space-y-2 pt-1 border-t border-slate-200 dark:border-slate-800">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-black text-slate-900 dark:text-white flex items-center gap-1">
-                          <span>✍️</span> {isLastPage ? 'किताब के अंत के असली प्रश्न (End-of-Chapter Real Questions):' : 'इस पृष्ठ के अभ्यास प्रश्न:'}
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                          क्लिक करके सीधे व्हाइटबोर्ड पर हल करें
-                        </span>
-                      </div>
-
-                      <div className="space-y-2">
-                        {(selectedChapter.sampleQuestions || []).map((qItem, qIdx) => {
-                          const isTarget = activeTargetQuestion === qItem.question;
-                          const isEndQ = qIdx >= 3;
-                          if (isLastPage && !isEndQ) return null; // On Page 5 only show end-of-chapter questions
-
-                          return (
-                            <div
-                              key={qIdx}
-                              className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${isTarget
-                                ? isDarkMode
-                                  ? 'bg-amber-950/40 border-amber-400/60 shadow-md'
-                                  : 'bg-amber-50 border-amber-300 shadow-xs'
-                                : isDarkMode
-                                  ? 'bg-slate-900 border-slate-800 hover:border-slate-700'
-                                  : 'bg-white border-slate-200 hover:border-indigo-300'
-                                }`}
-                            >
-                              <div className="flex-1">
-                                <span className={`text-[10px] font-black uppercase block ${isEndQ ? 'text-amber-500' : 'text-indigo-600 dark:text-indigo-400'
-                                  }`}>
-                                  {isEndQ
-                                    ? (medium === 'english' ? '🎯 Textbook Chapter End Question' : '🎯 किताब के अंत का असली प्रश्न')
-                                    : (medium === 'english' ? `Question ${qIdx + 1}` : `प्रश्न ${qIdx + 1}`)}
-                                </span>
-                                <p className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                  {qItem.question}
-                                </p>
-                              </div>
-
-                              <button
-                                onClick={() => handleSolveChapterQuestion(qItem)}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-all flex items-center gap-1 self-start sm:self-auto ${isTarget
-                                  ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/30'
-                                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
-                                  }`}
-                              >
-                                <span>{isTarget
-                                  ? (medium === 'english' ? '✓ Viewing Solution' : '✓ हल देख रहे हैं')
-                                  : (medium === 'english' ? 'Solve on Board →' : 'व्हाइटबोर्ड पर हल करें →')}</span>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <button
+                type="button"
+                onClick={() => setIsSchoolBagOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shrink-0 shadow-xs flex items-center gap-1.5 hover:scale-102 transition-all cursor-pointer"
+              >
+                <span>🎒</span>
+                <span>बस्ता खोलें</span>
+              </button>
             </div>
-          )}
+          ) : null}
 
           {/* DIGITAL CLASSROOM & WHITEBOARD (Khan Academy Style) */}
           <div className={`rounded-2xl border overflow-hidden flex flex-col transition-all duration-200 ${isDarkMode
@@ -5312,7 +5417,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       <span className="w-2.5 h-2.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1 sm:mt-1.5" />
                                       <h3 className={`text-sm sm:text-base font-extrabold leading-snug ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
                                         }`}>
-                                        {renderQuestionWithBlankFill(displayQuestionText, stepItem, idx)}
+                                        {activeDictationTestIdx === idx ? (
+                                          <span className="flex flex-wrap items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-black">
+                                              🎧 श्रुतलेख टेस्ट (Spelling Dictation)
+                                            </span>
+                                            <span>{stepItem.step || 'कठिन शब्द टेस्ट'}</span>
+                                          </span>
+                                        ) : (
+                                          renderQuestionWithBlankFill(displayQuestionText, stepItem, idx)
+                                        )}
                                       </h3>
                                     </div>
 
@@ -5434,9 +5548,62 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           </span>
                                         );
                                       })()}
-                                      <div>
-                                        {renderFormulaBlocks(stepItem.formula, stepItem.question)}
-                                      </div>
+                                      {activeDictationTestIdx === idx ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center justify-end">
+                                            <button
+                                              type="button"
+                                              onClick={() => setActiveDictationTestIdx(null)}
+                                              className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all"
+                                            >
+                                              ✕ वापस हल देखें (Back to Homework)
+                                            </button>
+                                          </div>
+                                          <HardWordsDictationCard
+                                            formula={stepItem.formula}
+                                            stepTitle={stepItem.step}
+                                            annotation={stepItem.annotation}
+                                            isDarkMode={isDarkMode}
+                                            chalkboardTheme={chalkboardTheme}
+                                            medium={medium}
+                                            initialMode="dictation"
+                                            onSpeak={(t) => speakText(t)}
+                                            onScoreUpdate={(pts) => setTotalScore((prev) => prev + pts)}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-3">
+                                          {renderFormulaBlocks(stepItem.formula, stepItem.question)}
+
+                                          {Boolean(
+                                            (displayQuestionText && /hard words?|कठिन शब्द|श्रुतलेख/i.test(displayQuestionText)) ||
+                                            (stepItem?.step && /hard words?|कठिन शब्द|श्रुतलेख/i.test(stepItem.step))
+                                          ) && (
+                                            <div className="mt-3 p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-wrap items-center justify-between gap-2.5">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-lg">🎯</span>
+                                                <div>
+                                                  <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                                                    कठिन शब्द श्रुतलेख (Spelling Dictation Test)
+                                                  </p>
+                                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                                    सभी स्पेलिंग याद हो जाने पर शिक्षिका से बोलकर टेस्ट दें!
+                                                  </p>
+                                                </div>
+                                              </div>
+
+                                              <button
+                                                type="button"
+                                                onClick={() => setActiveDictationTestIdx(idx)}
+                                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 active:scale-95"
+                                              >
+                                                <span>🎧</span>
+                                                <span>स्पेलिंग टेस्ट शुरू करें</span>
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
@@ -5804,6 +5971,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         subjectName={selectedSubject?.subjectHindi || 'गणित'}
         medium={medium}
         isDarkMode={isDarkMode}
+        existingUploadedFiles={uploadedFiles}
+        pageDataMap={pageDataMap}
+        worksheetHistory={worksheetHistory}
       />
 
       {/* WORKSHEET & DOUBTS HISTORY MODAL */}

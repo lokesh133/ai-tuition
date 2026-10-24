@@ -13,6 +13,9 @@ interface SundayExamProps {
   medium?: 'hindi' | 'english';
   onTestCompleted?: (result: TestResultRecord) => void;
   isDarkMode?: boolean;
+  existingUploadedFiles?: Array<{ id: string; name: string; url: string; type?: string }>;
+  pageDataMap?: Record<string, { whiteboardSteps?: any[]; detectedQuestions?: string[]; detectedChapter?: any; heading?: string }>;
+  worksheetHistory?: any[];
 }
 
 export default function PrintableSundayExamModal({
@@ -25,6 +28,9 @@ export default function PrintableSundayExamModal({
   medium = 'hindi',
   onTestCompleted,
   isDarkMode = false,
+  existingUploadedFiles,
+  pageDataMap,
+  worksheetHistory,
 }: SundayExamProps) {
   // Normalize board string (e.g. 'RBSE (राजस्थान बोर्ड)' -> 'RBSE')
   const cleanBoard = board?.toUpperCase().includes('CBSE') ? 'CBSE' : 'RBSE';
@@ -39,6 +45,9 @@ export default function PrintableSundayExamModal({
       medium={medium}
       onTestCompleted={onTestCompleted}
       isDarkMode={isDarkMode}
+      existingUploadedFiles={existingUploadedFiles}
+      pageDataMap={pageDataMap}
+      worksheetHistory={worksheetHistory}
     />
   );
 }

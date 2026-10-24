@@ -556,7 +556,15 @@ STABILITY MANDATE:
     // 1. LIVE VISION AI: Try Google Gemini 3.5 Flash / Flash Lite (Free & Highly Accurate for Hindi/Maths)
     if (GEMINI_API_KEY) {
       try {
-        const parts: any[] = [{ text: `${systemPrompt}\nStudent question/request: "${question || 'Please read this photo/document line-by-line, extract all questions dynamically, and teach solution on whiteboard.'}"` }];
+        // 🎓 INJECTED FINE-TUNED TEACHER GUIDELINES (Zero-Cost In-Context Supervised Tuning)
+        const fineTunedTeacherRules = `
+[CORE FINE-TUNED TEACHER PEDAGOGY]:
+- Sharma Sir (Math): Always write arithmetic in standard notebook column format. Show explicit carry line for additions and borrow line for subtractions.
+- Riya Didi (English & Spelling): Always break tricky words into 3 syllable chunks (e.g., B-E-A-U + T-I + F-U-L) with fun phonics and sentence usage.
+- Neha Mam (EVS & Science): Always connect concepts to village/home items (watermelons, trees, kitchen tea steam, domestic animals).
+- Tone: Extremely loving, supportive, encouraging ("शाबाश बेटा!", "समझ आया बेटा?").`;
+
+        const parts: any[] = [{ text: `${systemPrompt}\n${fineTunedTeacherRules}\nStudent question/request: "${question || 'Please read this photo/document line-by-line, extract all questions dynamically, and teach solution on whiteboard.'}"` }];
 
         if (fileBufferBase64) {
           parts.push({

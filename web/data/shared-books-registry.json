@@ -1,0 +1,194 @@
+[
+  {
+    "id": "book-rbse-4-math",
+    "board": "RBSE",
+    "class": "Class 4th",
+    "subject": "Mathematics",
+    "bookName": "गणित (Ganit) - Class 4",
+    "publisher": "RSCERT / Rajasthan State Textbook Board",
+    "language": "Hindi / English",
+    "totalChapters": 14,
+    "verified": true,
+    "uploadedBy": "System",
+    "chapters": [
+      {
+        "chapterNumber": 1,
+        "title": "Building with Bricks (ईंटों से बनी इमारत)",
+        "concept": "Brick patterns, 3D shapes, counting in thousands",
+        "units": "meters, cm"
+      },
+      {
+        "chapterNumber": 2,
+        "title": "Long and Short (लंबा और छोटा)",
+        "concept": "Length measurement, height, distance",
+        "units": "cm, m, km"
+      },
+      {
+        "chapterNumber": 3,
+        "title": "A Trip to Bhopal (भोपाल की सैर)",
+        "concept": "Bus fares, diesel calculations, time estimation",
+        "units": "rupees, hours"
+      },
+      {
+        "chapterNumber": 4,
+        "title": "Tick-Tick-Tick (टिक-टिक-टिक)",
+        "concept": "Clock time, AM/PM, 24-hour clock, calendar dates",
+        "units": "seconds, minutes, hours"
+      },
+      {
+        "chapterNumber": 5,
+        "title": "The Way the World Looks (दुनिया कुछ ऐसी दिखती है)",
+        "concept": "Top view, front view, side view, maps",
+        "units": "perspective"
+      },
+      {
+        "chapterNumber": 6,
+        "title": "The Junk Seller (कबाड़ीवाली)",
+        "concept": "Money calculations, profit, loans, multiplication",
+        "units": "rupees, paise"
+      },
+      {
+        "chapterNumber": 7,
+        "title": "Jugs and Mugs (जग और मग)",
+        "concept": "Volume and capacity, liquid measurements",
+        "units": "Litre (L), Millilitre (mL), 1L = 1000 mL"
+      },
+      {
+        "chapterNumber": 8,
+        "title": "Carts and Wheels (गाड़ियां और पहिये)",
+        "concept": "Circles, radius, diameter, compass drawing",
+        "units": "radius, diameter"
+      },
+      {
+        "chapterNumber": 9,
+        "title": "Halves and Quarters (आधा और चौथाई)",
+        "concept": "Fractions, equal sharing, parts of a whole",
+        "units": "1/2, 1/4, 3/4"
+      },
+      {
+        "chapterNumber": 10,
+        "title": "Play with Patterns (पैटर्न की पहचान)",
+        "concept": "Number patterns, symmetry, magic squares",
+        "units": "patterns"
+      },
+      {
+        "chapterNumber": 11,
+        "title": "Tables and Shares (पहाड़े और बंटवारे)",
+        "concept": "Multiplication tables 2 to 20, division as sharing",
+        "units": "quotient, remainder"
+      },
+      {
+        "chapterNumber": 12,
+        "title": "How Heavy? How Light? (कितना भारी? कितना हल्का?)",
+        "concept": "Weight and mass, weighing balance, converting kg to grams",
+        "units": "Gram (g), Kilogram (kg), 1 kg = 1000 g"
+      },
+      {
+        "chapterNumber": 13,
+        "title": "Fields and Fences (खेत और बाड़)",
+        "concept": "Perimeter of boundaries, shapes, wire length",
+        "units": "meters, perimeter"
+      },
+      {
+        "chapterNumber": 14,
+        "title": "Smart Charts (स्मार्ट चार्ट्स)",
+        "concept": "Tally marks, bar graphs, chapati charts data handling",
+        "units": "tally marks"
+      }
+    ]
+  },
+  {
+    "id": "book-rbse-4-evs",
+    "board": "RBSE",
+    "class": "Class 4th",
+    "subject": "EVS / Science",
+    "bookName": "अपना परिवेश (Apna Parivesh) - पर्यावरण अध्ययन",
+    "publisher": "RSCERT / Rajasthan Board",
+    "language": "Hindi / English",
+    "totalChapters": 21,
+    "verified": true,
+    "uploadedBy": "System",
+    "chapters": [
+      {
+        "chapterNumber": 1,
+        "title": "बचपन की यादें (Ch-1 Memories of Childhood)",
+        "concept": "Family relationships, changes over time",
+        "units": "family tree"
+      },
+      {
+        "chapterNumber": 2,
+        "title": "परिवार के साथ (Ch-2 With Family)",
+        "concept": "Nuclear and joint families",
+        "units": "relations"
+      },
+      {
+        "chapterNumber": 3,
+        "title": "खेल-खेल में (Ch-3 Fun and Games)",
+        "concept": "Traditional games, sportsmanship, rules",
+        "units": "games"
+      },
+      {
+        "chapterNumber": 4,
+        "title": "पेड़-पौधों की देखभाल (Ch-4 Care of Plants)",
+        "concept": "Parts of plants, watering, roots, leaves",
+        "units": "botany"
+      },
+      {
+        "chapterNumber": 5,
+        "title": "फूल ही फूल (Ch-5 Flowers Everywhere)",
+        "concept": "Flower types, blooming seasons, uses",
+        "units": "flora"
+      },
+      {
+        "chapterNumber": 13,
+        "title": "पीने का पानी (Ch-13 Drinking Water & Hard Words)",
+        "concept": "Sources of water, water cycle, purification, Hard Words: Evaporation, Condensation, Freezing, Transpiration, Solvent",
+        "units": "litres, cycle"
+      }
+    ]
+  },
+  {
+    "id": "book-cbse-4-science-living",
+    "board": "CBSE",
+    "class": "Class 4th",
+    "subject": "EVS / Science",
+    "bookName": "Living Science - Class 4",
+    "publisher": "Ratna Sagar",
+    "language": "English",
+    "totalChapters": 14,
+    "verified": true,
+    "uploadedBy": "Shared Teacher",
+    "chapters": [
+      {
+        "chapterNumber": 1,
+        "title": "Food and Digestion",
+        "concept": "Nutrients, balanced diet, digestive system",
+        "units": "nutrients"
+      },
+      {
+        "chapterNumber": 2,
+        "title": "Teeth and Microbes",
+        "concept": "Types of teeth, tooth decay, microbes",
+        "units": "dental care"
+      },
+      {
+        "chapterNumber": 3,
+        "title": "Safety and First Aid",
+        "concept": "Safety rules, first aid for cuts and burns",
+        "units": "first aid"
+      },
+      {
+        "chapterNumber": 4,
+        "title": "Clothes We Wear",
+        "concept": "Natural and synthetic fibres, care of clothes",
+        "units": "fabrics"
+      },
+      {
+        "chapterNumber": 5,
+        "title": "Solids, Liquids and Gases",
+        "concept": "States of matter, evaporation, condensation",
+        "units": "matter"
+      }
+    ]
+  }
+]

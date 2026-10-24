@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
+import { CrowdsourcedBookRegistrySection } from '@/components/CrowdsourcedBookRegistrySection';
 import {
   UploadCloud,
   BookOpen,
@@ -287,6 +288,9 @@ export default function AdminCourseRAGPage() {
           </div>
         </div>
       </div>
+
+      {/* CROWDSOURCED 0-TOKEN BOOK REGISTRY & INDEX SCANNER */}
+      <CrowdsourcedBookRegistrySection />
 
       {/* 2. DEDICATED RBSE RAJASTHAN CLASS 4TH STATUS & SYNC CARD */}
       <div className="rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 md:p-8 border border-slate-800 shadow-xl relative overflow-hidden">

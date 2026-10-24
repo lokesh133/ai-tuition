@@ -86,6 +86,26 @@ export interface ColumnMathData {
  * (e.g. Weight kg/g, Capacity L/mL, Length m/cm, or multi-digit column addition/subtraction, multiplication, long division)
  */
 export function tryParseColumnMath(formula: string, question: string = ''): ColumnMathData | null {
+  if (!formula) return null;
+  const fTrim = formula.trim();
+  const fLower = fTrim.toLowerCase();
+
+  // Guard: If formula is a summary, final answer tick, rule/concept explanation, or non-arithmetic text, DO NOT hijack the step!
+  if (
+    fTrim.startsWith('✅') ||
+    fLower.includes('सही उत्तर') ||
+    fLower.includes('नियम') ||
+    fLower.includes('पहचान') ||
+    fLower.includes('परिणाम') ||
+    fLower.includes('डाउट क्लियर') ||
+    fLower.includes('summary') ||
+    fLower.includes('moral') ||
+    fLower.includes('vocabulary') ||
+    fLower.includes('शब्दार्थ')
+  ) {
+    return null;
+  }
+
   const combined = `${question} ${formula}`.toLowerCase();
 
   // Check 1: 156 kg 684 g from 521 kg 478 g

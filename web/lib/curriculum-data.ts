@@ -30,8 +30,10 @@ export interface Chapter {
     pageNumber: number;
     pageTitle: string;
     summary: string;
+    pageType?: 'reading' | 'vocab' | 'exercise' | 'grammar' | string;
     concepts?: string[];
     imageUrl?: string;
+    whiteboardSteps?: { step: string; formula: string; annotation: string; isMistake?: boolean; question?: string }[];
   }[];
 }
 

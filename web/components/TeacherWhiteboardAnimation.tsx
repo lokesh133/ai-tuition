@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -234,8 +234,14 @@ export const TeacherWhiteboardAnimation: React.FC<TeacherWhiteboardAnimationProp
     return '';
   };
 
-  // Play audio on stage transition in teach mode
+  const isInitialMount = useRef(true);
+
+  // Play audio on stage transition in teach mode (Only after initial mount or user interaction)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     if (solveMode !== 'teach' || !isPlaying) return;
     const speech = getStageSpeech(currentStage);
     if (speech && onAudioPlay && !isAudioMuted) {
