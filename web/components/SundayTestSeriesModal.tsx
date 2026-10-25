@@ -1032,7 +1032,52 @@ export default function SundayTestSeriesModal({
         })
         .catch((err) => console.warn('Could not sync test history from server:', err));
     }
+
+    // Auto-restore ongoing weekly test on page refresh
+    try {
+      const ongoing = localStorage.getItem('vidya_active_weekly_test');
+      if (ongoing) {
+        const parsed = JSON.parse(ongoing);
+        if (parsed.generatedQuestions && Array.isArray(parsed.generatedQuestions) && parsed.generatedQuestions.length > 0) {
+          setGeneratedQuestions(parsed.generatedQuestions);
+          if (parsed.typedAnswers && typeof parsed.typedAnswers === 'object') {
+            setTypedAnswers(parsed.typedAnswers);
+          }
+          if (typeof parsed.activeQuestionIndex === 'number') {
+            setActiveQuestionIndex(parsed.activeQuestionIndex);
+          }
+          if (parsed.totalExamMarks) setTotalExamMarks(parsed.totalExamMarks);
+          if (parsed.examMode) setExamMode(parsed.examMode);
+          if (parsed.selectedSubjectId) setSelectedSubjectId(parsed.selectedSubjectId);
+          if (parsed.activeTab === 'exam') setActiveTab('exam');
+        }
+      }
+    } catch (e) {
+      console.warn('Could not restore ongoing weekly test:', e);
+    }
   }, []);
+
+  // Continuous auto-save of weekly test answers & questions
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (activeTab === 'exam' && generatedQuestions.length > 0) {
+      try {
+        localStorage.setItem(
+          'vidya_active_weekly_test',
+          JSON.stringify({
+            generatedQuestions,
+            typedAnswers,
+            activeQuestionIndex,
+            totalExamMarks,
+            examMode,
+            selectedSubjectId,
+            activeTab: 'exam',
+            timestamp: Date.now(),
+          })
+        );
+      } catch {}
+    }
+  }, [activeTab, generatedQuestions, typedAnswers, activeQuestionIndex, totalExamMarks, examMode, selectedSubjectId]);
 
   // Save Test History to localStorage + Server Database
   const saveToHistory = (record: TestResultRecord) => {
@@ -1541,6 +1586,9 @@ export default function SundayTestSeriesModal({
 
       setCurrentResult(data.result);
       saveToHistory(data.result);
+      try {
+        localStorage.removeItem('vidya_active_weekly_test');
+      } catch {}
       if (onTestCompleted) {
         onTestCompleted(data.result);
       }

@@ -389,12 +389,13 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   }
 
   // Parse Multi-line Column Block in formula if present:
-  // e.g.: kg g\n 44 520\n- 12 502
-  const colBlockRegex = /(?:kg|km|l|m|किग्रा|लीटर|मीटर)\s+(?:g|m|ml|cm|ग्रा|मिली|सेमी)[\s\S]*?\n\s*(\d+)\s+(\d+)[\s\S]*?\n\s*([\+\-−])\s*(\d+)\s+(\d+)/i;
+  // e.g.: kg g\n 44 520\n- 12 502 OR kg | g\n 44 | 520\n- 12 | 502
+  const colBlockRegex = /(?:kg|km|l|m|किग्रा|लीटर|मीटर)[\s\|]+(?:g|m|ml|cm|ग्रा|मिली|सेमी)[\s\S]*?\n\s*(\d+)[\s\|]+(\d+)[\s\S]*?\n\s*([\+\-−])\s*(\d+)[\s\|]+(\d+)/i;
   const colBlockM = formula.match(colBlockRegex);
 
   // Parse horizontal 2-unit arithmetic:
   // e.g.: 44 kg 520 g - 12 kg 502 g
+  // Group 1: 44, Group 2: kg, Group 3: 520, Group 4: g, Group 5: -, Group 6: 12, Group 7: kg, Group 8: 502, Group 9: g
   const horizRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s*([\+\-−])\s*(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)/i;
   const horizM = combined.match(horizRegex);
 
@@ -404,6 +405,7 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   const mixedM = combined.match(mixedRegex);
 
   // Parse "subtract X kg Y g from Z kg W g":
+  // Group 1: X, Group 2: unit1, Group 3: Y, Group 4: unit2, Group 5: Z, Group 6: unit1, Group 7: W, Group 8: unit2
   const fromRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s+from\s+(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)/i;
   const fromM = combined.match(fromRegex);
 
@@ -427,7 +429,7 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     top_u2 = parseInt(horizM[3], 10);
     isSubtraction = horizM[5] === '-' || horizM[5] === '−';
     bot_u1 = parseInt(horizM[6], 10);
-    bot_u2 = parseInt(horizM[7], 10);
+    bot_u2 = parseInt(horizM[8], 10);
   } else if (mixedM) {
     u1 = mixedM[2].toLowerCase();
     u2 = mixedM[4].toLowerCase();
@@ -440,7 +442,7 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     u1 = fromM[2].toLowerCase();
     u2 = fromM[4].toLowerCase();
     top_u1 = parseInt(fromM[5], 10);
-    top_u2 = parseInt(fromM[6], 10);
+    top_u2 = parseInt(fromM[7], 10);
     isSubtraction = true;
     bot_u1 = parseInt(fromM[1], 10);
     bot_u2 = parseInt(fromM[3], 10);
@@ -448,6 +450,12 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     // If none of the explicit arithmetic patterns matched, DO NOT guess or invent fake numbers!
     return null;
   }
+
+  // Defensive NaN safeguards
+  top_u1 = Number.isNaN(top_u1) ? 0 : top_u1;
+  top_u2 = Number.isNaN(top_u2) ? 0 : top_u2;
+  bot_u1 = Number.isNaN(bot_u1) ? 0 : bot_u1;
+  bot_u2 = Number.isNaN(bot_u2) ? 0 : bot_u2;
 
   // Normalize Hindi abbreviations
   if (u1.includes('किग्रा') || u1.includes('किलो')) u1 = 'kg';

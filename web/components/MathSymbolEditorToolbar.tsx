@@ -12,6 +12,7 @@ import {
   X,
   Calculator as CalcIcon,
 } from 'lucide-react';
+import { renderMathFractions, hasMathFraction } from '@/lib/math-fraction-renderer';
 
 export interface MathSymbolEditorToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -104,10 +105,16 @@ const SYMBOL_GROUPS: SymbolGroup[] = [
     labelEnglish: 'Fractions & Logic',
     icon: '½',
     items: [
-      { display: '½', insertText: '½', title: 'Half (आधा)' },
-      { display: '¼', insertText: '¼', title: 'Quarter (चौथाई)' },
-      { display: '¾', insertText: '¾', title: 'Three Fourths (पौना)' },
-      { display: '⁄', insertText: '/', title: 'Fraction Bar (बटा)' },
+      { display: '4 ⅖', insertText: '4 2/5', title: 'Mixed Fraction 4 2/5 (मिश्रित भिन्न)' },
+      { display: '2 ⅘', insertText: '2 4/5', title: 'Mixed Fraction 2 4/5 (मिश्रित भिन्न)' },
+      { display: '1 ⅗', insertText: '1 3/5', title: 'Mixed Fraction 1 3/5 (मिश्रित भिन्न)' },
+      { display: '1 ½', insertText: '1 1/2', title: 'One and Half (डेढ़ 1 1/2)' },
+      { display: '2 ½', insertText: '2 1/2', title: 'Two and Half (ढाई 2 1/2)' },
+      { display: '½', insertText: '1/2', title: 'Half (आधा 1/2)' },
+      { display: '¼', insertText: '1/4', title: 'Quarter (चौथाई 1/4)' },
+      { display: '¾', insertText: '3/4', title: 'Three Fourths (पौना 3/4)' },
+      { display: '⁄', insertText: '/', title: 'Fraction Bar (बटा /)' },
+      { display: 'a b/c', insertText: '1 2/3', title: 'Mixed Fraction Template (मिश्रित भिन्न साँचा)' },
       { display: '∴', insertText: ' ∴ ', title: 'Therefore (इसलिए)' },
       { display: '∵', insertText: ' ∵ ', title: 'Since (चूँकि / क्योंकि)' },
       { display: '≤', insertText: ' ≤ ', title: 'Less Than or Equal' },
