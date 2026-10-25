@@ -89,6 +89,8 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   if (!formula) return null;
   const fTrim = formula.trim();
   const fLower = fTrim.toLowerCase();
+  const qTrim = question.trim();
+  const qLower = qTrim.toLowerCase();
 
   // Guard: If formula is a summary, final answer tick, rule/concept explanation, or non-arithmetic text, DO NOT hijack the step!
   if (
@@ -103,6 +105,46 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     fLower.includes('vocabulary') ||
     fLower.includes('शब्दार्थ')
   ) {
+    return null;
+  }
+
+  // Guard: If question or formula is Fill-in-the-blanks, Unit Conversion, True/False, or Estimation
+  const isConversionOrBlank =
+    qLower.includes('fill in the blank') ||
+    qLower.includes('रिक्त स्थान') ||
+    qLower.includes('खाली स्थान') ||
+    fLower.includes('रिक्त स्थान') ||
+    fLower.includes('खाली स्थान') ||
+    qLower.includes('___') ||
+    fLower.includes('___') ||
+    qLower.includes('convert') ||
+    qLower.includes('बदलें') ||
+    qLower.includes('बदलो') ||
+    qLower.includes('बदलना') ||
+    qLower.includes('रूपांतरण') ||
+    qLower.includes('estimate') ||
+    qLower.includes('अनुमान') ||
+    qLower.includes('true or false') ||
+    qLower.includes('सत्य या असत्य') ||
+    qLower.includes('सही या गलत') ||
+    fLower.includes('वस्तु:') ||
+    fLower.includes('अनुमानित');
+
+  if (isConversionOrBlank) {
+    // Only allow column math if there is an EXPLICIT 2-measurement addition or subtraction
+    // like "44 kg 520 g - 12 kg 502 g" or "151 kg 46 g + 231 kg 5 g"
+    const hasExplicitCompositeOp =
+      /\d+\s*(?:kg|किग्रा|l|लीटर|m|मीटर)\s*\d+\s*(?:g|ग्रा|ml|मिली|cm|सेमी)\s*[\+\-]\s*\d+\s*(?:kg|किग्रा|l|लीटर|m|मीटर)\s*\d+\s*(?:g|ग्रा|ml|मिली|cm|सेमी)/i.test(formula) ||
+      /\d+\s*(?:kg|किग्रा|l|लीटर|m|मीटर)\s*\d+\s*(?:g|ग्रा|ml|मिली|cm|सेमी)\s*[\+\-]\s*\d+\s*(?:kg|किग्रा|l|लीटर|m|मीटर)\s*\d+\s*(?:g|ग्रा|ml|मिली|cm|सेमी)/i.test(question);
+
+    if (!hasExplicitCompositeOp) {
+      return null;
+    }
+  }
+
+  // Guard: If formula is a multi-line explanation with conversion equivalences (e.g. 1 kg = 1000 g \n 1 g = 100 cg)
+  // and does NOT have a column table header (e.g. "kg g\n 44 520\n- 12 502"), DO NOT hijack!
+  if ((fTrim.match(/=/g) || []).length >= 2 && !/(?:kg|l|m|km)\s+(?:g|ml|cm|m)\s*\n/i.test(formula)) {
     return null;
   }
 
@@ -335,64 +377,101 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     };
   }
 
-  // Check 3: General two-unit subtraction / addition regex detector
-  // E.g.: 500 kg 150 g + 200 kg 100 g, 42 kg 250 g - 27 kg 450 g, 2 kg 250 g + 250 kg 1000 g, etc.
-  const unitRegex = /(\d+)\s*(kg|g|l|ml|m|cm|km|rs|₹|किग्रा|ग्रा|ग्राम|किलोग्राम|लीटर|मिली|मीटर|सेमी)?/gi;
-  const unitMatches: RegExpExecArray[] = [];
-  let matchItem: RegExpExecArray | null;
-  while ((matchItem = unitRegex.exec(combined)) !== null) {
-    if (matchItem[1]) {
-      unitMatches.push(matchItem);
-    }
+  // Check 3: General two-unit subtraction / addition
+  // E.g.: 500 kg 150 g + 200 kg 100 g, 44 kg 520 g - 12 kg 502 g, 151 kg 46 g + 231 kg 5 g, 84 kg 350 g - 59 kg, etc.
+  let isSubtraction = combined.includes('subtract') || combined.includes('difference') || combined.includes('from') || combined.includes('घटा');
+  const hasExplicitAddOp = combined.includes('+') || combined.includes('जोड़ें') || combined.includes('जोड़');
+  const hasExplicitSubOp = combined.includes('-') || combined.includes('−') || combined.includes('घटाएं') || combined.includes('घटा');
+
+  // If there is NO arithmetic operation (+, -, जोड़, घटा, subtract, difference, from), DO NOT invent column addition!
+  if (!hasExplicitAddOp && !hasExplicitSubOp && !isSubtraction) {
+    return null;
   }
 
-  if (unitMatches.length >= 3) {
-    const isSubtraction = combined.includes('subtract') || combined.includes('difference') || combined.includes('from') || combined.includes('घटा');
-    let u1 = (unitMatches[0][2] || 'kg').toLowerCase();
-    let u2 = (unitMatches[1][2] || 'g').toLowerCase();
+  // Parse Multi-line Column Block in formula if present:
+  // e.g.: kg g\n 44 520\n- 12 502
+  const colBlockRegex = /(?:kg|km|l|m|किग्रा|लीटर|मीटर)\s+(?:g|m|ml|cm|ग्रा|मिली|सेमी)[\s\S]*?\n\s*(\d+)\s+(\d+)[\s\S]*?\n\s*([\+\-−])\s*(\d+)\s+(\d+)/i;
+  const colBlockM = formula.match(colBlockRegex);
 
-    // Normalize Hindi abbreviations
-    if (u1.includes('किग्रा') || u1.includes('किलो')) u1 = 'kg';
-    else if (u1.includes('ग्रा')) u1 = 'g';
-    else if (u1.includes('लीटर')) u1 = 'l';
-    else if (u1.includes('मिली')) u1 = 'ml';
-    else if (u1.includes('मीटर')) u1 = 'm';
-    else if (u1.includes('सेमी')) u1 = 'cm';
+  // Parse horizontal 2-unit arithmetic:
+  // e.g.: 44 kg 520 g - 12 kg 502 g
+  const horizRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s*([\+\-−])\s*(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)/i;
+  const horizM = combined.match(horizRegex);
 
-    if (u2.includes('किग्रा') || u2.includes('किलो')) u2 = 'kg';
-    else if (u2.includes('ग्रा')) u2 = 'g';
-    else if (u2.includes('लीटर')) u2 = 'l';
-    else if (u2.includes('मिली')) u2 = 'ml';
-    else if (u2.includes('मीटर')) u2 = 'm';
-    else if (u2.includes('सेमी')) u2 = 'cm';
+  // Parse mixed 2-unit and 1-unit arithmetic:
+  // e.g.: 84 kg 350 g - 59 kg
+  const mixedRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s*([\+\-−])\s*(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)(?!\s*\d+\s*[a-z])/i;
+  const mixedM = combined.match(mixedRegex);
 
-    // Fix: If both units are 'g' or identical in school weight problems,
-    // column 1 is kilograms (kg) and column 2 is grams (g)
-    if (u1 === 'g' && u2 === 'g') {
-      u1 = 'kg';
-      u2 = 'g';
-    } else if (u1 === 'l' && u2 === 'l') {
-      u1 = 'l';
-      u2 = 'ml';
-    } else if (u1 === 'm' && u2 === 'm') {
-      u1 = 'm';
-      u2 = 'cm';
-    } else if (u1 === 'km' && u2 === 'km') {
-      u1 = 'km';
-      u2 = 'm';
-    }
+  // Parse "subtract X kg Y g from Z kg W g":
+  const fromRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s+from\s+(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)/i;
+  const fromM = combined.match(fromRegex);
 
-    const val1_u1 = parseInt(unitMatches[0][1], 10);
-    const val1_u2 = parseInt(unitMatches[1][1], 10);
-    const val2_u1 = parseInt(unitMatches[2][1], 10);
-    const val2_u2 = unitMatches[3] ? parseInt(unitMatches[3][1], 10) : 0;
+  let u1 = 'kg';
+  let u2 = 'g';
+  let top_u1 = 0;
+  let top_u2 = 0;
+  let bot_u1 = 0;
+  let bot_u2 = 0;
 
-    // If 'from', the second number is on top
-    const isFrom = combined.includes('from');
-    let top_u1 = isFrom ? val2_u1 : val1_u1;
-    let top_u2 = isFrom ? val2_u2 : val1_u2;
-    let bot_u1 = isFrom ? val1_u1 : val2_u1;
-    let bot_u2 = isFrom ? val1_u2 : val2_u2;
+  if (colBlockM) {
+    top_u1 = parseInt(colBlockM[1], 10);
+    top_u2 = parseInt(colBlockM[2], 10);
+    isSubtraction = colBlockM[3] === '-' || colBlockM[3] === '−';
+    bot_u1 = parseInt(colBlockM[4], 10);
+    bot_u2 = parseInt(colBlockM[5], 10);
+  } else if (horizM) {
+    u1 = horizM[2].toLowerCase();
+    u2 = horizM[4].toLowerCase();
+    top_u1 = parseInt(horizM[1], 10);
+    top_u2 = parseInt(horizM[3], 10);
+    isSubtraction = horizM[5] === '-' || horizM[5] === '−';
+    bot_u1 = parseInt(horizM[6], 10);
+    bot_u2 = parseInt(horizM[7], 10);
+  } else if (mixedM) {
+    u1 = mixedM[2].toLowerCase();
+    u2 = mixedM[4].toLowerCase();
+    top_u1 = parseInt(mixedM[1], 10);
+    top_u2 = parseInt(mixedM[3], 10);
+    isSubtraction = mixedM[5] === '-' || mixedM[5] === '−';
+    bot_u1 = parseInt(mixedM[6], 10);
+    bot_u2 = 0;
+  } else if (fromM) {
+    u1 = fromM[2].toLowerCase();
+    u2 = fromM[4].toLowerCase();
+    top_u1 = parseInt(fromM[5], 10);
+    top_u2 = parseInt(fromM[6], 10);
+    isSubtraction = true;
+    bot_u1 = parseInt(fromM[1], 10);
+    bot_u2 = parseInt(fromM[3], 10);
+  } else {
+    // If none of the explicit arithmetic patterns matched, DO NOT guess or invent fake numbers!
+    return null;
+  }
+
+  // Normalize Hindi abbreviations
+  if (u1.includes('किग्रा') || u1.includes('किलो')) u1 = 'kg';
+  else if (u1.includes('ग्रा')) u1 = 'g';
+  else if (u1.includes('लीटर')) u1 = 'l';
+  else if (u1.includes('मिली')) u1 = 'ml';
+  else if (u1.includes('मीटर')) u1 = 'm';
+  else if (u1.includes('सेमी')) u1 = 'cm';
+
+  if (u2.includes('किग्रा') || u2.includes('किलो')) u2 = 'kg';
+  else if (u2.includes('ग्रा')) u2 = 'g';
+  else if (u2.includes('लीटर')) u2 = 'l';
+  else if (u2.includes('मिली')) u2 = 'ml';
+  else if (u2.includes('मीटर')) u2 = 'm';
+  else if (u2.includes('सेमी')) u2 = 'cm';
+
+  // Guard: u1 and u2 CANNOT be the same unit (e.g. kg and kg is invalid!)
+  if (u1 === u2) {
+    if (u1 === 'kg') u2 = 'g';
+    else if (u1 === 'l') u2 = 'ml';
+    else if (u1 === 'm') u2 = 'cm';
+    else if (u1 === 'km') u2 = 'm';
+    else return null;
+  }
 
     // Correct conversion factor (1 kg = 1000 g, 1 L = 1000 mL, 1 km = 1000 m, 1 m = 100 cm)
     let baseFactor = 1000;
@@ -681,11 +760,19 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
       ],
       finalAnswer: `${ans_u1} ${u1} ${ans_u2} ${u2}`
     };
-  }
 
   // Check 4: Multiplication (कॉलम गुणा) E.g. 48 × 6, 125 × 4, 36 × 12
   const mulMatch = combined.match(/(\d+)\s*(?:[*x×]|multiplied by|गुना|गुणा)\s*(\d+)/i);
-  if (mulMatch && !combined.includes('kg') && !combined.includes('₹') && !combined.includes('cm')) {
+  if (
+    mulMatch &&
+    !combined.includes('kg') &&
+    !combined.includes('₹') &&
+    !combined.includes('cm') &&
+    !combined.includes('cg') &&
+    !combined.includes('mg') &&
+    !combined.includes('___') &&
+    !combined.includes('blank')
+  ) {
     const n1 = parseInt(mulMatch[1], 10);
     const n2 = parseInt(mulMatch[2], 10);
     const multiplicand = Math.max(n1, n2);

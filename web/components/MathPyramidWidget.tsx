@@ -7,9 +7,10 @@ export interface MathPyramidWidgetProps {
   initialValues?: { [key: string]: string };
   isEditable?: boolean;
   onInsertToAnswer?: (formattedText: string) => void;
+  onAutoUpdate?: (formattedText: string) => void;
   isDarkMode?: boolean;
   medium?: 'hindi' | 'english';
-  presetType?: 'pyramid1' | 'pyramid2' | 'empty4' | 'empty3' | 'boxesRow';
+  presetType?: 'pyramid1' | 'pyramid2' | 'empty4' | 'empty3' | 'empty2' | 'boxesRow';
 }
 
 export const PRESET_PYRAMIDS = {
@@ -52,12 +53,20 @@ export const PRESET_PYRAMIDS = {
     initial: {},
     locked: [],
   },
+  empty2: {
+    title: '2-मंज़िला बॉक्स (2-tier)',
+    titleEn: 'Custom 2-tier Box',
+    rows: 2,
+    initial: {},
+    locked: [],
+  },
 };
 
 export function MathPyramidWidget({
   initialValues,
   isEditable = true,
   onInsertToAnswer,
+  onAutoUpdate,
   isDarkMode = false,
   medium = 'hindi',
   presetType = 'pyramid1',
@@ -66,7 +75,18 @@ export function MathPyramidWidget({
     presetType in PRESET_PYRAMIDS ? (presetType as keyof typeof PRESET_PYRAMIDS) : 'pyramid1'
   );
 
-  const presetConfig = PRESET_PYRAMIDS[activePreset];
+  React.useEffect(() => {
+    if (presetType in PRESET_PYRAMIDS) {
+      const pKey = presetType as keyof typeof PRESET_PYRAMIDS;
+      setActivePreset(pKey);
+      setBoxValues({
+        ...PRESET_PYRAMIDS[pKey].initial,
+        ...(initialValues || {}),
+      });
+    }
+  }, [presetType, initialValues]);
+
+  const presetConfig = PRESET_PYRAMIDS[activePreset] || PRESET_PYRAMIDS.pyramid1;
 
   const [boxValues, setBoxValues] = useState<{ [key: string]: string }>({
     ...presetConfig.initial,
@@ -75,25 +95,8 @@ export function MathPyramidWidget({
 
   const [copied, setCopied] = useState(false);
 
-  // Switch preset
-  const handleSelectPreset = (key: keyof typeof PRESET_PYRAMIDS) => {
-    setActivePreset(key);
-    setBoxValues({ ...PRESET_PYRAMIDS[key].initial });
-  };
-
-  const handleCellChange = (key: string, val: string) => {
-    setBoxValues((prev) => ({
-      ...prev,
-      [key]: val,
-    }));
-  };
-
-  const handleReset = () => {
-    setBoxValues({ ...PRESET_PYRAMIDS[activePreset].initial });
-  };
-
   // Format pyramid to neat text representation for textarea
-  const generateFormattedText = () => {
+  const generateFormattedText = (values = boxValues) => {
     const rows = presetConfig.rows;
     const lines: string[] = [];
 
@@ -103,7 +106,7 @@ export function MathPyramidWidget({
       const indent = '  '.repeat(rows - 1 - r);
       const cells: string[] = [];
       for (let c = 0; c <= r; c++) {
-        const val = (boxValues[`${r}-${c}`] || '?').trim();
+        const val = (values[`${r}-${c}`] || '?').trim();
         cells.push(`[ ${val} ]`);
       }
       lines.push(indent + cells.join(' '));
@@ -117,6 +120,35 @@ export function MathPyramidWidget({
     );
 
     return lines.join('\n');
+  };
+
+  // Switch preset
+  const handleSelectPreset = (key: keyof typeof PRESET_PYRAMIDS) => {
+    setActivePreset(key);
+    const newVals = { ...PRESET_PYRAMIDS[key].initial };
+    setBoxValues(newVals);
+    if (onAutoUpdate) {
+      onAutoUpdate(generateFormattedText(newVals));
+    }
+  };
+
+  const handleCellChange = (key: string, val: string) => {
+    const newVals = {
+      ...boxValues,
+      [key]: val,
+    };
+    setBoxValues(newVals);
+    if (onAutoUpdate) {
+      onAutoUpdate(generateFormattedText(newVals));
+    }
+  };
+
+  const handleReset = () => {
+    const newVals = { ...PRESET_PYRAMIDS[activePreset].initial };
+    setBoxValues(newVals);
+    if (onAutoUpdate) {
+      onAutoUpdate(generateFormattedText(newVals));
+    }
   };
 
   const handleInsert = () => {

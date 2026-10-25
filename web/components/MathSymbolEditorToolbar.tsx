@@ -12,7 +12,6 @@ import {
   X,
   Calculator as CalcIcon,
 } from 'lucide-react';
-import { MathPyramidWidget } from './MathPyramidWidget';
 
 export interface MathSymbolEditorToolbarProps {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -20,6 +19,8 @@ export interface MathSymbolEditorToolbarProps {
   onValueChange: (newValue: string) => void;
   isDarkMode?: boolean;
   medium?: 'hindi' | 'english';
+  activeQuestionText?: string;
+  isPyramidActive?: boolean;
 }
 
 interface SymbolGroup {
@@ -164,6 +165,8 @@ export function MathSymbolEditorToolbar({
   onValueChange,
   isDarkMode = false,
   medium = 'hindi',
+  activeQuestionText,
+  isPyramidActive = false,
 }: MathSymbolEditorToolbarProps) {
   const [activeTab, setActiveTab] = useState<string>('powers');
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
@@ -318,7 +321,7 @@ export function MathSymbolEditorToolbar({
             🧮
           </span>
           <span className="text-xs font-black text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <span>{medium === 'english' ? 'Math Assistant, Calculator & Symbols' : 'गणित कैलकुलेटर, चिन्ह व पिरामिड टूलबार'}</span>
+            <span>{medium === 'english' ? 'Math Assistant, Calculator & Symbols' : 'गणित कैलकुलेटर व चिन्ह टूलबार'}</span>
             <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
               {medium === 'english' ? 'Tap to Insert' : 'क्लिक करके जोड़ें'}
             </span>
@@ -339,15 +342,12 @@ export function MathSymbolEditorToolbar({
         <div className="p-3 space-y-2.5">
           {/* Category Tabs (Cleanly Styled - NO UGLY SCROLLBAR) */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {/* 1. Calculator Tab (Opens in Side Popup) */}
+            {/* 1. Calculator Button (Toggles Side Popup Only) */}
             <button
               type="button"
-              onClick={() => {
-                setActiveTab('calculator');
-                setIsCalcPopupOpen(true);
-              }}
+              onClick={() => setIsCalcPopupOpen((prev) => !prev)}
               className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                activeTab === 'calculator' || isCalcPopupOpen
+                isCalcPopupOpen
                   ? 'bg-amber-500 text-slate-950 shadow-sm ring-2 ring-amber-400/50'
                   : isDarkMode
                   ? 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700'
@@ -361,22 +361,6 @@ export function MathSymbolEditorToolbar({
               </span>
             </button>
 
-            {/* 2. Pyramid & Visual Box Designer Tab */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('pyramid_designer')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'pyramid_designer'
-                  ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400/50'
-                  : isDarkMode
-                  ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700'
-                  : 'bg-white hover:bg-indigo-50 text-indigo-800 border border-indigo-200 shadow-2xs font-bold'
-              }`}
-            >
-              <span>🔺</span>
-              <span>{medium === 'english' ? 'Number Pyramid' : 'पिरामिड पहेली'}</span>
-            </button>
-
             {/* Symbol Groups Tabs */}
             {SYMBOL_GROUPS.map((grp) => {
               const isActive = activeTab === grp.id;
@@ -385,7 +369,7 @@ export function MathSymbolEditorToolbar({
                   key={grp.id}
                   type="button"
                   onClick={() => setActiveTab(grp.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400/30'
                       : isDarkMode
@@ -400,123 +384,8 @@ export function MathSymbolEditorToolbar({
             })}
           </div>
 
-          {/* TAB CONTENT: 1. KID CALCULATOR */}
-          {activeTab === 'calculator' && (
-            <div
-              className={`p-3.5 rounded-2xl border space-y-3 animate-in fade-in duration-200 ${
-                isDarkMode ? 'bg-slate-950 border-slate-700' : 'bg-white border-amber-200 shadow-sm'
-              }`}
-            >
-              {/* Calculator Display */}
-              <div
-                className={`p-3 rounded-xl border flex flex-col items-end justify-center min-h-[56px] ${
-                  isDarkMode
-                    ? 'bg-slate-900 border-slate-800 text-white'
-                    : 'bg-slate-100 border-slate-200 text-slate-900'
-                }`}
-              >
-                <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-full">
-                  {calcExpr || '0'}
-                </div>
-                <div className="text-lg sm:text-xl font-mono font-black text-amber-600 dark:text-amber-400">
-                  {calcResult ? `= ${calcResult}` : calcExpr ? `= ${evaluateCalc(calcExpr) || '...'}` : '0'}
-                </div>
-              </div>
-
-              {/* Calculator Keypad */}
-              <div className="grid grid-cols-5 gap-1.5">
-                {[
-                  { label: 'C', val: 'C', color: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200' },
-                  { label: '⌫', val: '⌫', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
-                  { label: '(', val: '(', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
-                  { label: ')', val: ')', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
-                  { label: '÷', val: ' ÷ ', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200' },
-
-                  { label: '7', val: '7' },
-                  { label: '8', val: '8' },
-                  { label: '9', val: '9' },
-                  { label: '×', val: ' × ', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200' },
-                  { label: '√', val: '√', color: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300' },
-
-                  { label: '4', val: '4' },
-                  { label: '5', val: '5' },
-                  { label: '6', val: '6' },
-                  { label: '−', val: ' - ', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200' },
-                  { label: '^', val: '^', color: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300' },
-
-                  { label: '1', val: '1' },
-                  { label: '2', val: '2' },
-                  { label: '3', val: '3' },
-                  { label: '+', val: ' + ', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200' },
-                  { label: '%', val: '%', color: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300' },
-
-                  { label: '0', val: '0' },
-                  { label: '.', val: '.' },
-                  { label: '00', val: '00' },
-                  { label: '=', val: '=', color: 'bg-amber-500 text-slate-950 font-black col-span-2 shadow-xs' },
-                ].map((btn, bIdx) => (
-                  <button
-                    key={bIdx}
-                    type="button"
-                    onClick={() => handleCalcClick(btn.val)}
-                    className={`h-10 sm:h-11 rounded-xl font-mono text-sm sm:text-base font-bold flex items-center justify-center border transition-all active:scale-95 ${
-                      btn.color ||
-                      (isDarkMode
-                        ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700'
-                        : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-2xs')
-                    }`}
-                  >
-                    {btn.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Insert to Answer Buttons */}
-              <div className="flex items-center justify-between gap-2 pt-1 border-t border-black/5 dark:border-white/5">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                  {medium === 'english' ? 'Insert into solution:' : 'उत्तर में डालें:'}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleInsertCalcResult(false)}
-                    disabled={!calcResult && !calcExpr}
-                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1 shadow-xs transition-all"
-                  >
-                    {calcCopied ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3" />}
-                    <span>{medium === 'english' ? 'Result only' : 'केवल उत्तर (Result)'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleInsertCalcResult(true)}
-                    disabled={!calcResult && !calcExpr}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs flex items-center gap-1 shadow-xs transition-all"
-                  >
-                    <span>📥</span>
-                    <span>{medium === 'english' ? 'Step (Expr = Result)' : 'पूरा स्टेप (50 - 22 = 28)'}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB CONTENT: 2. PYRAMID DESIGNER WIDGET */}
-          {activeTab === 'pyramid_designer' && (
-            <div className="animate-in fade-in duration-200">
-              <MathPyramidWidget
-                onInsertToAnswer={(txt) => handleInsertSymbol('\n' + txt + '\n')}
-                isDarkMode={isDarkMode}
-                medium={medium}
-                presetType="pyramid1"
-              />
-            </div>
-          )}
-
-          {/* TAB CONTENT: 3. STANDARD SYMBOLS IN ACTIVE CATEGORY */}
-          {activeTab !== 'calculator' && activeTab !== 'pyramid_designer' && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          {/* TAB CONTENT: STANDARD SYMBOLS IN ACTIVE CATEGORY */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               {activeGroup.items.map((item, idx) => (
                 <button
                   key={idx}
@@ -545,10 +414,9 @@ export function MathSymbolEditorToolbar({
                 </button>
               ))}
             </div>
-          )}
 
           {/* Quick Common Power Pills (Always visible for quick access) */}
-          {activeTab !== 'powers' && activeTab !== 'calculator' && activeTab !== 'pyramid_designer' && (
+          {activeTab !== 'powers' && (
             <div className="flex items-center gap-1.5 pt-1 border-t border-black/5 dark:border-white/5 text-[11px] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               <span className="font-bold text-slate-400 shrink-0">
                 {medium === 'english' ? 'Quick Powers:' : 'त्वरित पावर्स:'}

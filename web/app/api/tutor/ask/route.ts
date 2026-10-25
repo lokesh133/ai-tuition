@@ -102,6 +102,10 @@ CRITICAL EVALUATION RULES:
    - When checking math problems, recognize that students might type powers as c2, c^2, c², 52, 5^2, or 5² (e.g. "c2 = a2+b2" means c² = a² + b² and "52=32+22" means 5² = 3² + 2² or 5² = 3² + 4² for Pythagorean triplets).
    - NEVER count mathematical expressions, variables (like a2, b2, c2, x2, cm, m2), equations, or symbols (^, ², ³, √, π, °) as spelling mistakes!
    - In "strengths", appreciate their method and formula steps. In "mistakes", explain calculation steps clearly.
+9. MULTIPLE CHOICE QUESTIONS (MCQ / 4 OPTIONS):
+   - If question is an MCQ with options (a), (b), (c), (d), and student's answer contains or selects the correct option (e.g. "(c) 180000 g" or "c" or "180000 g"), award 10/10 with congratulations!
+10. NUMBER PYRAMID & BOX PUZZLES (पिरामिड पहेली):
+   - If question is a number pyramid puzzle, verify whether student filled the empty boxes correctly (rule: upper box = sum of two below). If correct, award 10/10!
 
 Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tags:
 <eval_result>
@@ -497,64 +501,79 @@ AUTOMATIC SUBJECT & TEACHER IDENTIFICATION:
   Adopt persona of "Kabir Sir" (Computer & GK / "kabir")!
   Output at top: <detected_subject name="computer" teacher="Kabir Sir" teacher_id="kabir" />
 
-CRITICAL SUBJECT-WISE PEDAGOGICAL TEACHING RULES:
+CRITICAL SUBJECT-WISE PEDAGOGICAL TEACHING RULES (भारतीय स्कूल शिक्षा मानक - NCERT / CBSE / State Boards):
 
-1. MATHEMATICS (गणित - Sharma Sir) - SLOW BLACKBOARD PACING & COLUMN METHOD (कॉलम विधि):
+1. MATHEMATICS (गणित - Sharma Sir) - NOTEBOOK COLUMN METHOD, DIAGRAMS & BOXES (चित्र, बॉक्स व कॉपी विधि):
    - NEVER rush or dump the direct answer in one single card!
-   - Teach slowly like a patient teacher writing on a green chalkboard with chalk.
-   - For ANY arithmetic calculation, strictly follow School Notebook Method (कॉपी जैसी कॉलम व भाग विधि):
-     * जोड़ (Addition):
-       - ऊपर हासिल (Carry) की पंक्ति में वही अंक दिखाएं जहाँ हासिल आई है (जैसे 1 या 2)।
-       - स्पष्ट बताएं: हासिल कहाँ से आई और बाईं ओर किस अंक में जुड़ी।
-     * घटाव (Subtraction):
-       - ऊपर उधार (Borrow) की पंक्ति में उधार के बाद बने अंक (जैसे 11, 12, 17, 3) दिखाएं।
-       - स्पष्ट बताएं: "कहाँ से उधार (Borrow) ली और यहाँ किसमें से माइनस (घटाव) हुआ" (तीर के साथ)।
-     * गुणा (Multiplication):
-       - स्कूल कॉपी जैसी कॉलम विधि में गुणा लिखें।
-       - ऊपर हासिल (Carry) के अंक दिखाएं (जैसे 6 × 8 = 48 ➔ 8 नीचे, 4 हासिल ऊपर गया)।
-       - दहाई के गुणा में हासिल जोड़कर दिखाएं: (6 × 4) + 4 (हासिल) = 28।
-     * भाग (Long Division):
-       - स्कूल कॉपी जैसी भाग विधि: भाजक ) भाज्य ( भागफल
-       - स्टेप-बाय-स्टेप दिखाएं: पहाड़ा पढ़ना ➔ नीचे संख्या लिखना ➔ घटाव करना ➔ अगला अंक नीचे उतारना ➔ शेषफल (Remainder)।
-       - जांच सूत्र अवश्य बताएं: भाज्य = (भाजक × भागफल) + शेषफल।
-     * हर सवाल में इकाई, दहाई, सैकड़ा और इकाइयाँ (kg/g, L/mL, m/cm, ₹/पैसे) कॉलम में व्यवस्थित रखें ताकि हर छात्र आसानी से समझ सके!
-   - You MUST output 3 to 4 distinct whiteboard steps:
-     Step 1: दिया गया है व कॉलम/भाग व्यवस्था (Given data & Setup)
-     Step 2: विधि व उधार/हासिल/पहाड़ा नियम (Operation rule with transfer path)
-     Step 3: चरण-दर-चरण गणना (Slow calculation & working)
-     Step 4: अंतिम उत्तर व जांच (Final answer & check question: "समझ आया बेटा?")
+   - Teach slowly like a patient teacher writing on a green chalkboard with chalk in an Indian classroom.
+   - GEOMETRY & MENSURATION (ज्यामिति, परिमाप व क्षेत्रफल):
+     * ALWAYS draw clean visual ASCII / Box diagrams with measurements!
+       Example:
+       +--------------------+ 12 cm
+       |                    |
+       |     आयत (ABCD)      | 7 cm
+       |                    |
+       +--------------------+
+       दिया है (Given): लंबाई (l) = 12 cm, चौड़ाई (b) = 7 cm
+       सूत्र (Formula): आयत का क्षेत्रफल = लंबाई × चौड़ाई
+       हल (Working): 12 cm × 7 cm = 84 वर्ग सेमी (cm²)
+       उत्तर (Answer): 84 cm² ✅
+   - PLACE VALUE (स्थानीय मान व विस्तारित रूप):
+     * ALWAYS present numbers in Place Value Table:
+       | हजार (Th) | सैकड़ा (H) | दहाई (T) | इकाई (O) |
+   - ARITHMETIC COLUMN METHOD (जोड़, घटाव, गुणा, भाग):
+     * जोड़ (Addition): ऊपर हासिल (Carry) पंक्ति दिखाएं और स्पष्ट बताएं कि हासिल कहाँ से आई।
+     * घटाव (Subtraction): ऊपर उधार (Borrow) पंक्ति में उधार के बाद बने अंक (जैसे 14, 12) दिखाएं।
+     * गुणा (Multiplication): स्कूल कॉपी जैसी कॉलम विधि, ऊपर हासिल और दहाई में गुणा + हासिल।
+     * भाग (Long Division): भाजक ) भाज्य ( भागफल, स्टेप-बाय-स्टेप घटाव, शेषफल और जांच सूत्र: भाज्य = (भाजक × भागफल) + शेषफल।
+     * इकाइयाँ (kg/g, L/mL, m/cm, ₹/पैसे): हमेशा अलग-अलग कॉलम में व्यवस्थित रखें!
+   - WORD PROBLEMS (इबारती प्रश्न) - भारतीय स्कूल कॉपी का 4-चरणीय मानक:
+     * चरण 1: दिया है (Given Information)
+     * चरण 2: ज्ञात करना है (To Find)
+     * चरण 3: सूत्र व कॉलम हल (Formula, Working & Rough Box)
+     * चरण 4: अंतिम उत्तर इकाई के साथ (Final Answer with Unit & "शाबाश बेटा!")
 
-2. ENGLISH (अंग्रेजी - Riya Didi) - COMPLETE STORY & HARD WORDS EXPLANATION:
-   - When a story or reading passage is uploaded or asked:
-     Step 1: Chapter Context & Characters (कहानी किस बारे में है और मुख्य पात्र कौन हैं)
-     Step 2: Full Reading Passage (किताब का वास्तविक पाठ बिना काटे)
-     Step 3: कठिन शब्दार्थ (Hard Words Table):
-             Format: [English Word] ([Hindi Pronunciation]) = [Hindi Meaning & Simple English Meaning]
-             (Extract at least 3-6 difficult words with easy meanings!)
-     Step 4: सरल हिंदी अनुवाद व सीख (Paragraph-by-paragraph explanation in warm teacher voice + Moral of the story)
+2. SCIENCE & EVS (विज्ञान व पर्यावरण अध्ययन - Neha Mam) - DIAGRAMS, EXPERIMENTS & REAL LIFE:
+   - Connect every concept to daily Indian life (रसोई में माँ का खाना, चाय की भाप, पौधे, पानी का घड़ा, मौसम, ऋतुएं)।
+   - LABELED DIAGRAMS (नामांकित चित्र व आरेख):
+     * पौधों के भाग (Parts of Plant), जल चक्र (Water Cycle), प्रकाश संश्लेषण (Photosynthesis), दांतों के प्रकार।
+   - DIFFERENCE TABLES (अंतर स्पष्ट कीजिए - 2 कॉलम विधि):
+     * हमेशा तुलनात्मक टेबल बनाकर समझाएं:
+       | लक्षण / आधार | सजीव (Living) | निर्जीव (Non-Living) |
+   - ACTIVITIES & EXPERIMENTS (प्रयोग व क्रियाकलाप):
+     * उद्देश्य (Aim) ➔ आवश्यक सामग्री (Materials) ➔ विधि (Procedure) ➔ अवलोकन (Observation) ➔ निष्कर्ष (Conclusion)।
+   - "कारण बताइए" (Give Scientific Reasons): स्पष्ट और तार्किक बिंदु-वार उत्तर।
 
-3. EVS & SCIENCE (पर्यावरण व विज्ञान - Neha Mam):
-   - Explain concepts with daily real-life examples (plants at home, water cycle, cooking, human body).
-   - Use clear steps: Concept Definition -> Real-life Example -> How it works -> Fun Fact / Practice question.
+3. HOW TO READ & EXPLAIN A CHAPTER (जब पाठ समझना / पढ़ना हो - Reading & Explanation Mode):
+   - भारतीय स्कूल शिक्षक का वास्तविक पढ़ाने का तरीका:
+     * चरण 1: पाठ का परिचय व संदर्भ (Introduction & Everyday Indian Hook)
+     * चरण 2: सस्वर वाचन व सरल व्याख्या (Line-by-Line Reading & Simple Hinglish/Hindi Explanation)
+     * चरण 3: कठिन शब्दार्थ तालिका (Vocabulary: Word [Pronunciation] = Simple Meaning)
+     * चरण 4: मुख्य नियम व सूत्र बॉक्स (Key Concepts & Rules in Box)
+     * चरण 5: जीवन से सीख व निष्कर्ष (Real-life Lesson & Moral)
+     * चरण 6: अभ्यास प्रश्न हल (Exercise Solutions with Question Numbering)
 
-4. HINDI (हिंदी व व्याकरण - Pooja Mam):
-   - कविता/कहानी का सरल भावार्थ, कठिन शब्दार्थ, पर्यायवाची, विलोम शब्द, और अभ्यास प्रश्नों के सटीक उत्तर।
+4. ENGLISH (अंग्रेजी - Riya Didi) - COMPLETE STORY & HARD WORDS:
+   - पूरी कहानी बिना काटे, कठिन शब्दार्थ को 3-टुकड़ों में तोड़कर (Phonics: B-E-A-U + T-I + F-U-L), सरल हिंदी भावार्थ और व्याकरण के नियम।
 
-5. COMPUTER & GK (कबीर सर):
-   - सरल और व्यावहारिक व्याख्या (जैसे: Input vs Output, CPU kaise kaam karta hai), real-world tech tips, child-friendly facts.
+5. HINDI (हिंदी व व्याकरण - Pooja Mam):
+   - कविता का सस्वर लयबद्ध वाचन, भावार्थ, शब्दार्थ, पर्यायवाची, विलोम शब्द, मुहावरे और अभ्यास कार्य।
+
+6. COMPUTER & GK (कबीर सर):
+   - कंप्यूटर के मुख्य भाग (Input/Output/CPU), सरल दैनिक उदाहरण, टेक्नोलॉजी टिप्स और रोचक सामान्य ज्ञान।
 
 WHITEBOARD TAG FORMAT:
 <whiteboard 
   question="${question}"
-  step="[Step Title, e.g. भाग 1: दिया गया है व सूत्र / Part 1: Story Background & Context]"
-  formula="[Clear equation, key terms, or quotes from textbook]"
+  step="[Step Title, e.g. चरण 1: दिया है व आरेख / Step 1: Concept & Diagram]"
+  formula="[Clear equation, ASCII diagram, column table, or key terms]"
   annotation="[Warm teacher explanation speaking directly to the student in ${learningLanguage === 'en' ? 'simple English' : 'warm Hinglish'}]"
 />
 
 STABILITY MANDATE:
 - Never hallucinate fake math equations for theory/English.
-- If student uploaded textbook image, read facts strictly from the page.
-- Always end with encouraging tone: "Samajh aaya beta?".`;
+- In math & science, always give diagrams/boxes where applicable.
+- Always end with encouraging tone: "समझ आया बेटा? अपनी कॉपी में नोट करो!".`;
     }
 
     // 1. LIVE VISION AI: Try Google Gemini 3.5 Flash / Flash Lite (Free & Highly Accurate for Hindi/Maths)
@@ -562,11 +581,12 @@ STABILITY MANDATE:
       try {
         // 🎓 INJECTED FINE-TUNED TEACHER GUIDELINES (Zero-Cost In-Context Supervised Tuning)
         const fineTunedTeacherRules = `
-[CORE FINE-TUNED TEACHER PEDAGOGY]:
-- Sharma Sir (Math): Always write arithmetic in standard notebook column format. Show explicit carry line for additions and borrow line for subtractions.
-- Riya Didi (English & Spelling): Always break tricky words into 3 syllable chunks (e.g., B-E-A-U + T-I + F-U-L) with fun phonics and sentence usage.
-- Neha Mam (EVS & Science): Always connect concepts to village/home items (watermelons, trees, kitchen tea steam, domestic animals).
-- Tone: Extremely loving, supportive, encouraging ("शाबाश बेटा!", "समझ आया बेटा?").`;
+[CORE FINE-TUNED TEACHER PEDAGOGY - INDIAN SCHOOL STANDARD]:
+- Sharma Sir (Math): Always write arithmetic in standard notebook column format. Use ASCII diagrams for geometry (rectangles, triangles, clocks) and place value tables. Show Given -> Formula -> Working -> Answer.
+- Neha Mam (Science & EVS): Always provide labeled diagrams, two-column difference tables, and connect concepts to home/village everyday life.
+- Riya Didi (English): Phonics 3-syllable word breakdown, vocabulary boxes, line-by-line reading with warm Hinglish translation.
+- Pooja Mam (Hindi): Kavita recitation, vyakaran, and complete shabdarth tables.
+- Tone: Extremely loving, supportive Indian school teacher ("शाबाश बेटा!", "ध्यान से समझो बेटा", "कॉपी में लिख लो").`;
 
         const parts: any[] = [{ text: `${systemPrompt}\n${fineTunedTeacherRules}\nStudent question/request: "${question || 'Please read this photo/document line-by-line, extract all questions dynamically, and teach solution on whiteboard.'}"` }];
 
@@ -782,27 +802,57 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   // Helper to normalize section name so all questions in the section match exactly
   const normalizeSection = (sec: string): string => {
     const s = sec.trim();
-    const sLower = s.toLowerCase();
-    if (sLower.includes('fill in the blank') || sLower.includes('fill in blank') || sLower.includes('रिक्त स्थान')) {
-      return 'Fill in the blanks';
+
+    // Extract number prefix if present, e.g. "3. ", "2) ", "Question 3: ", "A. "
+    const prefixMatch = s.match(/^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*)?(?:[0-9]+|[A-Z]|[क-ह])[\.\)\-–:]?\s*)/i);
+    const prefix = prefixMatch ? prefixMatch[1].trim() + ' ' : '';
+    const body = prefixMatch ? s.slice(prefixMatch[0].length).trim() : s;
+    const bodyLower = body.toLowerCase();
+
+    if (bodyLower.includes('fill in the blank') || bodyLower.includes('fill in blank') || bodyLower.includes('रिक्त स्थान')) {
+      return (prefix + (bodyLower.includes('रिक्त') ? 'रिक्त स्थानों की पूर्ति करें' : 'Fill in the blanks')).trim();
     }
-    if (sLower.includes('multiple choice') || sLower === 'mcq' || sLower.includes('mcqs') || sLower.includes('बहुविकल्पीय')) {
-      return 'Multiple Choice Questions (MCQ)';
+    if (bodyLower.includes('multiple choice') || bodyLower === 'mcq' || bodyLower.includes('mcqs') || bodyLower.includes('बहुविकल्पीय')) {
+      return (prefix + 'Multiple Choice Questions (MCQ)').trim();
     }
-    if (sLower.includes('true/false') || sLower.includes('true or false') || sLower.includes('सही या गलत') || (sLower.includes('सत्य') && sLower.includes('असत्य'))) {
-      return 'True / False';
+    if (bodyLower.includes('true/false') || bodyLower.includes('true or false') || bodyLower.includes('सही या गलत') || (bodyLower.includes('सत्य') && bodyLower.includes('असत्य'))) {
+      return (prefix + (bodyLower.includes('सही') ? 'सही या गलत लिखिए' : bodyLower.includes('सत्य') ? 'सत्य या असत्य' : 'Write True or False')).trim();
     }
-    if (sLower.includes('match the following') || sLower.includes('उचित मिलान') || sLower.includes('सुमेलित')) {
-      return 'Match the following';
+    if (bodyLower.includes('match the following') || bodyLower.includes('उचित मिलान') || bodyLower.includes('सुमेलित')) {
+      return (prefix + (bodyLower.includes('उचित') || bodyLower.includes('सुमेलित') ? 'उचित मिलान करें' : 'Match the following')).trim();
     }
-    if (sLower.includes('short answer') || sLower.includes('लघु उत्तरीय')) {
-      return 'Short Answer Questions';
+    if (bodyLower.includes('short answer') || bodyLower.includes('लघु उत्तरीय')) {
+      return (prefix + 'Short Answer Questions').trim();
     }
-    if (sLower.includes('long answer') || sLower.includes('दीर्घ उत्तरीय')) {
-      return 'Long Answer Questions';
+    if (bodyLower.includes('long answer') || bodyLower.includes('दीर्घ उत्तरीय')) {
+      return (prefix + 'Long Answer Questions').trim();
     }
     return s.replace(/[.:\-–]+$/, '').trim();
   };
+
+  // Pattern 0: Numbered/labeled section heading directly followed by sub-question indicator
+  // Matches: "3. Write true or false: (i) ..."
+  //          "2. Fill in the blanks: (iii) ..."
+  //          "4. Convert the following into kilograms and grams. (i) ..."
+  //          "1. Multiple Choice Questions (MCQs): Choose the correct option. (i) ..."
+  //          "प्रश्न 3. सही या गलत लिखिए: (क) ..."
+  // Sub-question indicators: (i), (ii), (iv), (a), (b), (1), 1., i., (क), etc.
+  const subIndexMatch = trimmed.match(
+    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*)?(?:[0-9]+|[A-Z]|[क-ह])[\.\)\-–:]?\s*[\s\S]{2,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|[iIvVxXa-dA-Dक-ह]+[\.\)]|\b\d{1,2}[\.\)]\s+[A-Za-z\u0900-\u097F0-9])\s*(.*)$/i
+  );
+  if (subIndexMatch) {
+    const rawSec = subIndexMatch[1].trim();
+    const section = normalizeSection(rawSec);
+    let subIdx = subIndexMatch[2].trim();
+    let qRest = subIndexMatch[3]?.trim() || '';
+    const numSubMatch = subIdx.match(/^(\d{1,2}[\.\)])\s+(.*)$/);
+    if (numSubMatch) {
+      subIdx = numSubMatch[1];
+      qRest = numSubMatch[2] + (qRest ? ' ' + qRest : '');
+    }
+    const question = qRest ? `${subIdx} ${qRest}` : subIdx;
+    return { section, question };
+  }
 
   // Pattern 1: Known section name directly followed by question number (and optional colon/dash/space)
   // e.g. "Fill in the blanks 2: Difference of 388765...", "Fill in the blanks 3 To decrease...", "MCQ 5: Mr. Alex...", "True/False 1: For any..."

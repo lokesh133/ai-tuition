@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import {
   X,
   Printer,
@@ -33,6 +34,11 @@ import {
   RefreshCw,
   CheckSquare,
   Square,
+  Search,
+  List,
+  Grid,
+  Filter,
+  ArrowLeft,
 } from 'lucide-react';
 import { getCurriculum, Chapter, SubjectCurriculum, fetchDynamicCurriculum } from '@/lib/curriculum-data';
 
@@ -88,6 +94,7 @@ interface SundayTestSeriesModalProps {
   existingUploadedFiles?: Array<{ id: string; name: string; url: string; type?: string }>;
   pageDataMap?: Record<string, { whiteboardSteps?: any[]; detectedQuestions?: string[]; detectedChapter?: any; heading?: string }>;
   worksheetHistory?: any[];
+  isFullPage?: boolean;
 }
 
 interface TestQuestion {
@@ -157,6 +164,8 @@ function cleanQuestionText(raw: string): string {
   text = text.replace(/\[\s*(?:whatsapp|image|img|screenshot|पेज|page)[^\]]*\]/gi, '').trim();
   // Strip leading question markers: e.g. "Q.1", "Q1:", "प्रश्न 1:", "#1", "1)", "1.", "(1)"
   text = text.replace(/^(?:प्रश्न\s*\d+|q\s*\.?\s*\d+|\#\d+|\(?\d+[\.\)]|\([0-9a-zA-Z]\))\s*[:\-–]?\s*/i, '').trim();
+  // Strip redundant heading prefixes e.g. "पेज #1: पेज #1 हल:" or "पेज #1 हल:" or "गणित हल:"
+  text = text.replace(/^(?:पेज\s*#?\d*\s*[:\-–]?\s*)?(?:पेज\s*#?\d*\s*हल|गणित\s*हल|शीट\s*हल|वर्कशीट\s*हल)\s*[:\-–]\s*/i, '').trim();
   // Remove wrapping quotes
   text = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
   return text;
@@ -207,18 +216,29 @@ function classifyQuestion(text: string): {
   };
 }
 
-// Student-friendly page label cleaner (removes raw "WhatsApp Image 2026-10...", "IMG-", camera file extensions)
+// Student-friendly page label cleaner (ensures page names are strictly short labels like "पेज #1", never full questions)
 function getStudentFriendlyPageName(rawName?: string, index: number = 0, heading?: string): string {
-  if (heading && !/whatsapp|screenshot|img[-_0-9]|image[-_0-9]/i.test(heading) && heading.trim().length > 3) {
-    const cleanHeading = heading.replace(/^(Story|Chapter|अध्याय|पाठ|पेज\s*#?\d*)\s*[:\-–]\s*/i, '').trim();
-    return `पेज #${index + 1}: ${cleanHeading}`;
+  if (
+    heading &&
+    heading.trim().length > 2 &&
+    heading.trim().length <= 30 &&
+    !/[?¿]/.test(heading) &&
+    !/whatsapp|screenshot|img[-_0-9]|image[-_0-9]|choose the|find the|calculate|solve|multiply|divide|answer the|हल:/i.test(heading)
+  ) {
+    let cleanHeading = heading
+      .replace(/^(Story|Chapter|अध्याय|पाठ|पेज\s*#?\d*|शीट\s*#?\d*)\s*(हल)?\s*[:\-–]\s*/i, '')
+      .replace(/^पेज\s*#?\d*\s*(हल)?\s*[:\-–]?\s*/i, '')
+      .trim();
+    if (cleanHeading.length > 0 && cleanHeading.length <= 22) {
+      return `पेज #${index + 1}: ${cleanHeading}`;
+    }
   }
   if (!rawName) return `पेज #${index + 1}`;
   if (/whatsapp|screenshot|img[-_0-9]|image[-_0-9]|\.jpe?g|\.png|\.webp/i.test(rawName)) {
     return `पेज #${index + 1} (अपलोड कॉपी)`;
   }
   const clean = rawName.replace(/\.[^/.]+$/, '').trim();
-  if (clean.length > 25) return `पेज #${index + 1}`;
+  if (clean.length > 22) return `पेज #${index + 1}`;
   return clean;
 }
 
@@ -235,6 +255,7 @@ export default function SundayTestSeriesModal({
   existingUploadedFiles,
   pageDataMap,
   worksheetHistory,
+  isFullPage = false,
 }: SundayTestSeriesModalProps) {
   // Navigation tabs in modal: 'configure' | 'exam' | 'result' | 'history'
   const [activeTab, setActiveTab] = useState<'configure' | 'exam' | 'result' | 'history'>('configure');
@@ -252,6 +273,17 @@ export default function SundayTestSeriesModal({
   const [newQuestionInputs, setNewQuestionInputs] = useState<Record<string, string>>({});
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
   const [editingQuestionText, setEditingQuestionText] = useState<string>('');
+
+  // Enhanced multi-file management states (for 17+ uploaded files)
+  const [fileSearchQuery, setFileSearchQuery] = useState<string>('');
+  const [fileViewMode, setFileViewMode] = useState<'grid' | 'compact'>('grid');
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    fileName: string;
+  } | null>(null);
+  const [rangeStart, setRangeStart] = useState<number>(1);
+  const [rangeEnd, setRangeEnd] = useState<number>(5);
 
   // Combine files from props + localStorage + modal uploads
   const availableExamFiles = useMemo<SelectableExamFile[]>(() => {
@@ -411,10 +443,141 @@ export default function SundayTestSeriesModal({
   // Selected file IDs for test generation
   const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
 
-  // Automatically select existing files when available and toggle to 'uploaded' if available
+  // --- PREVIOUS WORKS (पिछला काम) SYSTEM: e.g. 19 saved works ---
+  const historyWorks = useMemo(() => {
+    let rawList: any[] = [];
+    if (worksheetHistory && Array.isArray(worksheetHistory) && worksheetHistory.length > 0) {
+      rawList = worksheetHistory;
+    } else if (typeof window !== 'undefined') {
+      try {
+        const h = localStorage.getItem('vidya_worksheet_history_v1');
+        if (h) rawList = JSON.parse(h);
+      } catch {}
+    }
+
+    if (!Array.isArray(rawList)) return [];
+
+    // Sort chronologically ascending so work #1 is oldest and work #N is latest (e.g. #19)
+    const sorted = [...rawList].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    return sorted.map((rec, idx) => {
+      const workNumber = idx + 1; // 1 to 19
+
+      const rawQ: string[] = [
+        ...(rec.detectedQuestions || []),
+      ];
+      if (rec.activeQuestion && isValidQuestionText(rec.activeQuestion)) {
+        rawQ.push(rec.activeQuestion);
+      }
+      if (rawQ.length === 0 && Array.isArray(rec.whiteboardSteps)) {
+        rec.whiteboardSteps.forEach((st: any) => {
+          if (st.question && isValidQuestionText(st.question)) rawQ.push(st.question);
+          else if (st.step && isValidQuestionText(st.step)) rawQ.push(st.step);
+        });
+      }
+      if (rawQ.length === 0 && rec.whiteboardHeading && isValidQuestionText(rec.whiteboardHeading)) {
+        rawQ.push(rec.whiteboardHeading);
+      }
+
+      const seenQ = new Set<string>();
+      const parsedQuestions: DetectedQuestionItem[] = [];
+      rawQ.forEach((rq, qIdx) => {
+        if (isValidQuestionText(rq)) {
+          const cleaned = cleanQuestionText(rq);
+          if (cleaned.length >= 4 && !seenQ.has(cleaned.toLowerCase())) {
+            seenQ.add(cleaned.toLowerCase());
+            const info = classifyQuestion(cleaned);
+            parsedQuestions.push({
+              id: `${rec.id}_q_${qIdx}`,
+              fileId: rec.id,
+              rawText: rq,
+              cleanText: cleaned,
+              type: info.type,
+              marks: info.marks,
+              options: info.options,
+              correctAnswer: info.correctAnswer,
+              selected: true,
+            });
+          }
+        }
+      });
+
+      return {
+        ...rec,
+        workNumber,
+        parsedQuestions,
+      };
+    });
+  }, [worksheetHistory]);
+
+  // Selected History Record IDs (काम #1 to #19)
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
+  // Sub-view toggle under Uploaded/History source: 'history' (Default if history records exist) | 'pages'
+  const [uploadSubTab, setUploadSubTab] = useState<'history' | 'pages'>('history');
+
+  // Auto-select latest history work (#19) by default when available
+  useEffect(() => {
+    if (historyWorks.length > 0) {
+      setSelectedHistoryIds((prev) => {
+        if (prev.length > 0) return prev;
+        // Default to latest work (e.g. Work #19)
+        return [historyWorks[historyWorks.length - 1].id];
+      });
+    }
+  }, [historyWorks]);
+
+  const handleToggleHistoryWork = (id: string) => {
+    setSelectedHistoryIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectOnlyHistoryWork = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedHistoryIds([id]);
+  };
+
+  const handleSelectAllHistoryWorks = () => {
+    setSelectedHistoryIds(historyWorks.map((w) => w.id));
+  };
+
+  const handleDeselectAllHistoryWorks = () => {
+    setSelectedHistoryIds([]);
+  };
+
+  // Helper to select specific numbered work, e.g. 18 or 19
+  const handleSelectWorkByNumber = (workNum: number) => {
+    const found = historyWorks.find((w) => w.workNumber === workNum);
+    if (found) setSelectedHistoryIds([found.id]);
+  };
+
+  // Helper to select both 18 and 19 together
+  const handleSelectWorksBoth = (num1: number, num2: number) => {
+    const ids: string[] = [];
+    const w1 = historyWorks.find((w) => w.workNumber === num1);
+    const w2 = historyWorks.find((w) => w.workNumber === num2);
+    if (w1) ids.push(w1.id);
+    if (w2) ids.push(w2.id);
+    if (ids.length > 0) setSelectedHistoryIds(ids);
+  };
+
+  // Helper to select latest N works
+  const handleSelectLatestHistoryWorks = (count: number) => {
+    if (historyWorks.length === 0) return;
+    const latest = historyWorks.slice(-count).map((w) => w.id);
+    setSelectedHistoryIds(latest);
+  };
+
+  // Automatically select existing files when available - if many files (e.g. 17-18), default to latest 3 to prevent overwhelming
   useEffect(() => {
     if (availableExamFiles.length > 0) {
-      setSelectedFileIds((prev) => (prev.length === 0 ? availableExamFiles.map((f) => f.id) : prev));
+      setSelectedFileIds((prev) => {
+        if (prev.length > 0) return prev;
+        if (availableExamFiles.length > 5) {
+          return availableExamFiles.slice(-3).map((f) => f.id);
+        }
+        return availableExamFiles.map((f) => f.id);
+      });
     }
   }, [availableExamFiles]);
 
@@ -422,6 +585,12 @@ export default function SundayTestSeriesModal({
     setSelectedFileIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+  };
+
+  // 1-Click: Select ONLY this file and deselect all other 17 files
+  const handleSelectOnlyFile = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedFileIds([id]);
   };
 
   const handleSelectAllFiles = () => {
@@ -432,7 +601,47 @@ export default function SundayTestSeriesModal({
     setSelectedFileIds([]);
   };
 
-  // Upload handler with AI Vision OCR scanning for exact question detection
+  // Select latest N files (e.g., latest 1, latest 3, latest 5)
+  const handleSelectLatestFiles = (count: number) => {
+    if (availableExamFiles.length === 0) return;
+    const latest = availableExamFiles.slice(-count).map((f) => f.id);
+    setSelectedFileIds(latest);
+  };
+
+  // Select a range of files (e.g. pages 1 to 5)
+  const handleSelectRangeFiles = (startIdx: number, endIdx: number) => {
+    if (availableExamFiles.length === 0) return;
+    const min = Math.max(0, Math.min(startIdx - 1, availableExamFiles.length - 1));
+    const max = Math.max(min, Math.min(endIdx - 1, availableExamFiles.length - 1));
+    const rangeIds = availableExamFiles.slice(min, max + 1).map((f) => f.id);
+    setSelectedFileIds(rangeIds);
+  };
+
+  // Invert current file selection
+  const handleInvertFileSelection = () => {
+    const currentSet = new Set(selectedFileIds);
+    const inverted = availableExamFiles.filter((f) => !currentSet.has(f.id)).map((f) => f.id);
+    setSelectedFileIds(inverted);
+  };
+
+  // Filtered available files based on search query (for finding 1 page out of 17+)
+  const filteredAvailableFiles = useMemo(() => {
+    if (!fileSearchQuery.trim()) return availableExamFiles;
+    const q = fileSearchQuery.toLowerCase().trim();
+    return availableExamFiles.filter((f, idx) => {
+      const pageNumStr = `${idx + 1}`;
+      const nameMatch = f.name?.toLowerCase().includes(q);
+      const chapterMatch = f.chapterTitle?.toLowerCase().includes(q);
+      const numMatch =
+        pageNumStr === q ||
+        `पेज ${pageNumStr}`.toLowerCase().includes(q) ||
+        `पेज #${pageNumStr}`.toLowerCase().includes(q) ||
+        `page ${pageNumStr}`.toLowerCase().includes(q);
+      return nameMatch || chapterMatch || numMatch;
+    });
+  }, [availableExamFiles, fileSearchQuery]);
+
+  // Upload handler with AI Vision OCR scanning for exact question detection (supports 17+ bulk uploads)
   const handleModalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -463,13 +672,22 @@ export default function SundayTestSeriesModal({
 
     if (newFiles.length > 0) {
       setModalUploadedFiles((prev) => [...prev, ...newFiles]);
-      setSelectedFileIds((prev) => [...prev, ...newFiles.map((f) => f.id)]);
+      // Select the newly uploaded files
+      setSelectedFileIds(newFiles.map((f) => f.id));
       setTestSourceMode('uploaded');
 
-      // AI Reading: Scan new files to extract real questions
+      // AI Reading: Scan new files with live progress tracking
       setIsScanningFiles(true);
-      for (const nf of newFiles) {
+      for (let i = 0; i < newFiles.length; i++) {
+        const nf = newFiles[i];
         if (!nf.url) continue;
+
+        setUploadProgress({
+          current: i + 1,
+          total: newFiles.length,
+          fileName: nf.name || `पेज #${i + 1}`,
+        });
+
         try {
           const askRes = await fetch('/api/tutor/ask', {
             method: 'POST',
@@ -534,6 +752,7 @@ export default function SundayTestSeriesModal({
           console.error('Scan error for file:', nf.id, scanErr);
         }
       }
+      setUploadProgress(null);
       setIsScanningFiles(false);
     }
 
@@ -865,25 +1084,28 @@ export default function SundayTestSeriesModal({
     setSelectedChapterNumbers([activeSubject.chapters[0].chapterNumber]);
   };
 
-  // 1. GENERATE TEST PAPER FROM SELECTED CHAPTERS AND/OR UPLOADED FILES
+  // 1. GENERATE TEST PAPER FROM SELECTED CHAPTERS, PREVIOUS WORKS (#18, #19), AND/OR UPLOADED FILES
   const handleGenerateExam = () => {
     const isUsingChapters = testSourceMode === 'chapters' || testSourceMode === 'both';
     const isUsingUploaded = testSourceMode === 'uploaded' || testSourceMode === 'both';
+
+    const hasHistorySelected = selectedHistoryIds.length > 0;
+    const hasFilesSelected = selectedFileIds.length > 0;
 
     if (isUsingChapters && selectedChapterNumbers.length === 0 && !isUsingUploaded) {
       alert('कृपया कम से कम एक अध्याय चुनें।');
       return;
     }
-    if (isUsingUploaded && selectedFileIds.length === 0 && !isUsingChapters) {
-      alert('कृपया कम से कम एक अपलोड किया गया पेज या नोट्स चुनें।');
+    if (isUsingUploaded && !hasHistorySelected && !hasFilesSelected && !isUsingChapters) {
+      alert('कृपया कम से कम एक पिछला काम (#18, #19 आदि) या अपलोड किया गया पेज चुनें।');
       return;
     }
 
     const selectedUploadedQuestionsCount = isUsingUploaded
-      ? selectedFileIds.reduce((acc, fid) => acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0), 0)
+      ? (hasHistorySelected ? selectedHistoryIds.length : selectedFileIds.reduce((acc, fid) => acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0), 0))
       : 0;
 
-    if (isUsingUploaded && !isUsingChapters && selectedUploadedQuestionsCount === 0) {
+    if (isUsingUploaded && !isUsingChapters && !hasHistorySelected && selectedUploadedQuestionsCount === 0) {
       alert('कृपया अपलोड किए गए पेजों में से कम से कम एक सवाल चुनें (चेकबॉक्स टिक करें) जिसे आप टेस्ट में देना चाहते हैं।');
       return;
     }
@@ -1034,8 +1256,69 @@ export default function SundayTestSeriesModal({
       });
     }
 
-    // --- PART 2: QUESTIONS FROM SELECTED UPLOADED FILES ---
-    if (isUsingUploaded && selectedFileIds.length > 0) {
+    // --- PART 2A: QUESTIONS FROM SELECTED PREVIOUS WORKS (पिछला काम - e.g. काम #18, काम #19) ---
+    if (isUsingUploaded && selectedHistoryIds.length > 0) {
+      const chosenWorks = historyWorks.filter((w) => selectedHistoryIds.includes(w.id));
+
+      chosenWorks.forEach((work) => {
+        const workTag = `काम #${work.workNumber}`;
+        const workTitle = work.title || work.subjectName || workTag;
+
+        let addedCount = 0;
+        work.parsedQuestions.forEach((item) => {
+          if (!item.selected) return;
+          addedCount++;
+
+          const section = item.type === 'mcq'
+            ? 'A'
+            : item.type === 'fill'
+            ? 'B'
+            : 'C';
+
+          const sectionTitle = item.type === 'mcq'
+            ? (item.options?.length === 2 && item.options.includes('सत्य (True)')
+                ? "खंड 'क' : सही या गलत (True / False)"
+                : "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)")
+            : item.type === 'fill'
+            ? "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)"
+            : "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)";
+
+          questions.push({
+            id: `q_hw_${qIdCounter++}`,
+            chapterNumber: work.workNumber,
+            chapterTitle: workTitle,
+            section,
+            sectionTitle,
+            type: item.type,
+            marks: item.marks,
+            question: item.cleanText,
+            options: item.options,
+            correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध विस्तृत हल एवं उत्तर।' : 'मुख्य बिंदु एवं व्याख्या।'),
+            explanation: `यह प्रश्न आपके पिछले काम #${work.workNumber} (${workTitle}) से है।`,
+            sourceTag: workTag,
+          });
+        });
+
+        if (addedCount === 0) {
+          questions.push({
+            id: `q_hw_${qIdCounter++}`,
+            chapterNumber: work.workNumber,
+            chapterTitle: workTitle,
+            section: 'C',
+            sectionTitle: "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
+            type: 'solve',
+            marks: 5,
+            question: `काम #${work.workNumber} अभ्यास: "${workTitle}" के मुख्य प्रश्न व उदाहरण को चरणबद्ध तरीके से हल करें।`,
+            correctAnswer: 'चरणबद्ध विस्तृत हल एवं उत्तर।',
+            explanation: `यह प्रश्न आपके पिछले काम #${work.workNumber} से है।`,
+            sourceTag: workTag,
+          });
+        }
+      });
+    }
+
+    // --- PART 2B: QUESTIONS FROM SELECTED UPLOADED FILES ---
+    if (isUsingUploaded && (uploadSubTab === 'pages' || selectedHistoryIds.length === 0) && selectedFileIds.length > 0) {
       const chosenFiles = availableExamFiles.filter((f) => selectedFileIds.includes(f.id));
 
       chosenFiles.forEach((f, fIdx) => {
@@ -1070,7 +1353,7 @@ export default function SundayTestSeriesModal({
               options: item.options,
               correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध विस्तृत हल एवं उत्तर।' : 'मुख्य बिंदु एवं व्याख्या।'),
               explanation: `यह प्रश्न आपके द्वारा अपलोड किए गए ${cleanTitle} से है।`,
-              sourceTag: cleanTitle,
+              sourceTag: `पेज #${fIdx + 1}`,
             });
           });
         }
@@ -1078,7 +1361,7 @@ export default function SundayTestSeriesModal({
     }
 
     if (questions.length === 0) {
-      alert('कृपया कम से कम एक अध्याय या एक अपलोड किया गया पेज चुनें।');
+      alert('कृपया कम से कम एक अध्याय, पिछला काम (#18, #19 आदि) या अपलोड किया गया पेज चुनें।');
       return;
     }
 
@@ -1277,20 +1560,47 @@ export default function SundayTestSeriesModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0">
-      <div className="bg-white text-slate-900 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl relative my-4 sm:my-6 flex flex-col max-h-[92vh] print:max-h-none print:m-0 print:shadow-none print:w-full print:rounded-none">
-        {/* ================= MODAL HEADER (Hidden in Print) ================= */}
+    <div
+      className={
+        isFullPage
+          ? 'h-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col w-full print:h-auto print:overflow-visible print:bg-white print:text-slate-900'
+          : 'fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto print:p-0 print:bg-white print:fixed print:inset-0'
+      }
+    >
+      <div
+        className={
+          isFullPage
+            ? 'flex-1 flex flex-col w-full bg-slate-50 text-slate-900 overflow-hidden print:bg-white print:overflow-visible'
+            : 'bg-white text-slate-900 rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl relative my-4 sm:my-6 flex flex-col max-h-[92vh] print:max-h-none print:m-0 print:shadow-none print:w-full print:rounded-none'
+        }
+      >
+        {/* ================= MODAL / PAGE HEADER (Hidden in Print) ================= */}
         <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white px-5 py-3.5 flex items-center justify-between border-b border-white/10 shrink-0 print:hidden">
           <div className="flex items-center gap-3">
+            {isFullPage && (
+              <Link
+                href="/tutor"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition-all mr-1 hover:scale-105 active:scale-95"
+                title="ट्यूटर पर वापस जाएं"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">ट्यूटर पर वापस जाएं</span>
+              </Link>
+            )}
             <span className="text-2xl">📝</span>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-black">
                   साप्ताहिक टेस्ट सीरीज़ (Test Series)
                 </h3>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
                   {board} • {className}
                 </span>
+                {isFullPage && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                    छात्र: {studentName}
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-indigo-200">
                 अध्याय चुनें • ऑनलाइन टाइप करें या प्रिंट निकालकर कॉपी अपलोड करें
@@ -1349,14 +1659,34 @@ export default function SundayTestSeriesModal({
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all ml-1"
-              title="बंद करें"
+            {/* Link to Dedicated Worksheet Mock Test */}
+            <Link
+              href="/mock-test"
+              className="px-3 py-1 rounded-lg border border-amber-400/40 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ml-1"
+              title="वर्कशीट मॉक टेस्ट खोलें"
             >
-              <X className="w-5 h-5" />
-            </button>
+              <span>🎯</span>
+              <span>मॉक टेस्ट</span>
+            </Link>
+
+            {!isFullPage ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all ml-1 cursor-pointer"
+                title="बंद करें"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            ) : (
+              <Link
+                href="/tutor"
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all ml-1 cursor-pointer"
+                title="ट्यूटर पर जाएं"
+              >
+                <X className="w-5 h-5" />
+              </Link>
+            )}
           </div>
         </div>
 
@@ -1405,13 +1735,13 @@ export default function SundayTestSeriesModal({
           </button>
         </div>
 
-        {/* ================= MODAL BODY ================= */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50 print:p-0 print:bg-white print:overflow-visible">
+        {/* ================= MODAL / PAGE BODY ================= */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 bg-slate-50 print:p-0 print:bg-white print:overflow-visible">
           {/* ================= TAB 1: CONFIGURE & SELECT CHAPTERS / UPLOADED PAGES ================= */}
           {activeTab === 'configure' && (
-            <div className="space-y-6 max-w-3xl mx-auto">
+            <div className={`space-y-4 ${isFullPage ? 'max-w-5xl' : 'max-w-3xl'} mx-auto`}>
               {/* Step Title */}
-              <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-4 flex items-start gap-3.5">
+              <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-3 sm:p-3.5 flex items-start gap-3">
                 <span className="text-3xl">🎯</span>
                 <div className="flex-1">
                   <h4 className="text-base font-black text-indigo-950">
@@ -1464,20 +1794,26 @@ export default function SundayTestSeriesModal({
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
                     }`}
                   >
-                    <span className="text-2xl">📸</span>
+                    <span className="text-2xl">🗂️</span>
                     <div className="min-w-0">
                       <div className="font-black text-xs flex items-center gap-1.5">
-                        <span>अपलोड पेज व नोट्स</span>
-                        {availableExamFiles.length > 0 && (
+                        <span>पिछला काम व अपलोड पेज</span>
+                        {historyWorks.length > 0 ? (
+                          <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
+                            testSourceMode === 'uploaded' ? 'bg-white text-indigo-700' : 'bg-emerald-600 text-white'
+                          }`}>
+                            {historyWorks.length} काम
+                          </span>
+                        ) : availableExamFiles.length > 0 ? (
                           <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
                             testSourceMode === 'uploaded' ? 'bg-white text-indigo-700' : 'bg-emerald-600 text-white'
                           }`}>
                             {availableExamFiles.length}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <div className={`text-[10px] truncate ${testSourceMode === 'uploaded' ? 'text-indigo-200' : 'text-slate-500'}`}>
-                        कॉपी/किताब के फोटो से टेस्ट
+                        पिछला काम (#18, #19 आदि) या कॉपी पेज
                       </div>
                     </div>
                   </button>
@@ -1504,21 +1840,26 @@ export default function SundayTestSeriesModal({
 
               {/* 2. UPLOADED PAGES & NOTES SELECTION (When 'uploaded' or 'both' mode active) */}
               {(testSourceMode === 'uploaded' || testSourceMode === 'both') && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3.5">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
+                  {/* Header & Upload Action */}
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2.5">
                     <div>
                       <h5 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                        <span>📸 अपलोड किए गए पेज व नोट्स</span>
+                        <span>{uploadSubTab === 'history' ? '🗂️ पिछला काम (वर्कशीट/सेशन)' : '📸 अपलोड किए गए पेज व नोट्स'}</span>
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
-                          {selectedFileIds.length} चुने गए
+                          {uploadSubTab === 'history'
+                            ? `${selectedHistoryIds.length} / ${historyWorks.length} काम चुने गए`
+                            : `${selectedFileIds.length} / ${availableExamFiles.length} पेज चुने गए`}
                         </span>
                       </h5>
                       <p className="text-[11px] text-slate-500">
-                        पहले से अपलोड किए पेज चुनें या नया फोटो जोड़ें — AI इन्हीं पेजों से टेस्ट बनाएगा!
+                        {uploadSubTab === 'history'
+                          ? 'आप काम #18, काम #19 या दोनों को एक साथ चुनकर सीधे टेस्ट बना सकते हैं!'
+                          : 'पहले से अपलोड किए पेज चुनें या नया फोटो जोड़ें — AI इन्हीं पेजों से टेस्ट बनाएगा!'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <input
                         type="file"
                         ref={modalFileInputRef}
@@ -1530,33 +1871,434 @@ export default function SundayTestSeriesModal({
                       <button
                         type="button"
                         onClick={() => modalFileInputRef.current?.click()}
-                        className="text-xs font-black text-white px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-xs flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                        className="text-xs font-black text-white px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 shadow-sm flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                        title="एक साथ 1 से 20+ फोटो या पेज अपलोड करें"
                       >
                         <Camera className="w-3.5 h-3.5" />
-                        <span>+ नया फोटो/पेज अपलोड करें</span>
+                        <span>+ नया फोटो/पेज जोड़ें (17+ बल्क अपलोड)</span>
                       </button>
 
-                      {availableExamFiles.length > 0 && (
-                        <>
+                      {/* View Mode Toggle (Active when viewing raw pages) */}
+                      {uploadSubTab === 'pages' && availableExamFiles.length > 0 && (
+                        <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-slate-600">
                           <button
                             type="button"
-                            onClick={handleSelectAllFiles}
-                            className="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2.5 py-1.5 rounded-lg bg-indigo-50 border border-indigo-200 cursor-pointer"
+                            onClick={() => setFileViewMode('grid')}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              fileViewMode === 'grid'
+                                ? 'bg-white text-indigo-600 shadow-xs font-bold'
+                                : 'hover:text-slate-900'
+                            }`}
+                            title="ग्रिड कार्ड व्यू (Grid View)"
                           >
-                            सभी चुनें
+                            <Grid className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={handleDeselectAllFiles}
-                            className="text-xs font-bold text-slate-600 hover:text-slate-700 px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 cursor-pointer"
+                            onClick={() => setFileViewMode('compact')}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              fileViewMode === 'compact'
+                                ? 'bg-white text-indigo-600 shadow-xs font-bold'
+                                : 'hover:text-slate-900'
+                            }`}
+                            title="कॉम्पैक्ट लिस्ट व्यू (Compact Table View)"
                           >
-                            रीसेट
+                            <List className="w-3.5 h-3.5" />
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
 
+                  {/* Sub-Tab Selector: 'history' (पिछला काम) vs 'pages' (पेज दर पेज) */}
+                  {historyWorks.length > 0 && (
+                    <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setUploadSubTab('history')}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          uploadSubTab === 'history'
+                            ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400/30'
+                            : 'bg-white hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <span className="text-sm">📂</span>
+                        <span>पिछला काम से चुनें</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          uploadSubTab === 'history' ? 'bg-indigo-900 text-white' : 'bg-slate-200 text-slate-800'
+                        }`}>
+                          {selectedHistoryIds.length} / {historyWorks.length} काम चुने
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setUploadSubTab('pages')}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          uploadSubTab === 'pages'
+                            ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400/30'
+                            : 'bg-white hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <span className="text-sm">📸</span>
+                        <span>पेज दर पेज चुनें</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          uploadSubTab === 'pages' ? 'bg-indigo-900 text-white' : 'bg-slate-200 text-slate-800'
+                        }`}>
+                          {selectedFileIds.length} / {availableExamFiles.length} पेज
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Bulk Upload Scanning Progress Bar */}
+                  {uploadProgress && (
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 text-indigo-950 space-y-2 animate-pulse">
+                      <div className="flex items-center justify-between text-xs font-black">
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" />
+                          <span>
+                            AI स्कैनिंग जारी: {uploadProgress.current} / {uploadProgress.total} फोटो ({uploadProgress.fileName})
+                          </span>
+                        </span>
+                        <span className="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px]">
+                          {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-indigo-200 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-indigo-600 h-full transition-all duration-300"
+                          style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-[11px] text-indigo-700">
+                        कृपया प्रतीक्षा करें, AI आपके सभी पेजों से प्रश्नों को पढ़ रहा है...
+                      </p>
+                    </div>
+                  )}
+
+                  {/* --- SUB-VIEW 1: PREVIOUS WORKS (पिछला काम - e.g. 19 works) --- */}
+                  {uploadSubTab === 'history' && historyWorks.length > 0 && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      {/* Presets Toolbar for Previous Works */}
+                      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 flex-wrap gap-2">
+                          <span className="flex items-center gap-1.5 text-indigo-900 font-black">
+                            <span>⚡</span>
+                            <span>क्विक सेलेक्शन (काम #18, #19 या दोनों):</span>
+                          </span>
+                          <span className="text-[11px] text-slate-500 font-semibold">
+                            कुल {historyWorks.length} पिछले काम उपलब्ध हैं
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {/* 1. Only #19 (Latest) */}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectWorkByNumber(historyWorks.length)}
+                            className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                              selectedHistoryIds.length === 1 &&
+                              selectedHistoryIds[0] === historyWorks[historyWorks.length - 1]?.id
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                            }`}
+                            title="सिर्फ सबसे नया काम चुनें"
+                          >
+                            ⚡ सिर्फ काम #{historyWorks.length}
+                          </button>
+
+                          {/* 2. Only #18 (Previous) */}
+                          {historyWorks.length >= 2 && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectWorkByNumber(historyWorks.length - 1)}
+                              className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                                selectedHistoryIds.length === 1 &&
+                                selectedHistoryIds[0] === historyWorks[historyWorks.length - 2]?.id
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                              }`}
+                              title="सिर्फ पिछला काम चुनें"
+                            >
+                              ⚡ सिर्फ काम #{historyWorks.length - 1}
+                            </button>
+                          )}
+
+                          {/* 3. BOTH #18 and #19 Together */}
+                          {historyWorks.length >= 2 && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectWorksBoth(historyWorks.length - 1, historyWorks.length)}
+                              className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                                selectedHistoryIds.length === 2 &&
+                                selectedHistoryIds.includes(historyWorks[historyWorks.length - 1]?.id) &&
+                                selectedHistoryIds.includes(historyWorks[historyWorks.length - 2]?.id)
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                  : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
+                              }`}
+                              title="काम #18 और #19 दोनों को मिलाकर टेस्ट लें"
+                            >
+                              ⚡ काम #{historyWorks.length - 1} और #{historyWorks.length} दोनों
+                            </button>
+                          )}
+
+                          {/* 4. Latest 3 Works */}
+                          {historyWorks.length >= 3 && (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectLatestHistoryWorks(3)}
+                              className="text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 cursor-pointer"
+                              title="आख़िरी 3 काम चुनें"
+                            >
+                              ⚡ आख़िरी 3 काम
+                            </button>
+                          )}
+
+                          {/* 5. Select All */}
+                          <button
+                            type="button"
+                            onClick={handleSelectAllHistoryWorks}
+                            className={`text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                              selectedHistoryIds.length === historyWorks.length
+                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                            }`}
+                          >
+                            ⭐ सभी चुनें ({historyWorks.length})
+                          </button>
+
+                          {/* 6. Deselect All */}
+                          <button
+                            type="button"
+                            onClick={handleDeselectAllHistoryWorks}
+                            className="text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 cursor-pointer"
+                          >
+                            🚫 सब हटाएं
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* History Works Grid (Displayed in reverse order so latest #19, #18 are at top) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[30rem] overflow-y-auto pr-1">
+                        {[...historyWorks].reverse().map((work) => {
+                          const isSelected = selectedHistoryIds.includes(work.id);
+                          return (
+                            <div
+                              key={work.id}
+                              onClick={() => handleToggleHistoryWork(work.id)}
+                              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-2.5 select-none ${
+                                isSelected
+                                  ? 'border-indigo-600 bg-indigo-50/60 shadow-md ring-2 ring-indigo-400/20'
+                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white shadow-xs'
+                                      : 'bg-slate-100 text-slate-800 border border-slate-200'
+                                  }`}>
+                                    <span>{isSelected ? '✓' : '○'}</span>
+                                    <span>काम #{work.workNumber}</span>
+                                  </span>
+                                  <span className="text-[10px] font-bold text-slate-400">
+                                    {work.dateLabel || work.date}
+                                  </span>
+                                </div>
+
+                                <h6 className="font-bold text-xs sm:text-sm text-slate-900 leading-snug line-clamp-2">
+                                  {work.title || work.subjectName}
+                                </h6>
+
+                                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 flex-wrap">
+                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
+                                    📚 {work.subjectName || 'सामान्य'}
+                                  </span>
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                    {work.parsedQuestions.length} सवाल उपलब्ध
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="pt-2.5 border-t border-black/5 flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleSelectOnlyHistoryWork(work.id, e)}
+                                  className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+                                  title={`सिर्फ काम #${work.workNumber} चुनें`}
+                                >
+                                  <span>⭐ सिर्फ यह काम</span>
+                                </button>
+                                <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>
+                                  {isSelected ? 'चुना गया है ✓' : 'क्लिक करके चुनें'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected History Works Question Preview */}
+                      {selectedHistoryIds.length > 0 && (
+                        <div className="pt-3 border-t border-slate-200/80 space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <h6 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                              <span>📋 चुने गए पिछले काम के सवाल (टेस्ट में शामिल होंगे):</span>
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
+                                {historyWorks
+                                  .filter((w) => selectedHistoryIds.includes(w.id))
+                                  .reduce((acc, w) => acc + w.parsedQuestions.length, 0)}{' '}
+                                सवाल तैयार हैं
+                              </span>
+                            </h6>
+                          </div>
+
+                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                            {historyWorks
+                              .filter((w) => selectedHistoryIds.includes(w.id))
+                              .map((work) => (
+                                <div
+                                  key={work.id}
+                                  className="p-3 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-2"
+                                >
+                                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 pb-1.5 border-b border-indigo-100/80">
+                                    <span className="text-indigo-900 font-black">
+                                      📁 काम #{work.workNumber}: {work.title || work.subjectName}
+                                    </span>
+                                    <span className="text-[11px] text-indigo-700">
+                                      {work.parsedQuestions.length} सवाल
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1">
+                                    {work.parsedQuestions.map((pq, pIdx) => (
+                                      <div
+                                        key={pq.id || pIdx}
+                                        className="text-xs text-slate-700 font-medium flex items-start gap-2 bg-white/80 p-2 rounded-lg border border-slate-100"
+                                      >
+                                        <span className="font-bold text-indigo-600 shrink-0">
+                                          {pIdx + 1}.
+                                        </span>
+                                        <span className="leading-snug">{pq.cleanText}</span>
+                                      </div>
+                                    ))}
+                                    {work.parsedQuestions.length === 0 && (
+                                      <div className="text-xs text-slate-500 italic p-1">
+                                        इस काम के मुख्य अभ्यास से अभ्यास प्रश्न टेस्ट में तैयार किए जाएंगे।
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* --- SUB-VIEW 2: RAW PAGES VIEW --- */}
+                  {(uploadSubTab === 'pages' || historyWorks.length === 0) && (
+                    <div className="space-y-4 animate-in fade-in duration-200">
+                      {availableExamFiles.length > 0 && (
+                        <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                          {/* Search Bar + Presets */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="relative flex-1 min-w-[180px]">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                              <input
+                                type="text"
+                                value={fileSearchQuery}
+                                onChange={(e) => setFileSearchQuery(e.target.value)}
+                                placeholder="🔍 पेज नंबर या नाम खोजें (उदा. 3, WhatsApp...)"
+                                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-indigo-500 focus:ring-1 focus:ring-indigo-400"
+                              />
+                              {fileSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFileSearchQuery('')}
+                                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Presets Chips (Clean & Simple) */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={handleSelectAllFiles}
+                                className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                                  selectedFileIds.length === availableExamFiles.length
+                                    ? 'bg-indigo-600 text-white border-indigo-600'
+                                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
+                                }`}
+                              >
+                                ⭐ सभी चुनें ({availableExamFiles.length})
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleInvertFileSelection}
+                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 cursor-pointer"
+                                title="उल्टा चयन करें"
+                              >
+                                🔄 उल्टा
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleDeselectAllFiles}
+                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 cursor-pointer"
+                              >
+                                🚫 सब हटाएं
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick Range Selection for 10+ / 17+ pages */}
+                          {availableExamFiles.length >= 6 && (
+                            <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60 flex-wrap text-xs text-slate-600">
+                              <span className="font-bold text-[11px] text-slate-500">📑 त्वरित रेंज (Quick Range):</span>
+                              <button
+                                type="button"
+                                onClick={() => handleSelectRangeFiles(1, 5)}
+                                className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
+                              >
+                                पेज 1 - 5
+                              </button>
+                              {availableExamFiles.length >= 10 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectRangeFiles(6, 10)}
+                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
+                                >
+                                  पेज 6 - 10
+                                </button>
+                              )}
+                              {availableExamFiles.length >= 15 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectRangeFiles(11, 15)}
+                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
+                                >
+                                  पेज 11 - 15
+                                </button>
+                              )}
+                              {availableExamFiles.length >= 16 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectRangeFiles(16, availableExamFiles.length)}
+                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
+                                >
+                                  पेज 16 - {availableExamFiles.length}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                  {/* Empty State */}
                   {availableExamFiles.length === 0 ? (
                     <div className="p-8 rounded-2xl border-2 border-dashed border-slate-200 text-center flex flex-col items-center justify-center bg-slate-50">
                       <Upload className="w-10 h-10 text-slate-400 mb-2" />
@@ -1573,54 +2315,169 @@ export default function SundayTestSeriesModal({
                         <span>फोटो अपलोड करें</span>
                       </button>
                     </div>
+                  ) : filteredAvailableFiles.length === 0 ? (
+                    <div className="p-6 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
+                      '{fileSearchQuery}' से मेल खाता कोई पेज नहीं मिला।{' '}
+                      <button
+                        type="button"
+                        onClick={() => setFileSearchQuery('')}
+                        className="text-indigo-600 font-bold underline ml-1"
+                      >
+                        सर्च रीसेट करें
+                      </button>
+                    </div>
+                  ) : fileViewMode === 'compact' ? (
+                    /* COMPACT LIST VIEW - BEST FOR 17+ FILES */
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-96 overflow-y-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 sticky top-0 z-10 font-bold">
+                          <tr>
+                            <th className="py-2.5 px-3 w-10">चुनें</th>
+                            <th className="py-2.5 px-2 w-14">फोटो</th>
+                            <th className="py-2.5 px-3">पेज विवरण</th>
+                            <th className="py-2.5 px-3 text-center">सवाल</th>
+                            <th className="py-2.5 px-3 text-right">त्वरित चयन</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredAvailableFiles.map((f, idx) => {
+                            const isSelected = selectedFileIds.includes(f.id);
+                            const qCount = f.detectedQuestions?.length || 0;
+                            return (
+                              <tr
+                                key={f.id}
+                                onClick={() => handleToggleFileSelection(f.id)}
+                                className={`cursor-pointer transition-colors ${
+                                  isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleFileSelection(f.id)}
+                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
+                                  />
+                                </td>
+                                <td className="py-2 px-2">
+                                  {f.url ? (
+                                    <img
+                                      src={f.url}
+                                      alt={f.name}
+                                      className="w-10 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center">
+                                      <FileText className="w-4 h-4 text-slate-400" />
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <div className="font-black text-slate-900 truncate max-w-xs">{f.name}</div>
+                                  <div className="text-[10px] text-slate-500 truncate">
+                                    {f.chapterTitle || `पेज #${idx + 1}`}
+                                  </div>
+                                </td>
+                                <td className="py-2 px-3 text-center">
+                                  {qCount > 0 ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                                      {qCount} सवाल
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">—</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleSelectOnlyFile(f.id, e)}
+                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                                      isSelected && selectedFileIds.length === 1
+                                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                                        : 'bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 border border-slate-200'
+                                    }`}
+                                    title="बाकी सभी को हटाकर केवल इस पेज से टेस्ट बनाएं"
+                                  >
+                                    ⭐ सिर्फ यह चुनें
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-72 overflow-y-auto pr-1">
-                      {availableExamFiles.map((f, idx) => {
+                    /* GRID VIEW WITH "ONLY THIS" BUTTON ON EVERY CARD */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[28rem] overflow-y-auto pr-1">
+                      {filteredAvailableFiles.map((f, idx) => {
                         const isSelected = selectedFileIds.includes(f.id);
                         const qCount = f.detectedQuestions?.length || 0;
                         return (
                           <div
                             key={f.id}
                             onClick={() => handleToggleFileSelection(f.id)}
-                            className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                            className={`p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2.5 select-none ${
                               isSelected
-                                ? 'bg-indigo-50/80 border-indigo-400 text-indigo-950 shadow-xs ring-2 ring-indigo-400/30'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                                ? 'bg-indigo-50/90 border-indigo-500 text-indigo-950 shadow-sm ring-2 ring-indigo-400/30'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                             }`}
                           >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => handleToggleFileSelection(f.id)}
-                              className="w-4 h-4 mt-1 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
-                            />
-                            {f.url ? (
-                              <img
-                                src={f.url}
-                                alt={f.name}
-                                className="w-12 h-12 object-cover rounded-lg border border-slate-200 bg-slate-100 shrink-0"
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleFileSelection(f.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-4 h-4 mt-1 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
                               />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
-                                <FileText className="w-5 h-5 text-slate-400" />
+                              {f.url ? (
+                                <img
+                                  src={f.url}
+                                  alt={f.name}
+                                  className="w-12 h-12 object-cover rounded-xl border border-slate-200 bg-slate-100 shrink-0"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+                                  <FileText className="w-5 h-5 text-slate-400" />
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-black truncate">{f.name}</div>
+                                <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                  {f.chapterTitle || `पेज #${idx + 1}`}
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  {qCount > 0 ? (
+                                    <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">
+                                      {qCount} सवाल उपलब्ध
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px]">
+                                      {f.sourceType === 'history' ? 'पिछला काम' : f.sourceType === 'custom_upload' ? 'नया अपलोड' : 'सत्र पेज'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-black truncate">{f.name}</div>
-                              <div className="text-[10px] text-slate-500 mt-0.5 truncate">
-                                {f.chapterTitle || `पेज #${idx + 1}`}
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                {qCount > 0 ? (
-                                  <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">
-                                    {qCount} सवाल उपलब्ध
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px]">
-                                    {f.sourceType === 'history' ? 'पिछला काम' : f.sourceType === 'custom_upload' ? 'नया अपलोड' : 'सत्र पेज'}
-                                  </span>
-                                )}
-                              </div>
+                            </div>
+
+                            {/* Action Bar with "Select Only This" */}
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100/80" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                #{idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleSelectOnlyFile(f.id, e)}
+                                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                  isSelected && selectedFileIds.length === 1
+                                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 border border-slate-200'
+                                }`}
+                                title="बाकी सभी को हटाकर केवल इस पेज से टेस्ट बनाएं"
+                              >
+                                ⭐ सिर्फ यह
+                              </button>
                             </div>
                           </div>
                         );
@@ -1879,6 +2736,10 @@ export default function SundayTestSeriesModal({
                       </div>
                     </div>
                   )}
+
+                  {/* End of Sub-View 2: Raw Pages */}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1999,17 +2860,46 @@ export default function SundayTestSeriesModal({
 
               {/* Bottom Generate Action Button */}
               {(() => {
-                const selUploadedQCount = (testSourceMode === 'uploaded' || testSourceMode === 'both')
-                  ? selectedFileIds.reduce((acc, fid) => acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0), 0)
-                  : 0;
-                const selUploadedMarks = (testSourceMode === 'uploaded' || testSourceMode === 'both')
-                  ? selectedFileIds.reduce((acc, fid) => acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).reduce((m, q) => m + q.marks, 0) || 0), 0)
-                  : 0;
+                const selHistoryWorks = historyWorks.filter((w) => selectedHistoryIds.includes(w.id));
+                const selHistoryQCount = selHistoryWorks.reduce(
+                  (acc, w) => acc + (w.parsedQuestions.length > 0 ? w.parsedQuestions.length : 1),
+                  0
+                );
+                const selHistoryMarks = selHistoryWorks.reduce(
+                  (acc, w) =>
+                    acc +
+                    (w.parsedQuestions.length > 0
+                      ? w.parsedQuestions.reduce((m, q) => m + q.marks, 0)
+                      : 5),
+                  0
+                );
+
+                const selFileQCount = selectedFileIds.reduce(
+                  (acc, fid) =>
+                    acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0),
+                  0
+                );
+                const selFileMarks = selectedFileIds.reduce(
+                  (acc, fid) =>
+                    acc +
+                    (fileQuestionsMap[fid]
+                      ?.filter((q) => q.selected)
+                      .reduce((m, q) => m + q.marks, 0) || 0),
+                  0
+                );
+
+                const totalUploadedOrHistoryQCount = selHistoryQCount + selFileQCount;
+                const totalUploadedOrHistoryMarks = selHistoryMarks + selFileMarks;
+                const hasAnyUploadedOrHistory =
+                  selectedHistoryIds.length > 0 || selectedFileIds.length > 0;
 
                 const isGenerateDisabled =
                   (testSourceMode === 'chapters' && selectedChapterNumbers.length === 0) ||
-                  (testSourceMode === 'uploaded' && (selectedFileIds.length === 0 || selUploadedQCount === 0)) ||
-                  (testSourceMode === 'both' && selectedChapterNumbers.length === 0 && selUploadedQCount === 0);
+                  (testSourceMode === 'uploaded' &&
+                    (!hasAnyUploadedOrHistory || totalUploadedOrHistoryQCount === 0)) ||
+                  (testSourceMode === 'both' &&
+                    selectedChapterNumbers.length === 0 &&
+                    (!hasAnyUploadedOrHistory || totalUploadedOrHistoryQCount === 0));
 
                 return (
                   <div className="pt-2 flex justify-end">
@@ -2022,9 +2912,9 @@ export default function SundayTestSeriesModal({
                       <FileText className="w-5 h-5" />
                       <span>
                         {testSourceMode === 'uploaded'
-                          ? `चुने गए ${selUploadedQCount} सवालों से टेस्ट बनाएं (${selUploadedMarks} अंक) →`
+                          ? `चुने गए ${totalUploadedOrHistoryQCount} सवालों से टेस्ट बनाएं (${totalUploadedOrHistoryMarks} अंक) →`
                           : testSourceMode === 'both'
-                          ? `अध्याय + ${selUploadedQCount} अपलोड सवालों से कंबाइंड टेस्ट बनाएं →`
+                          ? `अध्याय + ${totalUploadedOrHistoryQCount} काम/पेज सवालों से कंबाइंड टेस्ट बनाएं →`
                           : 'व्हाइट पेपर टेस्ट पेपर तैयार करें (Generate Test Paper) →'}
                       </span>
                     </button>

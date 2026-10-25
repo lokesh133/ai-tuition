@@ -79,7 +79,7 @@ interface WhiteboardStepItem {
   isMistake?: boolean;
 }
 
-// Helper to separate repeating section instruction/heading (e.g. "Fill in the blanks 2:", "MCQ 1:", "A. Complete the sentences") from the actual question
+// Helper to separate repeating section instruction/heading (e.g. "3. Write true or false:", "2. Fill in the blanks:", "A. Complete the sentences") from the actual question
 function parseQuestionAndSection(raw?: string | null): { section?: string; question: string } {
   if (!raw) return { question: '' };
   const trimmed = raw.trim();
@@ -87,27 +87,57 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   // Helper to normalize section name so all questions in the section match exactly
   const normalizeSection = (sec: string): string => {
     const s = sec.trim();
-    const sLower = s.toLowerCase();
-    if (sLower.includes('fill in the blank') || sLower.includes('fill in blank') || sLower.includes('रिक्त स्थान')) {
-      return 'Fill in the blanks';
+
+    // Extract number prefix if present, e.g. "3. ", "2) ", "Question 3: ", "A. "
+    const prefixMatch = s.match(/^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*)?(?:[0-9]+|[A-Z]|[क-ह])[\.\)\-–:]?\s*)/i);
+    const prefix = prefixMatch ? prefixMatch[1].trim() + ' ' : '';
+    const body = prefixMatch ? s.slice(prefixMatch[0].length).trim() : s;
+    const bodyLower = body.toLowerCase();
+
+    if (bodyLower.includes('fill in the blank') || bodyLower.includes('fill in blank') || bodyLower.includes('रिक्त स्थान')) {
+      return (prefix + (bodyLower.includes('रिक्त') ? 'रिक्त स्थानों की पूर्ति करें' : 'Fill in the blanks')).trim();
     }
-    if (sLower.includes('multiple choice') || sLower === 'mcq' || sLower.includes('mcqs') || sLower.includes('बहुविकल्पीय')) {
-      return 'Multiple Choice Questions (MCQ)';
+    if (bodyLower.includes('multiple choice') || bodyLower === 'mcq' || bodyLower.includes('mcqs') || bodyLower.includes('बहुविकल्पीय')) {
+      return (prefix + 'Multiple Choice Questions (MCQ)').trim();
     }
-    if (sLower.includes('true/false') || sLower.includes('true or false') || sLower.includes('सही या गलत') || (sLower.includes('सत्य') && sLower.includes('असत्य'))) {
-      return 'True / False';
+    if (bodyLower.includes('true/false') || bodyLower.includes('true or false') || bodyLower.includes('सही या गलत') || (bodyLower.includes('सत्य') && bodyLower.includes('असत्य'))) {
+      return (prefix + (bodyLower.includes('सही') ? 'सही या गलत लिखिए' : bodyLower.includes('सत्य') ? 'सत्य या असत्य' : 'Write True or False')).trim();
     }
-    if (sLower.includes('match the following') || sLower.includes('उचित मिलान') || sLower.includes('सुमेलित')) {
-      return 'Match the following';
+    if (bodyLower.includes('match the following') || bodyLower.includes('उचित मिलान') || bodyLower.includes('सुमेलित')) {
+      return (prefix + (bodyLower.includes('उचित') || bodyLower.includes('सुमेलित') ? 'उचित मिलान करें' : 'Match the following')).trim();
     }
-    if (sLower.includes('short answer') || sLower.includes('लघु उत्तरीय')) {
-      return 'Short Answer Questions';
+    if (bodyLower.includes('short answer') || bodyLower.includes('लघु उत्तरीय')) {
+      return (prefix + 'Short Answer Questions').trim();
     }
-    if (sLower.includes('long answer') || sLower.includes('दीर्घ उत्तरीय')) {
-      return 'Long Answer Questions';
+    if (bodyLower.includes('long answer') || bodyLower.includes('दीर्घ उत्तरीय')) {
+      return (prefix + 'Long Answer Questions').trim();
     }
     return s.replace(/[.:\-–]+$/, '').trim();
   };
+
+  // Pattern 0: Numbered/labeled section heading directly followed by sub-question indicator
+  // Matches: "3. Write true or false: (i) ..."
+  //          "2. Fill in the blanks: (iii) ..."
+  //          "4. Convert the following into kilograms and grams. (i) ..."
+  //          "1. Multiple Choice Questions (MCQs): Choose the correct option. (i) ..."
+  //          "प्रश्न 3. सही या गलत लिखिए: (क) ..."
+  // Sub-question indicators: (i), (ii), (iv), (a), (b), (1), 1., i., (क), etc.
+  const subIndexMatch = trimmed.match(
+    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*)?(?:[0-9]+|[A-Z]|[क-ह])[\.\)\-–:]?\s*[\s\S]{2,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|[iIvVxXa-dA-Dक-ह]+[\.\)]|\b\d{1,2}[\.\)]\s+[A-Za-z\u0900-\u097F0-9])\s*(.*)$/i
+  );
+  if (subIndexMatch) {
+    const rawSec = subIndexMatch[1].trim();
+    const section = normalizeSection(rawSec);
+    let subIdx = subIndexMatch[2].trim();
+    let qRest = subIndexMatch[3]?.trim() || '';
+    const numSubMatch = subIdx.match(/^(\d{1,2}[\.\)])\s+(.*)$/);
+    if (numSubMatch) {
+      subIdx = numSubMatch[1];
+      qRest = numSubMatch[2] + (qRest ? ' ' + qRest : '');
+    }
+    const question = qRest ? `${subIdx} ${qRest}` : subIdx;
+    return { section, question };
+  }
 
   // Pattern 1: Known section name directly followed by question number (and optional colon/dash/space)
   // e.g. "Fill in the blanks 2: Difference of 388765...", "Fill in the blanks 3 To decrease...", "MCQ 5: Mr. Alex...", "True/False 1: For any..."
@@ -268,6 +298,7 @@ export default function TuitionClassroomStudio() {
 
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ id: string; name: string; url: string; type: string }>>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [activeMathAnim, setActiveMathAnim] = useState<{ num1: number; op: string; num2: number; result: number } | null>(null);
 
   // Per-page cached data so switching pages immediately loads all questions/answers of that page
@@ -316,6 +347,7 @@ export default function TuitionClassroomStudio() {
   const [currentUploadMode, setCurrentUploadMode] = useState<'teach' | 'check' | 'quiz'>('teach');
   const [mockAnswers, setMockAnswers] = useState<Record<number, string>>({});
   const [mockEvaluations, setMockEvaluations] = useState<Record<number, any>>({});
+  const [showMcqSteps, setShowMcqSteps] = useState<Record<number, boolean>>({});
   const [isPageFlipping, setIsPageFlipping] = useState<boolean>(false);
 
   // Switch between uploaded worksheet pages and immediately show all questions and steps for that page
@@ -1302,6 +1334,15 @@ export default function TuitionClassroomStudio() {
       );
     }
 
+    // If multi-line or ASCII diagram/table (e.g. geometric boxes, plant diagrams, comparison tables)
+    if (clean.includes('\n') || clean.includes('+--') || clean.includes('| :') || clean.includes('📐') || clean.includes('🌱') || /^[\|\+]/.test(clean)) {
+      return (
+        <pre className="font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed py-1.5 overflow-x-auto bg-black/5 dark:bg-black/40 p-3 rounded-xl border border-black/10 dark:border-white/10 tracking-wide">
+          {clean}
+        </pre>
+      );
+    }
+
     // If short single answer (e.g. "meadow", "pond", "Option (b)", "42")
     if (clean.length < 50 && !clean.includes('\n')) {
       return (
@@ -1373,12 +1414,39 @@ export default function TuitionClassroomStudio() {
     }
 
     // Smart splitter for multi-step answers:
-    // First try splitting on explicit newlines or pipe separators
-    let rawParts = clean.includes('\n')
-      ? clean.split('\n').map((p) => p.trim()).filter(Boolean)
-      : clean.includes(' | ')
-        ? clean.split(' | ').map((p) => p.trim()).filter(Boolean)
-        : [];
+    // If text has double newlines or multi-line ASCII diagrams/tables, preserve them together!
+    let rawParts: string[] = [];
+    if (clean.includes('\n\n')) {
+      rawParts = clean.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    } else if (clean.includes('\n')) {
+      const lines = clean.split('\n').map((l) => l.trim()).filter(Boolean);
+      const blocks: string[] = [];
+      let currentDiagram: string[] = [];
+
+      for (const line of lines) {
+        const isDiagramLine =
+          /^[\+\|~#\-\*=]/.test(line) ||
+          /^[🌱📐🌸🪵🍃🥕]/.test(line) ||
+          line.includes('+--') ||
+          line.includes('| :') ||
+          line.includes('---');
+        if (isDiagramLine) {
+          currentDiagram.push(line);
+        } else {
+          if (currentDiagram.length > 0) {
+            blocks.push(currentDiagram.join('\n'));
+            currentDiagram = [];
+          }
+          blocks.push(line);
+        }
+      }
+      if (currentDiagram.length > 0) {
+        blocks.push(currentDiagram.join('\n'));
+      }
+      rawParts = blocks;
+    } else if (clean.includes(' | ')) {
+      rawParts = clean.split(' | ').map((p) => p.trim()).filter(Boolean);
+    }
 
     // Only split sentences into separate step cards if it has explicit step markers or math calculations
     const isMathOrExplicitSteps =
@@ -1416,14 +1484,41 @@ export default function TuitionClassroomStudio() {
               part.toLowerCase().includes('correct option') ||
               part.toLowerCase().includes('answer:');
 
+            const isDiagram =
+              part.includes('+--') ||
+              part.includes('|---') ||
+              part.includes('📐') ||
+              part.includes('🌱') ||
+              part.includes('🌸') ||
+              /^[\|\+]/.test(part) ||
+              part.includes('आरेख') ||
+              part.includes('diagram');
+
+            const isGiven =
+              !isAnswerExplicit &&
+              !isDiagram &&
+              (part.toLowerCase().includes('given') || part.includes('दिया है') || part.includes('ज्ञात है'));
+
+            const isFormula =
+              !isAnswerExplicit &&
+              !isDiagram &&
+              !isGiven &&
+              (part.toLowerCase().includes('formula') || part.includes('सूत्र') || part.includes('नियम'));
+
             const isVocab =
               !isAnswerExplicit &&
+              !isDiagram &&
+              !isGiven &&
+              !isFormula &&
               part.includes('=') &&
               !/\d+\s*[\+\-\*\/×÷=]\s*\d+/.test(part) &&
               (/[A-Za-z\u0900-\u097F]+/.test(part.split('=')[0]));
 
             const isCalculation =
               !isAnswerExplicit &&
+              !isDiagram &&
+              !isGiven &&
+              !isFormula &&
               !isVocab &&
               (part.toLowerCase().includes('difference') ||
                 part.includes('अंतर') ||
@@ -1436,6 +1531,9 @@ export default function TuitionClassroomStudio() {
 
             const isRounding =
               !isAnswerExplicit &&
+              !isDiagram &&
+              !isGiven &&
+              !isFormula &&
               !isVocab &&
               !isCalculation &&
               (part.toLowerCase().includes('rounds to') ||
@@ -1446,6 +1544,9 @@ export default function TuitionClassroomStudio() {
 
             const isNumberFact =
               !isAnswerExplicit &&
+              !isDiagram &&
+              !isGiven &&
+              !isFormula &&
               !isVocab &&
               !isCalculation &&
               !isRounding &&
@@ -1457,15 +1558,21 @@ export default function TuitionClassroomStudio() {
 
             const stepBadgeText = isAnswerExplicit
               ? (medium === 'english' ? '🎯 Final Answer & Option' : '🎯 अंतिम सही उत्तर (Correct Option)')
-              : isVocab
-                ? (medium === 'english' ? `📖 Word #${pIdx + 1}: Word & Meaning` : `📖 शब्द #${pIdx + 1}: शब्दार्थ व सरल अर्थ (Vocabulary)`)
-                : isCalculation
-                  ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व अंतर (Calculation)`)
-                  : isRounding
-                    ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
-                    : isNumberFact
-                      ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
-                      : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
+              : isDiagram
+                ? (medium === 'english' ? '📐 Visual Diagram & Chart' : '📐 आरेख व रेखाचित्र (Visual Diagram)')
+                : isGiven
+                  ? (medium === 'english' ? '📋 Given Information' : '📋 दिया है (Given Data)')
+                  : isFormula
+                    ? (medium === 'english' ? '📐 Formula & Method' : '📐 सूत्र व नियम (Formula)')
+                    : isVocab
+                      ? (medium === 'english' ? `📖 Word #${pIdx + 1}: Word & Meaning` : `📖 शब्द #${pIdx + 1}: शब्दार्थ व सरल अर्थ (Vocabulary)`)
+                      : isCalculation
+                        ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: गणना व हल (Calculation)`)
+                        : isRounding
+                          ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding Rule` : `🔢 चरण ${pIdx + 1}: संख्या को राउंड ऑफ करना (Rounding Rule)`)
+                          : isNumberFact
+                            ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Number Concept` : `📌 चरण ${pIdx + 1}: संख्या का मान पहचानना`)
+                            : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1} (Step ${pIdx + 1})`);
 
             return (
               <div
@@ -3203,28 +3310,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           : '📋 संपूर्ण वर्कशीट मास्टर उत्तर कुंजी (All 15 Answers Key)'
       );
     } else if (mode === 'quiz') {
-      setWhiteboardHeading(
-        isEn
-          ? '🎯 Exam Preparation: Worksheet Mock Test'
-          : '🎯 परीक्षा तैयारी: वर्कशीट मॉक टेस्ट'
-      );
-      setActiveMockQIdx(0);
-      const introMsg =
-        isEn
-          ? 'Beta, Mock Test is ready! Read each question, write your answer in the box, and click "Save & Check" to see your score, mistakes, and spelling corrections!'
-          : 'बेटा, मॉक टेस्ट तैयार है! केवल सवाल देखें, अपना उत्तर लिखें और "उत्तर सेव करें" दबाकर अपना स्कोर, गलतियां और स्पेलिंग चेक करें!';
+      // Mock test is kept completely separate in its dedicated Test Series arena
+      setIsSundayExamModalOpen(true);
+      const introMsg = isEn
+        ? 'Beta, your Mock Test paper is opened separately in the Test Series! Take the test with timer, check answers, and get your scorecard.'
+        : 'बेटा, आपका मॉक टेस्ट अलग टेस्ट सीरीज़ में तैयार है! यहाँ टाइमर और अंक के साथ टेस्ट दें और रिज़ल्ट देखें!';
       setSpeechText(introMsg);
       speakText(introMsg);
-
-      // If questions are already extracted, immediately switch without re-fetching!
-      if (whiteboardSteps.length > 0 || detectedQuestions.length > 0) {
-        setIsCheckingHomework(false);
-        return;
-      }
-      setIsCheckingHomework(true);
-      promptMsg = isEn
-        ? 'Please convert all questions from this worksheet into an interactive mock test in English for student exam preparation.'
-        : 'कृपया इस शीट के सभी सवालों को एक इंटरैक्टिव मॉक टेस्ट में बदलें ताकि बच्चा परीक्षा की तैयारी कर सके।';
+      setIsCheckingHomework(false);
+      return;
     } else {
       setWhiteboardSteps([]);
       setIsCheckingHomework(true);
@@ -3352,9 +3446,157 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     return questionText;
   };
 
+  // Helper to parse Multiple Choice (MCQ) 4-options questions
+  const parseMCQOptions = (
+    rawQuestion?: string,
+    explicitOptions?: string[]
+  ): {
+    qStem: string;
+    options: Array<{ key: string; label: string; text: string }>;
+  } | null => {
+    if (Array.isArray(explicitOptions) && explicitOptions.length >= 2) {
+      const letters = ['a', 'b', 'c', 'd', 'e', 'f'];
+      return {
+        qStem: rawQuestion || '',
+        options: explicitOptions.map((opt, i) => {
+          const key = letters[i] || `${i + 1}`;
+          return {
+            key: String(key).toLowerCase(),
+            label: `(${key})`,
+            text: opt.replace(/^\([a-dA-D1-4क-घ]\)\s*/, '').trim(),
+          };
+        }),
+      };
+    }
+
+    if (!rawQuestion) return null;
+
+    // Options must be letter-based: (a)..(b)..(c)..(d) or (A)..(B).. or (क)..(ख)..
+    // Crucial: NOT digits (1, 2) which are question/part numbers!
+    const optSeqRegex = /(?:[\s,;]|^)(?:\(([a-dA-Dक-घ])\)|([a-dA-Dक-घ])\)|\[([a-dA-Dक-घ])\])\s+/g;
+    const matches: Array<{ letter: string; index: number; fullLength: number }> = [];
+    let m: RegExpExecArray | null = null;
+    while ((m = optSeqRegex.exec(rawQuestion)) !== null) {
+      const letter = (m[1] || m[2] || m[3]).toLowerCase();
+      matches.push({
+        letter,
+        index: m.index,
+        fullLength: m[0].length,
+      });
+    }
+
+    // Find a valid consecutive sequence starting with 'a' or 'क'
+    let validMatches: Array<{ letter: string; index: number; fullLength: number }> = [];
+    for (let i = 0; i < matches.length; i++) {
+      if (matches[i].letter === 'a' || matches[i].letter === 'क') {
+        const candidate = [matches[i]];
+        const expectedKeys = matches[i].letter === 'क' ? ['क', 'ख', 'ग', 'घ'] : ['a', 'b', 'c', 'd'];
+        let expectedIdx = 1;
+
+        for (let j = i + 1; j < matches.length; j++) {
+          if (matches[j].letter === expectedKeys[expectedIdx]) {
+            candidate.push(matches[j]);
+            expectedIdx++;
+          }
+        }
+
+        if (candidate.length >= 2) {
+          validMatches = candidate;
+          break;
+        }
+      }
+    }
+
+    if (validMatches.length >= 2) {
+      const firstOpt = validMatches[0];
+      let qStem = rawQuestion.substring(0, firstOpt.index).trim();
+      // Clean leading clutter like "1. Multiple Choice Questions (MCQs): Choose the correct option. (i) "
+      qStem = qStem
+        .replace(/^(?:\d+[\.\)]\s*)?(?:Multiple Choice Questions\s*(?:\([A-Za-z]+\))?:?\s*)?(?:Choose the correct option[\.:\s]*)?(?:\([iIvVxX\d]+\)\s*)?/i, '')
+        .trim();
+
+      const options = [];
+      for (let k = 0; k < validMatches.length; k++) {
+        const cur = validMatches[k];
+        const next = validMatches[k + 1];
+        const startText = cur.index + cur.fullLength;
+        const endText = next ? next.index : rawQuestion.length;
+        const optText = rawQuestion.substring(startText, endText).trim();
+        options.push({
+          key: cur.letter,
+          label: `(${cur.letter})`,
+          text: optText,
+        });
+      }
+      return { qStem, options };
+    }
+
+    // Pipe-separated choices like "5. Estimate: 2000 g | 20 g | 200 g"
+    if (rawQuestion.includes('|')) {
+      const colonIdx = rawQuestion.lastIndexOf(':');
+      if (colonIdx > 0) {
+        const choicesPart = rawQuestion.substring(colonIdx + 1);
+        const parts = choicesPart.split('|').map((s) => s.trim()).filter(Boolean);
+        if (parts.length >= 2 && parts.length <= 5) {
+          const letters = ['a', 'b', 'c', 'd', 'e'];
+          const qStem = rawQuestion.substring(0, colonIdx).trim().replace(/^(?:\d+[\.\)]\s*)?/, '').trim();
+          return {
+            qStem,
+            options: parts.map((p, idx) => ({
+              key: letters[idx],
+              label: `(${letters[idx]})`,
+              text: p,
+            })),
+          };
+        }
+      }
+    }
+
+    // True or False questions
+    const qLower = rawQuestion.toLowerCase();
+    if (qLower.includes('true or false') || qLower.includes('सही या गलत') || qLower.includes('सत्य या असत्य')) {
+      const qStem = rawQuestion.replace(/^(?:\d+[\.\)]\s*)?(?:Write true or false[\.:\s]*)?(?:\([iIvVxX\d]+\)\s*)?/i, '').trim();
+      return {
+        qStem,
+        options: [
+          { key: 'a', label: 'True', text: 'True (सही / सत्य)' },
+          { key: 'b', label: 'False', text: 'False (गलत / असत्य)' },
+        ],
+      };
+    }
+
+    return null;
+  };
+
+  const checkIsOptionSelected = (
+    studentAns: string,
+    opt: { key: string; label: string; text: string }
+  ) => {
+    if (!studentAns) return false;
+    const s = studentAns.toLowerCase().trim();
+    const k = opt.key.toLowerCase().trim();
+    const lbl = opt.label.toLowerCase().trim();
+    const txt = opt.text.toLowerCase().trim();
+    if (s === k || s === lbl || s === `${k})` || s === `option ${k}` || s === `option ${lbl}`) return true;
+    if (s.startsWith(`${lbl} `) || s.startsWith(`${k}) `) || s.startsWith(`${k}. `)) return true;
+    if (txt.length > 1 && (s === txt || s.startsWith(txt))) return true;
+    if (s.includes(`(${k})`) || s.includes(`option (${k})`) || s.includes(`option ${k}`)) return true;
+    return false;
+  };
+
   // Helper to compile list of questions for Mock Test
-  const getMockQuestionsList = (): Array<{ question: string; idealAnswer?: string }> => {
-    const list: Array<{ question: string; idealAnswer?: string }> = [];
+  const getMockQuestionsList = (): Array<{
+    question: string;
+    idealAnswer?: string;
+    options?: string[];
+    type?: string;
+  }> => {
+    const list: Array<{
+      question: string;
+      idealAnswer?: string;
+      options?: string[];
+      type?: string;
+    }> = [];
 
     if (whiteboardSteps.length > 0) {
       whiteboardSteps.forEach((step, idx) => {
@@ -3373,9 +3615,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
         const qText = getQuestionForStep(step, idx) || step.step;
         if (!list.some((item) => item.question === qText)) {
+          const qLower = qText.toLowerCase();
+          const isPyramid = qLower.includes('pyramid') || qLower.includes('पिरामिड');
           list.push({
             question: qText,
             idealAnswer: step.formula || undefined,
+            type: isPyramid ? 'pyramid' : undefined,
           });
         }
       });
@@ -3388,6 +3633,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           list.push({
             question: sq.question,
             idealAnswer: sq.correctAnswer || sq.explanation,
+            options: sq.options,
+            type: sq.type,
           });
         }
       });
@@ -3396,7 +3643,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     if (detectedQuestions.length > 0) {
       detectedQuestions.forEach((q) => {
         if (!list.some((item) => item.question === q)) {
-          list.push({ question: q });
+          const qLower = q.toLowerCase();
+          const isPyramid = qLower.includes('pyramid') || qLower.includes('पिरामिड');
+          list.push({
+            question: q,
+            type: isPyramid ? 'pyramid' : undefined,
+          });
         }
       });
     }
@@ -3831,90 +4083,79 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </button>
             </div>
 
-            {/* 📂 पिछला काम देखें BUTTON (Top Header placement as requested) */}
+            {/* 📚 विषय चयन ड्रॉपडाउन (Header Subject Select Box) */}
+            <div className="relative flex items-center">
+              <span className="text-xs font-bold text-slate-500 mr-1.5 hidden md:inline">
+                {medium === 'english' ? 'Subject:' : 'विषय:'}
+              </span>
+              <select
+                value={selectedSubject?.id || ''}
+                onChange={(e) => {
+                  const found = allSubjects.find((s) => s.id === e.target.value);
+                  if (found) handleSelectSubject(found);
+                }}
+                className={`pl-2.5 pr-8 py-1.5 rounded-xl text-xs font-black border transition-all cursor-pointer appearance-none shadow-xs ${
+                  isDarkMode
+                    ? 'bg-slate-900 border-slate-700 text-white hover:border-blue-500'
+                    : 'bg-blue-50/90 border-blue-200 text-blue-900 hover:border-blue-400 hover:bg-blue-100/80'
+                }`}
+                title={medium === 'english' ? 'Select Subject' : 'विषय चुनें'}
+              >
+                {allSubjects.map((sub) => (
+                  <option
+                    key={sub.id}
+                    value={sub.id}
+                    className={isDarkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}
+                  >
+                    {sub.emoji} {medium === 'english' ? sub.subject : sub.subjectHindi} ({sub.teacherName.split(' ')[0]})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2 pointer-events-none text-blue-600 dark:text-blue-400" />
+            </div>
+
+            {/* 📚 चैप्टर्स सूची बटन */}
             <button
               type="button"
-              onClick={() => setIsHistoryModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
-                isDarkMode
-                  ? 'bg-amber-950/40 text-amber-300 border-amber-800 hover:bg-amber-950/60'
-                  : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-xs'
+              onClick={() => {
+                if (!selectedSubject) {
+                  alert(medium === 'english' ? 'Please select a subject from above first!' : 'कृपया पहले कोई विषय चुनें!');
+                  return;
+                }
+                setIsChaptersOpen((prev) => !prev);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs shrink-0 cursor-pointer ${
+                isChaptersOpen
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-400/20'
+                  : isDarkMode
+                  ? 'bg-slate-900 text-blue-300 border-slate-700 hover:border-blue-400'
+                  : 'bg-white text-blue-700 border-slate-200 hover:border-blue-300 shadow-2xs'
               }`}
-              title={medium === 'english' ? 'View saved past worksheets & history' : 'पिछला सुरक्षित काम व वर्कशीट देखें'}
+              title={medium === 'english' ? 'Chapters List' : 'चैप्टर्स सूची'}
             >
-              <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span suppressHydrationWarning>
-                📂 {medium === 'english' ? 'History' : 'पिछला काम'} ({isMounted ? worksheetHistory.length : 0})
+              <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="hidden sm:inline">{medium === 'english' ? 'Chapters' : 'चैप्टर्स'}</span>
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
+                {selectedSubject?.chapters?.length || 0}
               </span>
             </button>
           </div>
 
           {/* Right: Controls & Motivation */}
           <div className="flex items-center gap-2">
-            {/* 🌟 7-Day Free Trial (3 Free Uploads) / Pro Subscription Badge */}
-            {!isMounted ? (
-              <div className="px-2.5 py-1.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-900 font-black text-xs flex items-center gap-1.5 shadow-2xs">
-                <Flame className="w-3.5 h-3.5 fill-emerald-500 text-emerald-600" />
-                <span>{medium === 'english' ? '🎁 7-Day Free Trial' : '🎁 7-दिन मुफ़्त ट्रायल'}</span>
-              </div>
-            ) : isSubscribed ? (
-              <button
-                type="button"
-                onClick={() => setIsSubscriptionModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-102 cursor-pointer"
-                title={medium === 'english' ? 'Pro Tuition Pack is active' : 'प्रो ट्यूशन पैक एक्टिव है'}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>{medium === 'english' ? '⭐ Pro Tuition Pack' : '⭐ प्रो ट्यूशन पैक'}</span>
-              </button>
-            ) : trialUploadCount < 3 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsFourthUploadAttempt(false);
-                  setIsSubscriptionModalOpen(true);
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 text-emerald-900 font-black text-xs flex items-center gap-1.5 shadow-2xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                title={medium === 'english' ? '7-Day Free Trial: 3 Free Uploads' : '7-दिन मुफ़्त ट्रायल: 3 में से मुफ़्त अपलोड'}
-              >
-                <Flame className="w-3.5 h-3.5 fill-emerald-500 text-emerald-600 animate-pulse" />
-                <span>
-                  {medium === 'english'
-                    ? `🎁 Trial: ${trialUploadCount}/3 Worksheets (${trialDaysRemaining}d left)`
-                    : `🎁 ट्रायल: ${trialUploadCount}/3 वर्कशीट (${trialDaysRemaining} दिन शेष)`}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsFourthUploadAttempt(true);
-                  setIsSubscriptionModalOpen(true);
-                }}
-                className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs flex items-center gap-1.5 shadow-md animate-pulse transition-all cursor-pointer"
-                title={medium === 'english' ? '3 free worksheets completed. Upgrade to Pro for unlimited learning!' : '3 मुफ़्त वर्कशीट पूरी हो चुकी हैं। असीमित पढ़ाई के लिए ट्यूशन पैक लें!'}
-              >
-                <AlertCircle className="w-3.5 h-3.5 text-white" />
-                <span>{medium === 'english' ? '⚠️ Free Limit Reached • Unlock Pro (₹200)' : '⚠️ 3 मुफ़्त अपलोड पूरे • पैक लें (₹200)'}</span>
-              </button>
-            )}
-
-            {/* Sunday Test Paper Button */}
-            <button
-              type="button"
-              onClick={() => setIsSundayExamModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+            {/* 2. Sunday Test Series Page Link */}
+            <Link
+              href="/test-series"
+              className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer hover:scale-105 active:scale-95 ${
                 isDarkMode
                   ? 'bg-slate-900 hover:bg-slate-800 text-indigo-300 border-slate-700'
-                  : 'bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border-slate-200'
+                  : 'bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
               }`}
-              title={medium === 'english' ? 'Attempt Test Series & view exam score history' : 'टेस्ट सीरीज़ दें या स्कोर व टेस्ट हिस्ट्री देखें'}
+              title={medium === 'english' ? 'Open Weekly Test Series (25 Marks Exam)' : 'साप्ताहिक टेस्ट सीरीज़ खोलें (25 अंक पेपर)'}
             >
-              <FileText className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-              <span>{medium === 'english' ? '📝 Test Series' : '📝 टेस्ट सीरीज़'}</span>
-            </button>
-
-
+              <span className="text-sm shrink-0">📝</span>
+              <span>{medium === 'english' ? 'Weekly Test Series' : 'साप्ताहिक टेस्ट सीरीज़'}</span>
+            </Link>
 
             {/* Board Selector */}
             <div className={`p-0.5 rounded-xl border flex items-center text-xs font-bold ${
@@ -3986,91 +4227,24 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         </div>
       </header>
 
-      {/* 2. CORE SUBJECTS SELECTOR RIBBON */}
-      <div className={`border-b px-3 md:px-6 py-1.5 transition-colors duration-200 ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xs'
-        }`}>
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`text-[11px] font-black uppercase mr-1 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-              {medium === 'english' ? 'Subject:' : 'विषय:'}
-            </span>
-            {allSubjects.map((sub) => {
-              const isSelected = selectedSubject?.id === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  onClick={() => handleSelectSubject(sub)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs cursor-pointer ${isSelected
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-400/30'
-                    : isDarkMode
-                      ? 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/50'
-                    }`}
-                >
-                  <span className="text-sm">{sub.emoji}</span>
-                  <span>{medium === 'english' ? sub.subject : sub.subjectHindi}</span>
-                  <span className="text-[10px] opacity-75 font-normal">({sub.teacherName.split(' ')[0]})</span>
-                </button>
-              );
-            })}
-
-            {/* CHAPTERS TOGGLE BUTTON IN RIBBON */}
-            <div className="h-5 w-px bg-slate-200 dark:bg-slate-700 mx-1 shrink-0 hidden sm:block" />
-            <button
-              type="button"
-              onClick={() => {
-                if (!selectedSubject) {
-                  alert(medium === 'english' ? 'Please select a subject from above first!' : 'कृपया पहले ऊपर दिए गए विषयों में से कोई एक विषय चुनें!');
-                  return;
-                }
-                setIsChaptersOpen((prev) => !prev);
-              }}
-              className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs shrink-0 cursor-pointer ${isChaptersOpen
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-400/20'
-                : isDarkMode
-                  ? 'bg-slate-950 text-blue-300 border-blue-500/30 hover:border-blue-400 hover:bg-blue-950/30'
-                  : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
-                }`}
-              title={medium === 'english' ? 'Open Chapters List' : 'पाठ व चैप्टर्स सूची खोलें'}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>
-                {medium === 'english'
-                  ? `📚 Chapters (${selectedSubject?.chapters?.length || 0})`
-                  : `📚 चैप्टर्स सूची (${selectedSubject?.chapters?.length || 0})`}
-              </span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${isChaptersOpen
-                ? 'bg-white/20 text-white'
-                : isDarkMode
-                  ? 'bg-blue-900/50 text-blue-200'
-                  : 'bg-white text-blue-700 border border-blue-200'
-                }`}>
-                {isChaptersOpen ? (medium === 'english' ? '✕ Close' : '✕ बंद') : (medium === 'english' ? '▾ Open' : '▾ खोलें')}
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* 3. MAIN WORKSPACE */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         {/* LEFT COLUMN: Animated Character Guide, Copy Scanner, & Student Learning Journey (4 Cols) - Fixed / Sticky with scroll */}
-        <div className="lg:col-span-4 space-y-4 lg:sticky lg:top-20 self-start max-h-[calc(100vh-6rem)] overflow-y-auto scrollbar-none">
+        <div className="lg:col-span-4 space-y-3 lg:sticky lg:top-14 self-start max-h-[calc(100vh-4.5rem)] overflow-y-auto scrollbar-none">
           {/* KHAN ACADEMY STYLE TEACHER COACH CARD */}
-          <div className={`rounded-2xl p-4 border transition-all duration-200 relative overflow-hidden shadow-xs ${isDarkMode
+          <div className={`rounded-2xl p-3 sm:p-3.5 border transition-all duration-200 relative overflow-hidden shadow-xs ${isDarkMode
             ? 'bg-slate-900 border-slate-800 text-white'
             : 'bg-white border-slate-200/90 text-slate-900'
             }`}>
-            <div className="flex items-center gap-3.5">
+            <div className="flex items-center gap-3">
               {/* Teacher Avatar Pill */}
               <div className="relative shrink-0">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl border transition-all ${
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl border transition-all ${
                   isSpeaking ? 'ring-2 ring-blue-500 scale-105' : ''
                 } ${isDarkMode ? 'bg-blue-950/60 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
                   {currentTeacher.emoji}
                 </div>
-                <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-900 ${
+                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${
                   isSpeaking ? 'bg-emerald-500 animate-ping' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
                 }`} />
               </div>
@@ -4079,10 +4253,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                       {currentTeacher.name}
                     </h3>
-                    <p className="text-[11px] font-bold text-blue-600 dark:text-blue-400 truncate">
+                    <p className="text-[10px] sm:text-[11px] font-bold text-blue-600 dark:text-blue-400 truncate">
                       {currentTeacher.role}
                     </p>
                   </div>
@@ -4090,20 +4264,20 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     type="button"
                     onClick={() => speakText(speechText, undefined, true)}
-                    className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 border transition-all shrink-0 ${isDarkMode
+                    className={`px-2 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1 border transition-all shrink-0 ${isDarkMode
                       ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
                       : 'bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200'
                       }`}
                     title="आवाज़ दोबारा सुनें (Replay Voice)"
                   >
                     <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-[11px] font-bold">Replay</span>
+                    <span className="text-[10px] font-bold">Replay</span>
                   </button>
                 </div>
 
                 {/* Subtle Speech line */}
-                <div className="mt-1.5 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                  <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-snug font-medium">
+                <div className="mt-1 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300 line-clamp-2 leading-snug font-medium">
                     &quot;{speechText || 'नमस्ते बेटा! कोई भी सवाल पूछिए या किताब की फोटो दिखाएं।'}&quot;
                   </p>
                 </div>
@@ -4112,7 +4286,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* HOMEWORK & BOOK SCANNER (Khan Academy Assignment Style) */}
-          <div className={`rounded-2xl p-4 sm:p-5 border transition-all duration-200 space-y-3.5 ${isDarkMode
+          <div className={`rounded-2xl p-3 sm:p-3.5 border transition-all duration-200 space-y-2.5 ${isDarkMode
             ? 'bg-slate-900 border-slate-800 shadow-xl'
             : 'bg-white border-slate-200/90 shadow-xs'
             }`}>
@@ -4351,23 +4525,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <span className="truncate">{medium === 'english' ? 'Check Copy' : 'कॉपी चेक'}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerMode('quiz')}
-                    disabled={isCheckingHomework}
-                    className={`py-2 px-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-                      currentUploadMode === 'quiz'
-                        ? 'bg-amber-500 text-white shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                  <Link
+                    href="/mock-test"
+                    className="py-2 px-1 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-100 hover:text-amber-900 border border-amber-200 dark:border-amber-800 shadow-2xs cursor-pointer"
+                    title={medium === 'english' ? 'Open Worksheet Mock Test' : 'वर्कशीट मॉक टेस्ट खोलें'}
                   >
-                    {isCheckingHomework && currentUploadMode === 'quiz' ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-white shrink-0" />
-                    ) : (
-                      <span className="text-sm shrink-0">🎯</span>
-                    )}
-                    <span className="truncate">{medium === 'english' ? 'Test Yourself' : 'टेस्ट दें'}</span>
-                  </button>
+                    <span className="text-sm shrink-0">🎯</span>
+                    <span className="truncate">{medium === 'english' ? 'Mock Test' : 'मॉक टेस्ट'}</span>
+                  </Link>
                 </div>
 
 
@@ -4718,7 +4883,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             ? 'bg-slate-900 border-slate-800 shadow-xl'
             : 'bg-white border-slate-200/90 shadow-xs'
             }`}>
-            <div className={`px-4 sm:px-5 py-3 border-b flex items-center justify-between transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50/80 border-slate-200'
+            <div className={`px-3.5 sm:px-4 py-2 sm:py-2.5 border-b flex items-center justify-between transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50/80 border-slate-200'
               }`}>
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
@@ -4865,7 +5030,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             )}
 
-            <div className={`p-5 sm:p-6 space-y-4 transition-all duration-300 min-h-[220px] ${!isDarkMode
+            <div className={`p-3.5 sm:p-4 space-y-3 transition-all duration-300 min-h-[200px] max-h-[calc(100vh-10.5rem)] overflow-y-auto scrollbar-thin ${!isDarkMode
               ? chalkboardTheme === 'green'
                 ? 'bg-[#0f2e1d] text-white shadow-inner'
                 : 'bg-white text-slate-900'
@@ -5112,6 +5277,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                             // Detect if this question is an explicit Pyramid puzzle (only for pyramid questions, NOT subtraction/standard questions)
                             const qTextLower = (activeItem?.question || '').toLowerCase();
                             const isPyramidQuestion = Boolean(
+                              activeItem?.type === 'pyramid' ||
                               qTextLower.includes('pyramid') ||
                               qTextLower.includes('पिरामिड') ||
                               (qTextLower.includes('topmost') && qTextLower.includes('row'))
@@ -5123,6 +5289,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                               qTextLower.includes(' 7')
                             );
 
+                            // Detect if this question has Multiple Choice Options (MCQ e.g. 4 options (a), (b), (c), (d))
+                            const mcqData = parseMCQOptions(activeItem?.question, activeItem?.options);
+                            const isMcq = Boolean(mcqData && mcqData.options && mcqData.options.length >= 2);
+
                             return (
                               <div className="space-y-4">
                                 {/* The Question Card (STICKY & FIXED WHEN PINNED, COMPACT FONT) */}
@@ -5133,10 +5303,22 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                   : 'bg-white/95 border-amber-300 text-slate-900 shadow-sm ring-1 ring-amber-100'
                                   }`}>
                                   <div className="flex items-center justify-between gap-2 mb-1.5 pb-1.5 border-b border-black/5 dark:border-white/10">
-                                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                      {medium === 'english' ? `Question #${activeMockQIdx + 1}` : `प्रश्न #${activeMockQIdx + 1}`}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                        {medium === 'english' ? `Question #${activeMockQIdx + 1}` : `प्रश्न #${activeMockQIdx + 1}`}
+                                      </span>
+                                      {isMcq && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                                          MCQ ({mcqData?.options.length} {medium === 'english' ? 'Options' : 'विकल्प'})
+                                        </span>
+                                      )}
+                                      {isPyramidQuestion && (
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
+                                          🔺 {medium === 'english' ? 'Pyramid Puzzle' : 'पिरामिड पहेली'}
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="flex items-center gap-2">
                                       <button
                                         type="button"
@@ -5172,8 +5354,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          const qLower = activeItem.question.toLowerCase();
-                                          let spoken = activeItem.question;
+                                          const rawToSpeak = isMcq && mcqData ? mcqData.qStem : activeItem.question;
+                                          const qLower = rawToSpeak.toLowerCase();
+                                          let spoken = rawToSpeak;
                                           if (qLower.includes('pleasant') || qLower.includes('first place')) spoken = spoken.replace(/\bmeadow\b/i, 'blank');
                                           else if (qLower.includes('weather was hot')) spoken = spoken.replace(/\bpond\b/i, 'blank');
                                           else if (qLower.includes('older and could eat grass')) spoken = spoken.replace(/\bmother\b/i, 'blank');
@@ -5195,14 +5378,201 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     </div>
                                   </div>
 
-                                  {/* Compact Question Font Size */}
+                                  {/* Compact Question Prompt (If MCQ, shows clean question prompt without trailing options list) */}
                                   <h3 className="text-xs sm:text-sm font-extrabold leading-snug text-slate-900 dark:text-amber-200">
-                                    {renderMockQuestionBlank(activeItem.question, activeItem.idealAnswer)}
+                                    {renderMockQuestionBlank(isMcq && mcqData ? mcqData.qStem : activeItem.question, activeItem.idealAnswer)}
                                   </h3>
+                                </div>
 
-                                  {/* Interactive Visual Pyramid Widget (Appears if question is a Pyramid/Box puzzle) */}
-                                  {isPyramidQuestion && (
-                                    <div className="mt-3 pt-2.5 border-t border-black/5 dark:border-white/10">
+                                {/* Answer Input Area: Dynamically Adapts to Question Type (MCQ, Pyramid, or Calculation/Solve) */}
+                                <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 transition-all shadow-xs ${isDarkMode || chalkboardTheme === 'green'
+                                  ? 'bg-slate-950/90 border-slate-800 text-white shadow-xl'
+                                  : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
+                                  }`}>
+
+                                  {/* TYPE 1: MULTIPLE CHOICE QUESTION (4 OPTIONS SELECTOR) */}
+                                  {isMcq && mcqData && (
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
+                                        <label className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                          <span>🔘</span>
+                                          <span>{medium === 'english' ? 'Choose the Correct Option (MCQ):' : 'सही विकल्प चुनें (Choose the Correct Option):'}</span>
+                                        </label>
+                                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                          {studentAns ? (medium === 'english' ? 'Option Selected ✓' : 'विकल्प चुना गया ✓') : (medium === 'english' ? 'Tap an option' : 'विकल्प पर क्लिक करें')}
+                                        </span>
+                                      </div>
+
+                                      {/* Interactive 4-Option Cards Grid */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                        {mcqData.options.map((opt) => {
+                                          const isSelected = checkIsOptionSelected(studentAns, opt);
+                                          return (
+                                            <button
+                                              key={opt.key}
+                                              type="button"
+                                              onClick={() => {
+                                                const formatted = `${opt.label} ${opt.text}`;
+                                                setMockAnswers((prev) => ({
+                                                  ...prev,
+                                                  [activeMockQIdx]: formatted,
+                                                }));
+                                                setTimeout(() => {
+                                                  const el = mockAnswerTextareaRef.current;
+                                                  if (el) {
+                                                    el.style.height = 'auto';
+                                                    el.style.height = `${Math.max(100, el.scrollHeight)}px`;
+                                                  }
+                                                }, 20);
+                                              }}
+                                              className={`p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-3 cursor-pointer group transform active:scale-[0.98] ${
+                                                isSelected
+                                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 dark:border-emerald-400 shadow-md ring-2 ring-emerald-400/30'
+                                                  : isDarkMode || chalkboardTheme === 'green'
+                                                  ? 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 hover:border-amber-400/60 text-slate-200'
+                                                  : 'bg-white hover:bg-amber-50/50 border-slate-200 hover:border-amber-300 text-slate-800 shadow-2xs'
+                                              }`}
+                                            >
+                                              {/* Badge (A, B, C, D) */}
+                                              <span
+                                                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs sm:text-sm font-black shrink-0 transition-all ${
+                                                  isSelected
+                                                    ? 'bg-emerald-500 text-white shadow-xs scale-105'
+                                                    : isDarkMode || chalkboardTheme === 'green'
+                                                    ? 'bg-slate-800 text-amber-300 border border-slate-700 group-hover:bg-amber-500 group-hover:text-slate-950'
+                                                    : 'bg-slate-100 text-slate-700 border border-slate-200 group-hover:bg-amber-400 group-hover:text-slate-950'
+                                                }`}
+                                              >
+                                                {opt.key.toUpperCase()}
+                                              </span>
+
+                                              {/* Option Text */}
+                                              <div className="flex-1 min-w-0 pt-0.5">
+                                                <span
+                                                  className={`text-xs sm:text-sm font-extrabold block leading-snug ${
+                                                    isSelected
+                                                      ? 'text-emerald-900 dark:text-emerald-100'
+                                                      : isDarkMode || chalkboardTheme === 'green'
+                                                      ? 'text-slate-100'
+                                                      : 'text-slate-800'
+                                                  }`}
+                                                >
+                                                  {opt.text}
+                                                </span>
+                                              </div>
+
+                                              {/* Radio / Checkmark Indicator */}
+                                              <div className="shrink-0 pt-0.5">
+                                                <div
+                                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                                    isSelected
+                                                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-xs'
+                                                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                                                  }`}
+                                                >
+                                                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                                                </div>
+                                              </div>
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+
+                                      {/* Optional Solution Steps / Working Toggle */}
+                                      <div className="pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setShowMcqSteps((prev) => ({
+                                              ...prev,
+                                              [activeMockQIdx]: !prev[activeMockQIdx],
+                                            }))
+                                          }
+                                          className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                                        >
+                                          <span>✍️</span>
+                                          <span>
+                                            {showMcqSteps[activeMockQIdx]
+                                              ? (medium === 'english' ? 'Hide Solution Steps / Rough Work' : 'हल व स्टेप्स छुपाएं')
+                                              : (medium === 'english' ? 'Show Solution Steps / Rough Work (Optional)' : 'हल या रफ़ स्टेप्स भी लिखें (वैकल्पिक)')}
+                                          </span>
+                                          <ChevronDown
+                                            className={`w-3.5 h-3.5 transition-transform ${
+                                              showMcqSteps[activeMockQIdx] ? 'rotate-180' : ''
+                                            }`}
+                                          />
+                                        </button>
+                                        {studentAns && (
+                                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                            ✓ {studentAns.split('\n')[0]}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      {/* Expandable Textarea & Math Toolbar for MCQ Steps */}
+                                      {showMcqSteps[activeMockQIdx] && (
+                                        <div className="pt-2 space-y-3 animate-in fade-in duration-200">
+                                          <MathSymbolEditorToolbar
+                                            textareaRef={mockAnswerTextareaRef}
+                                            currentValue={studentAns}
+                                            onValueChange={(newVal) => {
+                                              setMockAnswers((prev) => ({
+                                                ...prev,
+                                                [activeMockQIdx]: newVal,
+                                              }));
+                                              setTimeout(() => {
+                                                const el = mockAnswerTextareaRef.current;
+                                                if (el) {
+                                                  el.style.height = 'auto';
+                                                  el.style.height = `${Math.max(100, el.scrollHeight)}px`;
+                                                }
+                                              }, 15);
+                                            }}
+                                            isDarkMode={isDarkMode || chalkboardTheme === 'green'}
+                                            medium={medium}
+                                            activeQuestionText={activeItem?.question}
+                                          />
+
+                                          <textarea
+                                            ref={mockAnswerTextareaRef}
+                                            rows={3}
+                                            value={studentAns}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              setMockAnswers((prev) => ({
+                                                ...prev,
+                                                [activeMockQIdx]: val,
+                                              }));
+                                              e.target.style.height = 'auto';
+                                              e.target.style.height = `${Math.max(100, e.target.scrollHeight)}px`;
+                                            }}
+                                            placeholder={medium === 'english'
+                                              ? 'Type your calculations or explanation here...'
+                                              : 'यहाँ अपना हल, गणना या रफ़ कार्य टाइप करें...'}
+                                            className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[100px] ${isDarkMode || chalkboardTheme === 'green'
+                                              ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
+                                              : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
+                                              }`}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* TYPE 2: INTERACTIVE PYRAMID PUZZLE SOLVER IN EDITOR */}
+                                  {!isMcq && isPyramidQuestion && (
+                                    <div className="space-y-3.5">
+                                      <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
+                                        <label className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                          <span>🔺</span>
+                                          <span>{medium === 'english' ? 'Solve Number Pyramid in Editor:' : 'पिरामिड पहेली के खाली डिब्बे यहाँ भरें (Solve Pyramid in Editor):'}</span>
+                                        </label>
+                                        <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950 px-2.5 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700">
+                                          {medium === 'english' ? 'Interactive Puzzle' : 'लाइव पहेली एडिटर'}
+                                        </span>
+                                      </div>
+
+                                      {/* Interactive Visual Pyramid Widget directly inside Editor */}
                                       <MathPyramidWidget
                                         presetType={isPyramid2 ? 'pyramid2' : 'pyramid1'}
                                         isEditable={true}
@@ -5223,75 +5593,112 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                             }
                                           }, 25);
                                         }}
+                                        onAutoUpdate={(pyramidText) => {
+                                          setMockAnswers((prev) => ({
+                                            ...prev,
+                                            [activeMockQIdx]: pyramidText,
+                                          }));
+                                        }}
                                         isDarkMode={isDarkMode || chalkboardTheme === 'green'}
                                         medium={medium}
                                       />
+
+                                      {/* Editor Textarea with live pyramid representation */}
+                                      <div className="pt-1 space-y-1.5">
+                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                          <span>📝</span>
+                                          <span>{medium === 'english' ? 'Pyramid Formatted Solution (Auto-Filled):' : 'पिरामिड हल का लिखित स्वरूप (यहाँ कॉपी की तरह दिखता है):'}</span>
+                                        </label>
+                                        <textarea
+                                          ref={mockAnswerTextareaRef}
+                                          rows={4}
+                                          value={studentAns}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            setMockAnswers((prev) => ({
+                                              ...prev,
+                                              [activeMockQIdx]: val,
+                                            }));
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = `${Math.max(140, e.target.scrollHeight)}px`;
+                                          }}
+                                          placeholder={medium === 'english'
+                                            ? 'Fill the pyramid boxes above, or type steps here...'
+                                            : 'ऊपर पिरामिड के डिब्बों में संख्याएँ भरें, हल यहाँ स्वतः आ जाएगा...'}
+                                          className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[140px] ${isDarkMode || chalkboardTheme === 'green'
+                                            ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
+                                            : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
+                                            }`}
+                                        />
+                                      </div>
                                     </div>
                                   )}
-                                </div>
 
-                                {/* Answer Input Area with Math Symbols & Powers Toolbar */}
-                                <div className={`p-4 sm:p-5 rounded-2xl border space-y-3.5 transition-all shadow-xs ${isDarkMode || chalkboardTheme === 'green'
-                                  ? 'bg-slate-950/90 border-slate-800 text-white shadow-xl'
-                                  : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
-                                  }`}>
-                                  <div className="flex items-center justify-between pb-1">
-                                    <label className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                      <span>✍️</span>
-                                      <span>{medium === 'english' ? 'Type Your Answer / Solution Steps:' : 'अपना उत्तर या हल यहाँ लिखें (Type Your Answer):'}</span>
-                                    </label>
-                                    {studentAns && (
-                                      <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                                        {studentAns.trim().split(/\s+/).filter(Boolean).length} {medium === 'english' ? 'words' : 'शब्द'}
-                                      </span>
-                                    )}
-                                  </div>
+                                  {/* TYPE 3: STANDARD DESCRIPTIVE / SOLVE / FILL QUESTIONS */}
+                                  {!isMcq && !isPyramidQuestion && (
+                                    <div className="space-y-3.5">
+                                      <div className="flex items-center justify-between pb-1">
+                                        <label className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                          <span>✍️</span>
+                                          <span>{medium === 'english' ? 'Type Your Answer / Solution Steps:' : 'अपना उत्तर या हल यहाँ लिखें (Type Your Answer):'}</span>
+                                        </label>
+                                        {studentAns && (
+                                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                            {studentAns.trim().split(/\s+/).filter(Boolean).length} {medium === 'english' ? 'words' : 'शब्द'}
+                                          </span>
+                                        )}
+                                      </div>
 
-                                  {/* 🧮 Math Symbols, Powers, Calculator & Pyramid Toolbar */}
-                                  <MathSymbolEditorToolbar
-                                    textareaRef={mockAnswerTextareaRef}
-                                    currentValue={studentAns}
-                                    onValueChange={(newVal) => {
-                                      setMockAnswers((prev) => ({
-                                        ...prev,
-                                        [activeMockQIdx]: newVal,
-                                      }));
-                                      setTimeout(() => {
-                                        const el = mockAnswerTextareaRef.current;
-                                        if (el) {
-                                          el.style.height = 'auto';
-                                          el.style.height = `${Math.max(140, el.scrollHeight)}px`;
-                                        }
-                                      }, 15);
-                                    }}
-                                    isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                    medium={medium}
-                                  />
+                                      {/* 🧮 Math Symbols, Powers, Calculator & Pyramid Toolbar */}
+                                      <MathSymbolEditorToolbar
+                                        textareaRef={mockAnswerTextareaRef}
+                                        currentValue={studentAns}
+                                        onValueChange={(newVal) => {
+                                          setMockAnswers((prev) => ({
+                                            ...prev,
+                                            [activeMockQIdx]: newVal,
+                                          }));
+                                          setTimeout(() => {
+                                            const el = mockAnswerTextareaRef.current;
+                                            if (el) {
+                                              el.style.height = 'auto';
+                                              el.style.height = `${Math.max(140, el.scrollHeight)}px`;
+                                            }
+                                          }, 15);
+                                        }}
+                                        isDarkMode={isDarkMode || chalkboardTheme === 'green'}
+                                        medium={medium}
+                                        activeQuestionText={activeItem?.question}
+                                        isPyramidActive={isPyramidQuestion}
+                                      />
 
-                                  {/* Dynamic Auto-Expanding Textarea (Grows in height as student types) */}
-                                  <textarea
-                                    ref={mockAnswerTextareaRef}
-                                    rows={4}
-                                    value={studentAns}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      setMockAnswers((prev) => ({
-                                        ...prev,
-                                        [activeMockQIdx]: val,
-                                      }));
-                                      // Auto-expand height dynamically with content
-                                      e.target.style.height = 'auto';
-                                      e.target.style.height = `${Math.max(140, e.target.scrollHeight)}px`;
-                                    }}
-                                    placeholder={medium === 'english'
-                                      ? 'Type your step-by-step solution here (e.g. c² = a² + b² or fill pyramid boxes)... Use the toolbar above for Calculator, Powers & Box Pyramids!'
-                                      : 'यहाँ कॉपी की तरह पूरा हल या उत्तर टाइप करें (जैसे c² = a² + b² या पिरामिड बॉक्स)... कैलकुलेटर, पावर्स व पिरामिड जोड़ने के लिए ऊपर टूलबार का उपयोग करें!'}
-                                    className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[140px] ${isDarkMode || chalkboardTheme === 'green'
-                                      ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
-                                      : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
-                                      }`}
-                                  />
+                                      {/* Dynamic Auto-Expanding Textarea (Grows in height as student types) */}
+                                      <textarea
+                                        ref={mockAnswerTextareaRef}
+                                        rows={4}
+                                        value={studentAns}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          setMockAnswers((prev) => ({
+                                            ...prev,
+                                            [activeMockQIdx]: val,
+                                          }));
+                                          // Auto-expand height dynamically with content
+                                          e.target.style.height = 'auto';
+                                          e.target.style.height = `${Math.max(140, e.target.scrollHeight)}px`;
+                                        }}
+                                        placeholder={medium === 'english'
+                                          ? 'Type your step-by-step solution here (e.g. c² = a² + b² or fill pyramid boxes)... Use the toolbar above for Calculator, Powers & Box Pyramids!'
+                                          : 'यहाँ कॉपी की तरह पूरा हल या उत्तर टाइप करें (जैसे c² = a² + b² या पिरामिड बॉक्स)... कैलकुलेटर, पावर्स व पिरामिड जोड़ने के लिए ऊपर टूलबार का उपयोग करें!'}
+                                        className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[140px] ${isDarkMode || chalkboardTheme === 'green'
+                                          ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
+                                          : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
+                                          }`}
+                                      />
+                                    </div>
+                                  )}
 
+                                  {/* Action Buttons: Save & Evaluate, Clear */}
                                   <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                                     <button
                                       type="button"
@@ -5651,6 +6058,20 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                         <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                         <span className="text-[11px] hidden sm:inline">{medium === 'english' ? 'Listen' : 'सुनें'}</span>
                                       </button>
+                                      {uploadedFiles.length > 0 && uploadedFiles[0]?.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setPreviewImageUrl(uploadedFiles[0].url)}
+                                          className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${isDarkMode || chalkboardTheme === 'green'
+                                            ? 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                                            : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 shadow-2xs'
+                                            }`}
+                                          title={medium === 'english' ? 'View textbook photo / illustration' : 'किताब का चित्र / पेज देखें'}
+                                        >
+                                          <span>🖼️</span>
+                                          <span className="text-[11px] hidden md:inline">{medium === 'english' ? 'Photo' : 'चित्र देखें'}</span>
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
 
@@ -6076,21 +6497,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         </div>
       </main>
 
-      {/* 4. BOTTOM FLOATING VOICE & QUERY DOCK */}
-      <footer className={`sticky bottom-0 backdrop-blur-md border-t p-3 md:p-4 z-20 transition-colors duration-200 ${isDarkMode
+      {/* 4. BOTTOM FLOATING VOICE & QUERY DOCK (Compact & Clean - No Suggestion Chips) */}
+      <footer className={`sticky bottom-0 backdrop-blur-md border-t py-2 px-3 sm:px-4 z-20 transition-colors duration-200 ${isDarkMode
         ? 'bg-slate-900/95 border-slate-800 shadow-2xl'
         : 'bg-white/95 border-slate-200 shadow-lg'
         }`}>
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
+        <div className="max-w-4xl mx-auto flex items-center gap-2.5">
           <button
             onClick={toggleMic}
-            className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white shadow-lg transition-all transform active:scale-95 shrink-0 ${isListening
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-white shadow-md transition-all transform active:scale-95 shrink-0 ${isListening
               ? 'bg-rose-600 animate-pulse ring-4 ring-rose-500/40'
               : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30 hover:scale-105'
               }`}
             title={medium === 'english' ? 'Speak with mic' : 'माइक से बोलें'}
           >
-            {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+            {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
 
           <div className="flex-1 relative">
@@ -6100,7 +6521,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={isListening ? (medium === 'english' ? 'Listening... Speak now!' : 'सुन रहे हैं... बोलिए बेटा!') : (medium === 'english' ? 'Tap mic to speak or type your question...' : 'माइक दबाकर बोलें या सवाल यहाँ टाइप करें...')}
-              className={`w-full border rounded-2xl px-5 py-3.5 text-xs md:text-sm outline-none transition-all pr-12 ${isDarkMode
+              className={`w-full border rounded-xl px-4 py-2 text-xs md:text-sm outline-none transition-all pr-10 ${isDarkMode
                 ? 'bg-slate-950 border-slate-700 focus:border-blue-400 text-white placeholder-slate-500'
                 : 'bg-slate-100 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400'
                 }`}
@@ -6109,62 +6530,23 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <button
               type="button"
               onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-all shadow-xs cursor-pointer"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
             </button>
           </div>
 
           <label
             htmlFor="homework-upload-input"
-            className={`p-3.5 rounded-2xl border flex items-center gap-1.5 text-xs font-bold shrink-0 transition-all cursor-pointer ${isDarkMode
+            className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold shrink-0 transition-all cursor-pointer ${isDarkMode
               ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
               : 'bg-slate-100 hover:bg-blue-50 text-slate-700 hover:border-blue-300 border-slate-200 shadow-2xs'
               }`}
             title={medium === 'english' ? 'Capture homework or textbook page' : 'होमवर्क या बुक पेज की फोटो खींचें'}
           >
-            <Camera className="w-5 h-5 text-amber-500" />
+            <Camera className="w-4 h-4 text-amber-500" />
             <span className="hidden sm:inline">{medium === 'english' ? 'Take Photo' : 'फोटो खींचो'}</span>
           </label>
-        </div>
-
-        {/* Quick Suggestion Chips for Switching Subjects */}
-        <div className="max-w-4xl mx-auto flex items-center gap-2 overflow-x-auto scrollbar-none mt-2 pt-1 text-[11px]">
-          <span className={`font-bold shrink-0 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{medium === 'english' ? 'Suggestions:' : 'सुझाव:'}</span>
-          {(medium === 'english'
-            ? [
-                'Teach Math Chapter 1 (Shapes)',
-                'Solve Chapter 1 Questions',
-                '10 + 10 = ?',
-                'Solve 25 + 35',
-                'Teach English Chapter 5',
-                'Check my notebook',
-                'Help with my Homework',
-              ]
-            : [
-                'गणित Chapter 1 करवा दो (Shapes)',
-                'Chapter 1 के प्रश्न हल करो',
-                '10 + 10 = ?',
-                'Math का Chapter 1 पढ़ाओ',
-                '25 + 35 हल करो',
-                'English का Chapter 5 पढ़ाओ',
-                'मेरी कॉपी चेक करो',
-              ]
-          ).map((chip, idx) => (
-            <button
-              key={idx}
-              onClick={() => {
-                setInputText(chip);
-                handleStudentQuery(chip);
-              }}
-              className={`px-3 py-1 rounded-full border transition-all shrink-0 whitespace-nowrap ${isDarkMode
-                ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700/60'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 hover:border-indigo-300'
-                }`}
-            >
-              {chip}
-            </button>
-          ))}
         </div>
       </footer>
       {/* Student All Report link available on header and celebration modal */}
@@ -6334,6 +6716,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           }
         }}
       />
+
+      {/* 🔍 BOOK PAGE / IMAGE PREVIEW MODAL */}
+      {previewImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full max-h-[90vh] bg-slate-900 rounded-3xl p-3 sm:p-4 border border-white/20 shadow-2xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-2 border-b border-white/10 mb-2">
+              <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-2">
+                <span>📖</span> {medium === 'english' ? 'Textbook Page Photo / Illustration' : 'किताब का पेज / चित्र (Textbook Photo)'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPreviewImageUrl(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-sm font-bold transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[75vh] w-full flex items-center justify-center rounded-2xl bg-black/50 p-2">
+              <img
+                src={previewImageUrl}
+                alt="Book page illustration"
+                className="max-h-[70vh] w-auto object-contain rounded-xl shadow-lg"
+              />
+            </div>
+            <span className="text-[11px] text-slate-400 mt-2 text-center">
+              💡 {medium === 'english' ? 'Zoom and pan to clearly see the question diagram, clock, or object.' : 'सवाल के चित्र (जैसे Crackers बिस्कुट, आरेख या घड़ी) को यहाँ साफ़-साफ़ देख सकते हैं।'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

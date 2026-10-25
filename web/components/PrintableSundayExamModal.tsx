@@ -16,6 +16,7 @@ interface SundayExamProps {
   existingUploadedFiles?: Array<{ id: string; name: string; url: string; type?: string }>;
   pageDataMap?: Record<string, { whiteboardSteps?: any[]; detectedQuestions?: string[]; detectedChapter?: any; heading?: string }>;
   worksheetHistory?: any[];
+  isFullPage?: boolean;
 }
 
 export default function PrintableSundayExamModal({
@@ -31,6 +32,7 @@ export default function PrintableSundayExamModal({
   existingUploadedFiles,
   pageDataMap,
   worksheetHistory,
+  isFullPage = false,
 }: SundayExamProps) {
   // Normalize board string (e.g. 'RBSE (राजस्थान बोर्ड)' -> 'RBSE')
   const cleanBoard = board?.toUpperCase().includes('CBSE') ? 'CBSE' : 'RBSE';
@@ -48,6 +50,7 @@ export default function PrintableSundayExamModal({
       existingUploadedFiles={existingUploadedFiles}
       pageDataMap={pageDataMap}
       worksheetHistory={worksheetHistory}
+      isFullPage={isFullPage}
     />
   );
 }
