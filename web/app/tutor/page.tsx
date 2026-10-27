@@ -4073,15 +4073,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           {/* Left: Brand + Grade + Language Switcher */}
           <div className="flex items-center gap-2">
             <Link
-              href="/reports"
-              className={`p-1.5 rounded-lg transition-all flex items-center justify-center text-xs font-bold border ${
+              href="/dashboard"
+              className={`px-2 py-1 rounded-lg transition-all flex items-center gap-1 text-[11px] font-black border ${
                 isDarkMode
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  ? 'bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 border-indigo-800'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
               }`}
-              title={medium === 'english' ? 'Dashboard / View All Reports' : 'डैशबोर्ड / ऑल रिपोर्ट देखें'}
+              title={medium === 'english' ? 'AI Learning Brain & Study Plan' : 'AI लर्निंग ब्रेन व दैनिक प्लान'}
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>🧠</span>
+              <span className="hidden sm:inline">{medium === 'english' ? 'Learning Plan' : 'लर्निंग प्लान'}</span>
             </Link>
 
             <div className="flex items-center gap-2">

@@ -1,0 +1,87 @@
+{
+  "studentId": "9999988888",
+  "studentPhone": "9999988888",
+  "studentName": "Student",
+  "classGrade": "Class 4th",
+  "board": "RBSE",
+  "medium": "HINDI",
+  "updatedAt": 1793069525657,
+  "createdAt": 1793069525639,
+  "conceptMastery": {
+    "math_subtraction_borrow": {
+      "conceptKey": "math_subtraction_borrow",
+      "conceptTitle": "Subtraction with Borrow",
+      "subjectId": "math",
+      "chapterNumber": 2,
+      "score": 65,
+      "masteryLevel": "DEVELOPING",
+      "totalAttempts": 1,
+      "independentCorrectCount": 1,
+      "evidence": [
+        {
+          "id": "ev-1793069525656-909s",
+          "timestamp": 1793069525656,
+          "questionSnippet": "503 - 247 = ?",
+          "isCorrect": true,
+          "wasIndependent": true,
+          "hintsUsedCount": 0,
+          "timeTakenSeconds": 22
+        }
+      ],
+      "lastAssessedAt": 1793069525656
+    }
+  },
+  "weakConcepts": [
+    {
+      "id": "weak-1793069525649-j4ag",
+      "conceptKey": "math_subtraction_borrow",
+      "conceptTitle": "Subtraction with Borrow",
+      "subjectId": "math",
+      "chapterNumber": 2,
+      "misconception": "Zero se borrow lene par hundreds digit ko reduce nahi kiya.",
+      "mistakeType": "CONCEPTUAL",
+      "occurrences": 1,
+      "firstIdentifiedAt": 1793069525649,
+      "lastTestedAt": 1793069525649,
+      "status": "IMPROVING",
+      "remediationCount": 1
+    }
+  ],
+  "revisionSchedule": [
+    {
+      "id": "rev-1793069525650-rcmu",
+      "conceptKey": "math_subtraction_borrow",
+      "conceptTitle": "Subtraction with Borrow",
+      "subjectId": "math",
+      "chapterNumber": 2,
+      "boxLevel": 2,
+      "nextDueDate": "2026-10-30",
+      "isOverdue": false,
+      "priority": "HIGH",
+      "recommendedAction": "Spaced Revision: Subtraction with Borrow"
+    }
+  ],
+  "todayStudyPlan": [
+    {
+      "id": "act-scan-2026-10-27",
+      "type": "PRACTICE_WEAK",
+      "title": "Scan Homework & Instant Mistake Check",
+      "description": "School copy ya textbook ki photo kheenche aur turant check karwayein.",
+      "subjectId": "math",
+      "teacherId": "sharma_sir",
+      "teacherName": "Sharma Sir",
+      "estimatedMinutes": 10,
+      "priority": "RECOMMENDED",
+      "completed": false
+    }
+  ],
+  "stats": {
+    "totalQuestionsAttempted": 1,
+    "totalIndependentSolved": 1,
+    "totalMistakesDiagnosed": 1,
+    "totalRemediationsCompleted": 0,
+    "studyStreakDays": 1,
+    "lastStudyDate": "2026-10-27",
+    "weeklyTimeSpentMinutes": 25
+  }
+}
