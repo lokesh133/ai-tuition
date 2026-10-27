@@ -154,31 +154,32 @@ export default function WorksheetMockTestPage() {
         }
 
         // Try API for saved student records
-        const targetPhone = phone || '9610328630';
-        try {
-          const res = await fetch(`/api/student/records?phone=${targetPhone}`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.record) {
-              const rec = json.record;
-              if (rec.currentSession) {
-                const compiled = extractQuestionsFromSession(rec.currentSession);
-                if (compiled.length > 0) {
-                  setQuestionsList(compiled);
-                  return;
+        if (phone) {
+          try {
+            const res = await fetch(`/api/student/records?phone=${phone}`);
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && json.record) {
+                const rec = json.record;
+                if (rec.currentSession) {
+                  const compiled = extractQuestionsFromSession(rec.currentSession);
+                  if (compiled.length > 0) {
+                    setQuestionsList(compiled);
+                    return;
+                  }
                 }
-              }
-              if (Array.isArray(rec.worksheetHistory) && rec.worksheetHistory.length > 0) {
-                const compiled = extractQuestionsFromHistory(rec.worksheetHistory);
-                if (compiled.length > 0) {
-                  setQuestionsList(compiled);
-                  return;
+                if (Array.isArray(rec.worksheetHistory) && rec.worksheetHistory.length > 0) {
+                  const compiled = extractQuestionsFromHistory(rec.worksheetHistory);
+                  if (compiled.length > 0) {
+                    setQuestionsList(compiled);
+                    return;
+                  }
                 }
               }
             }
+          } catch (apiErr) {
+            console.warn('API fetch error in mock test:', apiErr);
           }
-        } catch (apiErr) {
-          console.warn('API fetch error in mock test:', apiErr);
         }
 
         // Fallback default questions if no session questions found

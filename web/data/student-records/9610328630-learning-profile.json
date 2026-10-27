@@ -5,53 +5,63 @@
   "classGrade": "Class 4th",
   "board": "RBSE",
   "medium": "HINDI",
-  "updatedAt": 1793069677051,
+  "updatedAt": 1793097214356,
   "createdAt": 1793069677050,
-  "conceptMastery": {},
+  "conceptMastery": {
+    "math_c2_subtraction_borrow": {
+      "conceptKey": "math_c2_subtraction_borrow",
+      "conceptTitle": "Subtraction with Borrowing (घटाव और हासिल)",
+      "subjectId": "math",
+      "chapterNumber": 1,
+      "score": 41,
+      "masteryLevel": "NOVICE",
+      "totalAttempts": 1,
+      "independentCorrectCount": 0,
+      "evidence": [
+        {
+          "id": "ev-1793097214356-4nm3",
+          "timestamp": 1793097214356,
+          "questionSnippet": "Ab is sawaal ko khud bina dekhe solve karein: 503 - 247 = ?",
+          "isCorrect": false,
+          "wasIndependent": true,
+          "hintsUsedCount": 0,
+          "timeTakenSeconds": 15
+        }
+      ],
+      "lastAssessedAt": 1793097214356
+    }
+  },
   "weakConcepts": [],
-  "revisionSchedule": [],
+  "revisionSchedule": [
+    {
+      "id": "rev-1793097214356-7pz5",
+      "conceptKey": "math_c2_subtraction_borrow",
+      "conceptTitle": "Subtraction with Borrowing (घटाव और हासिल)",
+      "subjectId": "math",
+      "chapterNumber": 1,
+      "boxLevel": 1,
+      "nextDueDate": "2026-10-28",
+      "isOverdue": false,
+      "priority": "HIGH",
+      "recommendedAction": "Spaced Revision: Subtraction with Borrowing (घटाव और हासिल)"
+    }
+  ],
   "todayStudyPlan": [
     {
-      "id": "plan-scan-1793069677050",
+      "id": "act-scan-2026-10-27",
       "type": "PRACTICE_WEAK",
-      "title": "Scan Aaj Ka School Homework",
-      "description": "Apni copy ki photo kheechein aur Sharma Sir ya Neha Mam se step-by-step check karwayein.",
+      "title": "Scan Homework & Instant Mistake Check",
+      "description": "School copy ya textbook ki photo kheenche aur turant check karwayein.",
       "subjectId": "math",
       "teacherId": "sharma_sir",
       "teacherName": "Sharma Sir",
       "estimatedMinutes": 10,
-      "priority": "URGENT",
-      "completed": false
-    },
-    {
-      "id": "plan-math-revision",
-      "type": "REVISION",
-      "title": "Math: Place Value & 4-Digit Addition Practice",
-      "description": "Sharma Sir ke saath 3 practice sawaal solve karein aur concept pakka karein.",
-      "subjectId": "math",
-      "teacherId": "sharma_sir",
-      "teacherName": "Sharma Sir",
-      "estimatedMinutes": 15,
       "priority": "RECOMMENDED",
-      "conceptKey": "math_c1_place_value",
-      "completed": false
-    },
-    {
-      "id": "plan-english-dictation",
-      "type": "NEW_CONCEPT",
-      "title": "English: Hard Words Dictation (श्रुतलेख)",
-      "description": "Riya Didi se 5 new words sunkar spelling likhein.",
-      "subjectId": "english",
-      "teacherId": "riya_didi",
-      "teacherName": "Riya Didi",
-      "estimatedMinutes": 10,
-      "priority": "RECOMMENDED",
-      "conceptKey": "eng_c1_vocabulary",
       "completed": false
     }
   ],
   "stats": {
-    "totalQuestionsAttempted": 0,
+    "totalQuestionsAttempted": 1,
     "totalIndependentSolved": 0,
     "totalMistakesDiagnosed": 0,
     "totalRemediationsCompleted": 0,

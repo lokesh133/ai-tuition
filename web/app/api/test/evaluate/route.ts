@@ -268,7 +268,7 @@ Return ONLY a valid JSON array enclosed in <eval_json>...</eval_json>:
 
     let grade = 'B';
     let badge = '⭐ अच्छा प्रयास!';
-    let teacherFeedback = 'आपने संडे टेस्ट में अच्छा प्रयास किया है। लगातार अभ्यास जारी रखें!';
+    let teacherFeedback = 'आपने टेस्ट में अच्छा प्रयास किया है। लगातार अभ्यास जारी रखें!';
 
     if (percentage >= 90) {
       grade = 'A+';

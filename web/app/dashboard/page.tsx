@@ -48,7 +48,7 @@ export default function StudentDashboardPage() {
 
   const loadProfile = async () => {
     try {
-      let studentId = '9610328630';
+      let studentId = 'guest_student';
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem('student_user');
         if (stored) {

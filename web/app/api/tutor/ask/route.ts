@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { recordTuitionTrainingInteraction } from '@/lib/training-logger';
+import { saveStudentUpload } from '@/lib/studentUploadManager';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
@@ -67,6 +69,30 @@ export async function POST(req: NextRequest) {
     const teacherSubject =
       teacherId.includes('neha') ? 'Science & EVS' : teacherId.includes('riya') ? 'English' : 'Mathematics';
 
+    const studentId = reqJson?.student_id || '';
+    const studentPhone = reqJson?.student_phone || '';
+    const studentName = reqJson?.student_name || 'Student';
+    const classGrade = reqJson?.className || reqJson?.classGrade || '';
+    const studentBoard = reqJson?.board || '';
+
+    // Permanently save student uploaded files to backend disk
+    if (fileBufferBase64 || additionalImages.length > 0) {
+      saveStudentUpload({
+        studentId,
+        studentPhone,
+        studentName,
+        fileName,
+        fileMime,
+        fileBufferBase64,
+        additionalImages,
+        classGrade,
+        board: studentBoard,
+        subject: teacherSubject,
+        mode,
+        detectedQuestions: [],
+      }).catch((uErr) => console.warn('[Student Upload Save Notice]:', uErr));
+    }
+
     // MOCK TEST EVALUATION MODE: Evaluate student typed answer
     if (mode === 'evaluate_mock') {
       const studentAnswer = (reqJson?.student_answer || '').trim();
@@ -129,10 +155,13 @@ Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tag
         try {
           const parts = [{ text: evalPrompt }];
           const candidateModels = [
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-8b',
+            'gemini-3.6-flash',
             'gemini-3.5-flash-lite',
             'gemini-flash-lite-latest',
             'gemini-3-flash-preview',
-            'gemini-3.6-flash',
           ];
 
           for (const modelName of candidateModels) {
@@ -615,10 +644,13 @@ STABILITY MANDATE:
         // without hitting 429 quota exhaustion (20/day) or 503 capacity spikes.
         // =========================================================================
         const candidateModels = [
+          'gemini-2.0-flash',
+          'gemini-1.5-flash',
+          'gemini-1.5-flash-8b',
+          'gemini-3.6-flash',
           'gemini-3.5-flash-lite',
           'gemini-flash-lite-latest',
           'gemini-3-flash-preview',
-          'gemini-3.6-flash',
         ];
         let rawReply = '';
 
@@ -657,6 +689,14 @@ STABILITY MANDATE:
 
         if (rawReply) {
           const { cleanReply, whiteboardSteps, detectedQuestions, quizQuestions, detectedSubject, detectedTeacherId, detectedTeacherName, detectedChapter } = extractWhiteboardTags(rawReply, question, mode, learningLanguage);
+
+          // 🎓 Continuous Model Training Logger (Keeps model learning and self-improving)
+          recordTuitionTrainingInteraction({
+            teacherName: detectedTeacherName || teacherName,
+            teacherSubject: detectedSubject || teacherSubject,
+            studentQuestion: question || 'Homework question',
+            teacherAnswer: cleanReply,
+          }).catch((tErr) => console.warn('[Training Log Error]:', tErr));
           return NextResponse.json({
             success: true,
             teacher_id: detectedTeacherId || teacherId,

@@ -50,7 +50,7 @@ export default function StudentAllReportPage() {
   useEffect(() => {
     setIsClient(true);
     // Load student user profile & parent analytics
-    let phoneOrId = '9610328630';
+    let phoneOrId = 'guest_student';
     try {
       const saved = localStorage.getItem('student_user');
       if (saved) {

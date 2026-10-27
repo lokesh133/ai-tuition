@@ -951,7 +951,7 @@ export default function SundayTestSeriesModal({
         }
       }
     } catch {}
-    if (studentName && studentName !== 'राहुल कुमावत') {
+    if (studentName) {
       setActiveStudentName(studentName);
     }
   }, [studentName]);

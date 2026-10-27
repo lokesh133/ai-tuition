@@ -97,7 +97,7 @@ export default function AdminCourseRAGPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: '9610328630',
+          phone: 'student_demo',
           worksheetHistory: [],
           testHistory: [],
           currentSession: null,

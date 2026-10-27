@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (purpose !== 'SIGNUP' && purpose !== 'FORGOT_PASSWORD') {
+    if (purpose !== 'SIGNUP' && purpose !== 'FORGOT_PASSWORD' && purpose !== 'LOGIN') {
       return NextResponse.json(
         { success: false, message: 'Invalid OTP purpose specified.' },
         { status: 400 }

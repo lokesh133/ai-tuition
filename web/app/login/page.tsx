@@ -15,71 +15,158 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  ShieldCheck,
+  Send,
 } from 'lucide-react';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { firebaseAuth } from '@/lib/firebase';
 
 export default function StudentLoginPage() {
   const router = useRouter();
 
+  // Mode: OTP (primary) vs PASSWORD
+  const [loginMode, setLoginMode] = useState<'OTP' | 'PASSWORD'>('OTP');
+
+  // OTP Login State
   const [phone, setPhone] = useState('');
+  const [otpStep, setOtpStep] = useState<'PHONE' | 'OTP'>('PHONE');
+  const [otp, setOtp] = useState('');
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  // Password Login State
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Loading & Alerts
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Forgot Password Modal State
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotPhone, setForgotPhone] = useState('');
-  const [forgotStep, setForgotStep] = useState<'PHONE' | 'OTP_RESET'>('PHONE');
-  const [forgotOtp, setForgotOtp] = useState('');
-  const [forgotNewPassword, setForgotNewPassword] = useState('');
-  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false);
-  const [forgotDemoOtp, setForgotDemoOtp] = useState<string | null>(null);
-  const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotError, setForgotError] = useState<string | null>(null);
-  const [forgotSuccess, setForgotSuccess] = useState<string | null>(null);
-  const [forgotConfirmation, setForgotConfirmation] = useState<ConfirmationResult | null>(null);
-  const [isFirebaseForgot, setIsFirebaseForgot] = useState(false);
-
+  // Resend OTP Countdown
   useEffect(() => {
-    return () => {
-      if ((window as any).forgotRecaptchaVerifier) {
-        try {
-          (window as any).forgotRecaptchaVerifier.clear();
-          (window as any).forgotRecaptchaVerifier = null;
-        } catch (e) {}
-      }
-    };
-  }, []);
+    if (resendCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
 
-  const setupForgotRecaptcha = () => {
-    try {
-      if (!(window as any).forgotRecaptchaVerifier) {
-        (window as any).forgotRecaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'forgot-recaptcha-container', {
-          size: 'invisible',
-          callback: () => {},
-        });
+  // Sync Student Records on Login
+  const syncRecordsAndRedirect = async (studentData: any, cleanPhone: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('student_user', JSON.stringify(studentData));
+      localStorage.setItem('vidya_subscribed', studentData.isSubscribed ? 'true' : 'false');
+
+      try {
+        const recRes = await fetch(
+          `/api/student/records?phone=${encodeURIComponent(cleanPhone)}&studentId=${encodeURIComponent(studentData.id || '')}`
+        );
+        if (recRes.ok) {
+          const recData = await recRes.json();
+          if (recData.worksheetHistory && recData.worksheetHistory.length > 0) {
+            localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(recData.worksheetHistory));
+          }
+          if (recData.testHistory && recData.testHistory.length > 0) {
+            localStorage.setItem('vidya_sunday_test_history_v1', JSON.stringify(recData.testHistory));
+          }
+          if (recData.currentSession) {
+            localStorage.setItem('vidya_current_session', JSON.stringify(recData.currentSession));
+          }
+        }
+      } catch (syncErr) {
+        console.warn('Student login records sync error:', syncErr);
       }
-      return (window as any).forgotRecaptchaVerifier;
-    } catch (e) {
-      console.warn('Forgot recaptcha error:', e);
-      return null;
+    }
+    setTimeout(() => {
+      router.push('/tutor');
+    }, 600);
+  };
+
+  // 1. Send OTP to Mobile
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError(null);
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setError('कृपया मान्य 10 अंकों का भारतीय मोबाइल नंबर दर्ज करें (शुरुआत 6, 7, 8, 9 से)।');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, purpose: 'LOGIN' }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'ओटीपी भेजने में समस्या हुई। कृपया पुनः प्रयास करें।');
+        setLoading(false);
+        return;
+      }
+
+      setDemoOtp(data.demoOtp || null);
+      setOtpStep('OTP');
+      setResendCountdown(60);
+      setSuccess(`ओटीपी +91 ${cleanPhone.slice(0, 5)} ${cleanPhone.slice(5)} पर भेज दिया गया है!`);
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (err) {
+      setError('सर्वर से संपर्क नहीं हो सका। कृपया इंटरनेट जांचें।');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // 2. Verify OTP & Login
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanOtp = otp.trim();
+
+    if (!cleanOtp || cleanOtp.length < 4) {
+      setError('कृपया मोबाइल पर प्राप्त 4-अंकों का ओटीपी दर्ज करें।');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/student/login-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, otp: cleanOtp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setError(data.message || 'गलत ओटीपी! कृपया पुनः प्रयास करें।');
+        setLoading(false);
+        return;
+      }
+
+      setSuccess(`सफलतापूर्वक लॉगिन हो गया! AI Tutor में आपका स्वागत है...`);
+      await syncRecordsAndRedirect(data.student, cleanPhone);
+    } catch (err) {
+      setError('लॉगिन करने में त्रुटि हुई। कृपया पुनः प्रयास करें।');
+      setLoading(false);
+    }
+  };
+
+  // 3. Fallback: Password Login
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number.');
+      setError('कृपया मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।');
       return;
     }
     if (!password) {
-      setError('Please enter your password / PIN.');
+      setError('कृपया अपना पासवर्ड दर्ज करें।');
       return;
     }
 
@@ -93,174 +180,16 @@ export default function StudentLoginPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data.message || 'Login failed. Please check your credentials.');
+        setError(data.message || 'गलत मोबाइल नंबर या पासवर्ड!');
         setLoading(false);
         return;
       }
 
-      setSuccess(true);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('student_user', JSON.stringify(data.student));
-        // Sync student's worksheets, tests, and session from the server to this PC
-        try {
-          const recRes = await fetch(
-            `/api/student/records?phone=${encodeURIComponent(cleanPhone)}&studentId=${encodeURIComponent(data.student.id || '')}`
-          );
-          if (recRes.ok) {
-            const recData = await recRes.json();
-            if (recData.worksheetHistory && recData.worksheetHistory.length > 0) {
-              localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(recData.worksheetHistory));
-            }
-            if (recData.testHistory && recData.testHistory.length > 0) {
-              localStorage.setItem('vidya_sunday_test_history_v1', JSON.stringify(recData.testHistory));
-            }
-            if (recData.currentSession) {
-              localStorage.setItem('vidya_current_session', JSON.stringify(recData.currentSession));
-            }
-          }
-        } catch (syncErr) {
-          console.warn('Student login records sync error:', syncErr);
-        }
-      }
-      setTimeout(() => {
-        router.push('/tutor');
-      }, 700);
-    } catch (err: any) {
-      setError('Could not connect to server. Please try again.');
+      setSuccess(`नमस्ते ${data.student.name}, AI Tutor खुल रहा है...`);
+      await syncRecordsAndRedirect(data.student, cleanPhone);
+    } catch (err) {
+      setError('लॉगिन में त्रुटि हुई। कृपया पुनः प्रयास करें।');
       setLoading(false);
-    }
-  };
-
-  // Forgot Password: Send OTP
-  const handleSendForgotOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setForgotError(null);
-
-    const cleanPhone = forgotPhone.replace(/\D/g, '');
-    if (cleanPhone.length !== 10) {
-      setForgotError('Please enter a valid 10-digit registered mobile number.');
-      return;
-    }
-
-    setForgotLoading(true);
-    try {
-      const res = await fetch('/api/auth/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, purpose: 'FORGOT_PASSWORD' }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setForgotError(data.message || 'No account found with this number.');
-        setForgotLoading(false);
-        return;
-      }
-
-      setForgotDemoOtp(data.demoOtp || null);
-
-      // Try Firebase Phone Auth for real SMS
-      try {
-        const appVerifier = setupForgotRecaptcha();
-        if (appVerifier) {
-          const confirmation = await signInWithPhoneNumber(
-            firebaseAuth,
-            `+91${cleanPhone}`,
-            appVerifier
-          );
-          setForgotConfirmation(confirmation);
-          setIsFirebaseForgot(true);
-          console.log('✅ Forgot password SMS sent via Firebase to +91', cleanPhone);
-        }
-      } catch (fbErr: any) {
-        console.warn('Firebase SMS warning in forgot password:', fbErr.message || fbErr);
-        setIsFirebaseForgot(false);
-      }
-
-      setForgotStep('OTP_RESET');
-    } catch (e) {
-      setForgotError('Could not send OTP. Please check your connection.');
-    } finally {
-      setForgotLoading(false);
-    }
-  };
-
-  // Forgot Password: Reset with OTP
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setForgotError(null);
-
-    if (!forgotOtp.trim() || forgotOtp.trim().length < 4) {
-      setForgotError('Please enter the OTP.');
-      return;
-    }
-    if (forgotNewPassword.trim().length < 4) {
-      setForgotError('New password must be at least 4 characters or digits.');
-      return;
-    }
-
-    setForgotLoading(true);
-    const cleanPhone = forgotPhone.replace(/\D/g, '');
-
-    // Verify with Firebase if available
-    if (forgotConfirmation && isFirebaseForgot) {
-      try {
-        await forgotConfirmation.confirm(forgotOtp.trim());
-      } catch (fbErr: any) {
-        console.warn('Firebase OTP verification failed, falling back to server OTP:', fbErr.message);
-      }
-    }
-
-    try {
-      const res = await fetch('/api/auth/student/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: cleanPhone,
-          otp: forgotOtp.trim(),
-          newPassword: forgotNewPassword.trim(),
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setForgotError(data.message || 'Password reset failed.');
-        setForgotLoading(false);
-        return;
-      }
-
-      setForgotSuccess('Password reset successfully! Logging in...');
-      if (data.student && typeof window !== 'undefined') {
-        localStorage.setItem('student_user', JSON.stringify(data.student));
-        try {
-          const recRes = await fetch(
-            `/api/student/records?phone=${encodeURIComponent(cleanPhone)}&studentId=${encodeURIComponent(data.student.id || '')}`
-          );
-          if (recRes.ok) {
-            const recData = await recRes.json();
-            if (recData.worksheetHistory && recData.worksheetHistory.length > 0) {
-              localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(recData.worksheetHistory));
-            }
-            if (recData.testHistory && recData.testHistory.length > 0) {
-              localStorage.setItem('vidya_sunday_test_history_v1', JSON.stringify(recData.testHistory));
-            }
-            if (recData.currentSession) {
-              localStorage.setItem('vidya_current_session', JSON.stringify(recData.currentSession));
-            }
-          }
-        } catch (syncErr) {
-          console.warn('Student forgot password records sync error:', syncErr);
-        }
-      }
-
-      setTimeout(() => {
-        setShowForgotModal(false);
-        router.push('/tutor');
-      }, 900);
-    } catch (e) {
-      setForgotError('Could not reset password. Please try again.');
-    } finally {
-      setForgotLoading(false);
     }
   };
 
@@ -274,32 +203,68 @@ export default function StudentLoginPage() {
           </div>
           <div>
             <span className="text-xl font-black text-slate-900 tracking-tight">AI Tuition</span>
-            <span className="block text-[11px] font-bold text-indigo-600">Student Portal</span>
+            <span className="block text-[11px] font-bold text-indigo-600">छात्र लॉगिन पोर्टल (Student Login)</span>
           </div>
         </Link>
 
         <Link
           href="/signup"
-          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3.5 py-2 rounded-xl border border-indigo-200"
+          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3.5 py-2 rounded-xl border border-indigo-200 transition-colors"
         >
-          Create New Account →
+          नया खाता बनाएं (Sign Up) →
         </Link>
       </header>
 
       {/* Main Card */}
-      <main className="max-w-md mx-auto w-full my-8 bg-white rounded-3xl p-6 md:p-8 shadow-2xl border border-indigo-50 relative overflow-hidden">
+      <main className="max-w-md mx-auto w-full my-6 bg-white rounded-3xl p-6 md:p-8 shadow-2xl border border-indigo-50 relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-indigo-500 to-amber-500" />
 
         <div className="mb-6 text-center">
           <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl shadow-inner">
-            🎒
+            📱
           </div>
           <h1 className="text-2xl font-black text-slate-900">
-            Student Login
+            {loginMode === 'OTP' ? 'मोबाइल OTP लॉगिन' : 'पासवर्ड से लॉगिन'}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Login with your registered mobile number and password
+            {loginMode === 'OTP'
+              ? 'अपने 10 अंकों के मोबाइल नंबर पर ओटीपी प्राप्त कर तुरंत लॉगिन करें'
+              : 'रजिस्टर्ड मोबाइल नंबर और पासवर्ड से लॉगिन करें'}
           </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex p-1 bg-slate-100 rounded-xl mb-5 text-xs font-black">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('OTP');
+              setError(null);
+            }}
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'OTP'
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span>मोबाइल OTP लॉगिन</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('PASSWORD');
+              setError(null);
+            }}
+            className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+              loginMode === 'PASSWORD'
+                ? 'bg-white text-indigo-700 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5 text-slate-500" />
+            <span>पासवर्ड लॉगिन</span>
+          </button>
         </div>
 
         {error && (
@@ -312,95 +277,209 @@ export default function StudentLoginPage() {
         {success && (
           <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Login successful! Opening AI Classroom...</span>
+            <span>{success}</span>
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        {/* MODE 1: MOBILE OTP LOGIN */}
+        {loginMode === 'OTP' && (
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Mobile Number (Phone) *
-            </label>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type="tel"
-                required
-                maxLength={10}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                placeholder="10-digit mobile number"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold tracking-wide"
-              />
-            </div>
-          </div>
+            {otpStep === 'PHONE' ? (
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    मोबाइल नंबर (10-Digit Mobile Number) *
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-sm font-bold text-slate-400">
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      required
+                      maxLength={10}
+                      autoFocus
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="98XXXXXXXX"
+                      className="w-full pl-13 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base font-bold tracking-wider text-slate-900"
+                    />
+                  </div>
+                </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700">Password / PIN *</label>
-              <button
-                type="button"
-                onClick={() => {
-                  setForgotPhone(phone);
-                  setForgotStep('PHONE');
-                  setForgotError(null);
-                  setForgotSuccess(null);
-                  setShowForgotModal(true);
-                }}
-                className="text-[11px] font-bold text-indigo-600 hover:underline"
-              >
-                Forgot Password?
-              </button>
-            </div>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password / PIN"
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || success}
-            className="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-          >
-            {loading ? (
-              <span>Logging in...</span>
+                <button
+                  type="submit"
+                  disabled={loading || phone.length !== 10}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span>ओटीपी भेजा जा रहा है...</span>
+                  ) : (
+                    <>
+                      <span>ओटीपी भेजें (Send OTP)</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </form>
             ) : (
-              <>
-                <span>Login</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-slate-500 block text-[11px]">ओटीपी भेजा गया:</span>
+                    <span className="font-black text-slate-900 tracking-wider">
+                      +91 {phone.slice(0, 5)} {phone.slice(5)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtpStep('PHONE');
+                      setOtp('');
+                      setDemoOtp(null);
+                      setError(null);
+                    }}
+                    className="text-[11px] font-bold text-indigo-600 hover:underline"
+                  >
+                    नंबर बदलें
+                  </button>
+                </div>
+
+                {demoOtp && (
+                  <div
+                    onClick={() => setOtp(demoOtp)}
+                    className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all"
+                  >
+                    <span>डेमो OTP: <strong>{demoOtp}</strong></span>
+                    <span className="text-[10px] text-amber-700 uppercase font-black underline">ऑटो-भरें ↵</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ओटीपी दर्ज करें (Enter OTP) *
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    autoFocus
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="• • • •"
+                    className="w-full text-center py-2.5 text-2xl tracking-[0.4em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.trim().length < 4}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span>सत्यापित किया जा रहा है...</span>
+                  ) : (
+                    <>
+                      <span>सत्यापित करें और लॉगिन करें</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center justify-between pt-1 text-xs">
+                  {resendCountdown > 0 ? (
+                    <span className="text-slate-400 font-medium">
+                      ओटीपी दोबारा भेजें ({resendCountdown}s)
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSendOtp()}
+                      className="font-bold text-indigo-600 hover:underline"
+                    >
+                      ओटीपी दोबारा भेजें (Resend OTP)
+                    </button>
+                  )}
+                </div>
+              </form>
             )}
-          </button>
-        </form>
+          </div>
+        )}
+
+        {/* MODE 2: PASSWORD LOGIN */}
+        {loginMode === 'PASSWORD' && (
+          <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                मोबाइल नंबर (Mobile Number) *
+              </label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  placeholder="10 अंकों का मोबाइल नंबर"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold tracking-wide"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                पासवर्ड (Password) *
+              </label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="अपना पासवर्ड दर्ज करें"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            >
+              {loading ? (
+                <span>लॉगिन किया जा रहा है...</span>
+              ) : (
+                <>
+                  <span>पासवर्ड से लॉगिन करें</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
         <div className="mt-6 text-center text-xs text-slate-500">
-          Don't have an account?{' '}
+          खाता नहीं है?{' '}
           <Link href="/signup" className="font-extrabold text-indigo-600 hover:underline">
-            Sign Up for Free
+            नया खाता बनाएं (Sign Up)
           </Link>
         </div>
 
-        {/* Demo Quick Logins */}
+        {/* Quick Demo Accounts */}
         <div className="mt-5 pt-4 border-t border-slate-100">
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-2 text-center">
-            Quick Demo Accounts:
+            त्वरित परीक्षण (Quick Demo Accounts):
           </p>
           <div className="flex gap-2">
             <button
@@ -408,186 +487,29 @@ export default function StudentLoginPage() {
               onClick={() => {
                 setPhone('9829012345');
                 setPassword('1234');
+                setOtpStep('PHONE');
               }}
               className="flex-1 py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700"
             >
-              Aarav (Class 5)
+              Aarav (9829012345)
             </button>
             <button
               type="button"
               onClick={() => {
-                setPhone('9414054321');
+                setPhone('9610328630');
                 setPassword('1234');
+                setOtpStep('PHONE');
               }}
               className="flex-1 py-1.5 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700"
             >
-              Priya (Class 7)
+              Lokesh (9610328630)
             </button>
           </div>
         </div>
       </main>
 
-      {/* Forgot Password Modal (OTP Verification) */}
-      {showForgotModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-indigo-100 relative">
-            <button
-              type="button"
-              onClick={() => setShowForgotModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="text-center mb-5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3">
-                <KeyRound className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-black text-slate-900">Reset Password via OTP</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                {forgotStep === 'PHONE'
-                  ? 'Enter your registered mobile number to receive an OTP'
-                  : `Enter OTP sent to +91 ${forgotPhone} and choose a new password`}
-              </p>
-            </div>
-
-            {forgotError && (
-              <div className="mb-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-                <span>{forgotError}</span>
-              </div>
-            )}
-
-            {forgotSuccess && (
-              <div className="mb-4 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{forgotSuccess}</span>
-              </div>
-            )}
-
-            {forgotStep === 'PHONE' ? (
-              <form onSubmit={handleSendForgotOtp} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    Registered Mobile Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                    <input
-                      type="tel"
-                      required
-                      maxLength={10}
-                      value={forgotPhone}
-                      onChange={(e) => setForgotPhone(e.target.value.replace(/\D/g, ''))}
-                      placeholder="10-digit mobile number"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={forgotLoading}
-                  className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {forgotLoading ? (
-                    <span>Sending OTP...</span>
-                  ) : (
-                    <>
-                      <span>Send OTP to Mobile</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                {forgotDemoOtp && (
-                  <div
-                    onClick={() => setForgotOtp(forgotDemoOtp)}
-                    className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all"
-                  >
-                    <span>Demo OTP: <strong>{forgotDemoOtp}</strong></span>
-                    <span className="text-[10px] text-amber-700 uppercase font-black underline">Auto Fill ↵</span>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    4-Digit OTP
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    autoFocus
-                    required
-                    value={forgotOtp}
-                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
-                    placeholder="• • • •"
-                    className="w-full text-center py-2 text-xl tracking-[0.4em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    New Password / PIN
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showForgotNewPassword ? 'text' : 'password'}
-                      required
-                      value={forgotNewPassword}
-                      onChange={(e) => setForgotNewPassword(e.target.value)}
-                      placeholder="Enter new 4-digit PIN or password"
-                      className="w-full px-3.5 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
-                      tabIndex={-1}
-                      aria-label={showForgotNewPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={forgotLoading}
-                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {forgotLoading ? (
-                    <span>Updating Password in DB...</span>
-                  ) : (
-                    <>
-                      <span>Reset Password & Login</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-
-                <div className="text-center pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setForgotStep('PHONE')}
-                    className="text-xs font-bold text-slate-500 hover:text-indigo-600"
-                  >
-                    ← Change Mobile Number
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Invisible reCAPTCHA container for Firebase */}
-      <div id="forgot-recaptcha-container"></div>
-
       <footer className="text-center text-xs text-slate-400 py-3">
-        © 2026 AI Tuition • Safe & Child-Friendly AI Learning Platform
+        © 2026 AI Tuition • सुरक्षित एवं बाल-अनुकूल AI शिक्षण मंच
       </footer>
     </div>
   );

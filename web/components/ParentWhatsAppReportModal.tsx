@@ -34,17 +34,16 @@ interface ParentReportProps {
 export default function ParentWhatsAppReportModal({
   isOpen,
   onClose,
-  studentName = 'राहुल कुमावत',
+  studentName = 'Student',
   className = 'Class 4th',
   board = 'RBSE',
   teacherName = 'शर्मा सर',
-  subjectName = 'गणित (Mathematics)',
+  subjectName = 'सामान्य अध्ययन (General Studies)',
   score = 9,
   totalQuestions = 10,
   topicsCovered = [
-    'पाठ 1: पुस्तकालय (501 से 999 विस्तारित रूप)',
-    'पाठ 3: संख्याओं में जोड़ (लोकेश की घड़ी-टार्च सवाल)',
-    'पाठ 5: वैदिक गणित (एकाधिकेन व परम मित्र नियम)',
+    'दैनिक अभ्यास व प्रश्नोत्तरी (Daily Practice & Problem Solving)',
+    'व्हाइटबोर्ड स्टेप-बाय-स्टेप हल (Step-by-step Whiteboard Concept)',
   ],
   mistakesFixed = 2,
   studyMinutes = 25,
@@ -180,7 +179,7 @@ export default function ParentWhatsAppReportModal({
               <span className="text-xs font-black text-indigo-300">{teacherName} की व्यक्तिगत टिप्पणी:</span>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed italic font-medium">
-              "बेटा राहुल ने आज बहुत अनुशासन से ट्यूशन ली। तीन-अंकीय संख्याओं के जोड़ और वैदिक गणित के परम मित्र नियम में 100% सही उत्तर दिए। घर पर 10 मिनट अभ्यास ज़रूर करवाएं!"
+              "शाबाश! {studentName} ने आज बहुत अनुशासन से ट्यूशन ली और {subjectName} में बहुत अच्छा प्रयास किया। घर पर 10 मिनट अभ्यास ज़रूर करवाएं!"
             </p>
           </div>
         </div>

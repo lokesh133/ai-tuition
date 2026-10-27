@@ -59,29 +59,30 @@ export default function WeeklyTestSeriesPage() {
           }
         }
 
-        // 2. Fetch latest student record from API if phone exists (or fallback to known demo phone)
-        const targetPhone = phone || '9610328630';
-        try {
-          const res = await fetch(`/api/student/records?phone=${targetPhone}`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.success && json.record) {
-              const rec = json.record;
-              if (rec.currentSession) {
-                if (Array.isArray(rec.currentSession.uploadedFiles) && rec.currentSession.uploadedFiles.length > 0) {
-                  setUploadedFiles(rec.currentSession.uploadedFiles);
+        // 2. Fetch latest student record from API if phone exists
+        if (phone) {
+          try {
+            const res = await fetch(`/api/student/records?phone=${phone}`);
+            if (res.ok) {
+              const json = await res.json();
+              if (json.success && json.record) {
+                const rec = json.record;
+                if (rec.currentSession) {
+                  if (Array.isArray(rec.currentSession.uploadedFiles) && rec.currentSession.uploadedFiles.length > 0) {
+                    setUploadedFiles(rec.currentSession.uploadedFiles);
+                  }
+                  if (rec.currentSession.pageDataMap && Object.keys(rec.currentSession.pageDataMap).length > 0) {
+                    setPageDataMap((prev) => ({ ...prev, ...rec.currentSession.pageDataMap }));
+                  }
                 }
-                if (rec.currentSession.pageDataMap && Object.keys(rec.currentSession.pageDataMap).length > 0) {
-                  setPageDataMap((prev) => ({ ...prev, ...rec.currentSession.pageDataMap }));
+                if (Array.isArray(rec.worksheetHistory) && rec.worksheetHistory.length > 0) {
+                  setWorksheetHistory(rec.worksheetHistory);
                 }
-              }
-              if (Array.isArray(rec.worksheetHistory) && rec.worksheetHistory.length > 0) {
-                setWorksheetHistory(rec.worksheetHistory);
               }
             }
+          } catch (apiErr) {
+            console.error('API fetch error for student records:', apiErr);
           }
-        } catch (apiErr) {
-          console.error('API fetch error for student records:', apiErr);
         }
       } finally {
         setIsLoading(false);

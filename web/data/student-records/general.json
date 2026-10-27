@@ -1,0 +1,46 @@
+{
+  "worksheetHistory": [],
+  "testHistory": [],
+  "uploads": [
+    {
+      "id": "upload-1793102905308-89zdr",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793102905308,
+      "isoDate": "2026-10-27T12:08:25.308Z",
+      "fileName": "images.jfif",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-27T12-08-25-308Z_images.jfif.jpg",
+      "fileSizeKb": 74,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793102872196-530rs",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793102872196,
+      "isoDate": "2026-10-27T12:07:52.196Z",
+      "fileName": "WhatsApp Image 2026-10-21 at 2.48.19 PM.jpeg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-27T12-07-52-196Z_WhatsApp_Image_2026-10-21_at_2.48.19_PM.jpeg.jpg",
+      "fileSizeKb": 9,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    }
+  ],
+  "updatedAt": 1793102905308,
+  "studentName": "Student",
+  "classGrade": "कक्षा 4",
+  "board": "RBSE"
+}

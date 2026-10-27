@@ -1,0 +1,62 @@
+{
+  "studentId": "guest",
+  "studentPhone": "guest",
+  "studentName": "Student",
+  "classGrade": "Class 4th",
+  "board": "RBSE",
+  "medium": "HINDI",
+  "updatedAt": 1793097151334,
+  "createdAt": 1793097151334,
+  "conceptMastery": {},
+  "weakConcepts": [],
+  "revisionSchedule": [],
+  "todayStudyPlan": [
+    {
+      "id": "plan-scan-1793097151334",
+      "type": "PRACTICE_WEAK",
+      "title": "Scan Aaj Ka School Homework",
+      "description": "Apni copy ki photo kheechein aur Sharma Sir ya Neha Mam se step-by-step check karwayein.",
+      "subjectId": "math",
+      "teacherId": "sharma_sir",
+      "teacherName": "Sharma Sir",
+      "estimatedMinutes": 10,
+      "priority": "URGENT",
+      "completed": false
+    },
+    {
+      "id": "plan-math-revision",
+      "type": "REVISION",
+      "title": "Math: Place Value & 4-Digit Addition Practice",
+      "description": "Sharma Sir ke saath 3 practice sawaal solve karein aur concept pakka karein.",
+      "subjectId": "math",
+      "teacherId": "sharma_sir",
+      "teacherName": "Sharma Sir",
+      "estimatedMinutes": 15,
+      "priority": "RECOMMENDED",
+      "conceptKey": "math_c1_place_value",
+      "completed": false
+    },
+    {
+      "id": "plan-english-dictation",
+      "type": "NEW_CONCEPT",
+      "title": "English: Hard Words Dictation (श्रुतलेख)",
+      "description": "Riya Didi se 5 new words sunkar spelling likhein.",
+      "subjectId": "english",
+      "teacherId": "riya_didi",
+      "teacherName": "Riya Didi",
+      "estimatedMinutes": 10,
+      "priority": "RECOMMENDED",
+      "conceptKey": "eng_c1_vocabulary",
+      "completed": false
+    }
+  ],
+  "stats": {
+    "totalQuestionsAttempted": 0,
+    "totalIndependentSolved": 0,
+    "totalMistakesDiagnosed": 0,
+    "totalRemediationsCompleted": 0,
+    "studyStreakDays": 1,
+    "lastStudyDate": "2026-10-27",
+    "weeklyTimeSpentMinutes": 25
+  }
+}

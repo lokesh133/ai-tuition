@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStudentProfile, saveStudentProfile } from '@/lib/learning-brain/profileManager';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const studentId = searchParams.get('studentId') || searchParams.get('id') || searchParams.get('phone') || '9610328630';
+    const studentId = searchParams.get('studentId') || searchParams.get('id') || searchParams.get('phone') || 'guest_student';
 
     const profile = await getStudentProfile(studentId);
 

@@ -150,235 +150,8 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
 
   const combined = `${question} ${formula}`.toLowerCase();
 
-  // Check 1: 156 kg 684 g from 521 kg 478 g
-  if (combined.includes('156') && combined.includes('684') && combined.includes('521') && combined.includes('478')) {
-    return {
-      title: 'कॉलम विधि द्वारा घटाव (Column Subtraction with Borrowing):',
-      operation: '-',
-      unit1: 'kg',
-      unit2: 'g',
-      transferArrowText: 'kg ──1 kg (1000 g) उधार──> g',
-      borrows1: ['4', '11', '10'],
-      borrows2: ['13', '17', '—'],
-      row1_unit1: ['5', '2', '1'],
-      row1_unit2: ['4', '7', '8'],
-      row2_unit1: ['1', '5', '6'],
-      row2_unit2: ['6', '8', '4'],
-      ans_unit1: ['3', '6', '4'],
-      ans_unit2: ['7', '9', '4'],
-      borrowCarryFlow: {
-        kahaSeLiTitle: '1️⃣ कहाँ से उधार (Carry/Borrow) ली?',
-        kahaSeLiSource: '521 kg से 1 kg उधार लिया',
-        kahaSeLiTarget: '478 g को (+1000 g मिला)',
-        kahaSeLiExplanation: [
-          '521 kg ने 1 kg ग्राम को उधार दिया ➔ 521 kg घटकर 520 kg बचा।',
-          'ग्राम में 478 g था: 7 ने 4 से 1 उधार लिया (4 बना 3, 7 बना 17)।',
-          '3 में से 6 नहीं घट सकता था, तो उसने 1 kg (= 1000 g) उधार लिया ➔ 3 बना 13!'
-        ],
-        kismeMinusHuaTitle: '2️⃣ यहाँ किसमें से माइनस (घटा) हुआ?',
-        subtractions: [
-          {
-            columnName: '👉 ग्राम (g) में घटाव:',
-            equation: '1478 g में से 684 g घटा ➔ 794 g बचा',
-            detail: 'इकाई: 8 − 4 = 4 | दहाई: 17 − 8 = 9 | सैकड़ा: 13 − 6 = 7 (परिणाम: 794 g)'
-          },
-          {
-            columnName: '👉 किलोग्राम (kg) में घटाव:',
-            equation: '520 kg में से 156 kg घटा ➔ 364 kg बचा',
-            detail: 'इकाई: 10 − 6 = 4 | दहाई: 11 − 5 = 6 | सैकड़ा: 4 − 1 = 3 (परिणाम: 364 kg)'
-          }
-        ]
-      },
-      borrowCarryGuide: {
-        type: 'borrow',
-        title: 'उधार (Borrow) कैसे लिया गया? (हर बच्चे के लिए आसान तरीका)',
-        mainRule: 'जब ऊपर वाला अंक नीचे वाले से छोटा हो, तो वह अपनी बाईं (Left) ओर के पड़ोसी से 1 उधार लेता है। पड़ोसी अंक 1 कम हो जाता है, और हमारे अंक में 10 जुड़ जाते हैं!',
-        goldenTip: 'याद रखें: 1 kg = 1000 g होता है। जब 1 kg ग्राम कॉलम को उधार मिलता है, तो ग्राम के सैकड़े में 10 जुड़ जाता है (3 सैकड़ा बना 10 + 3 = 13)!',
-        steps: [
-          {
-            tag: 'ग्राम (g) दहाई',
-            badge: '17',
-            title: '7 बना 17 कैसे?',
-            from: 'सैकड़ा (4)',
-            to: 'दहाई (7)',
-            ruleExplanation: '7 में से 8 नहीं घट सकता था, इसलिए 7 ने अपने पड़ोसी 4 से 1 उधार लिया। 4 घटकर 3 बना, और 7 में 10 जुड़कर 17 बना!',
-            mathEquation: '10 + 7 = 17  ➔  17 − 8 = 9'
-          },
-          {
-            tag: 'ग्राम (g) सैकड़ा',
-            badge: '13',
-            title: '3 बना 13 कैसे?',
-            from: 'किलोग्राम (kg)',
-            to: 'ग्राम सैकड़ा (3)',
-            ruleExplanation: '3 में से 6 नहीं घट सकता था, इसलिए ग्राम ने kg कॉलम (521 kg) से 1 kg (= 1000 g) उधार लिया। 1 kg आने पर 3 में 10 जुड़कर 13 बना!',
-            mathEquation: '10 + 3 = 13  ➔  13 − 6 = 7'
-          },
-          {
-            tag: 'किलोग्राम (kg) इकाई',
-            badge: '10',
-            title: '0 बना 10 कैसे?',
-            from: 'kg दहाई (2)',
-            to: 'kg इकाई (0)',
-            ruleExplanation: '521 kg में से 1 kg ग्राम को उधार देने पर 520 kg बचा (इकाई पर 0)। 0 में से 6 नहीं घट सकता, तो 0 ने दहाई 2 से 1 उधार लिया। 2 बना 1, और 0 में 10 जुड़कर 10 बना!',
-            mathEquation: '10 + 0 = 10  ➔  10 − 6 = 4'
-          },
-          {
-            tag: 'किलोग्राम (kg) दहाई',
-            badge: '11',
-            title: '1 बना 11 कैसे?',
-            from: 'kg सैकड़ा (5)',
-            to: 'kg दहाई (1)',
-            ruleExplanation: '1 में से 5 नहीं घट सकता था, तो 1 ने पड़ोसी 5 से 1 उधार लिया। 5 घटकर 4 बना, और 1 में 10 जुड़कर 11 बना!',
-            mathEquation: '10 + 1 = 11  ➔  11 − 5 = 6'
-          },
-          {
-            tag: 'किलोग्राम (kg) सैकड़ा',
-            badge: '4',
-            title: '5 बना 4 कैसे?',
-            from: '5',
-            to: '4',
-            ruleExplanation: '5 ने अपनी दहाई को 1 उधार दे दिया था, इसलिए 5 में से 1 घटाने पर केवल 4 बचा।',
-            mathEquation: '5 − 1 = 4  ➔  4 − 1 = 3'
-          }
-        ]
-      },
-      steps: [
-        {
-          title: 'चरण 1: ग्राम (g) कॉलम हल करना (Grams Column)',
-          description: 'ग्राम के कॉलम में ऊपर 478 g है और नीचे 684 g है। चूँकि 478 छोटा है, इसलिए उधार (Borrow) लेकर घटाएंगे:',
-          details: [
-            'इकाई (Units): 8 − 4 = 4 (सीधा घट गया)',
-            'दहाई (Tens): 7 में से 8 नहीं घट सकता → सैकड़ा (4) से 1 उधार लिया (4 बना 3, और 7 बना 17) → 17 − 8 = 9',
-            'सैकड़ा (Hundreds): 3 में से 6 नहीं घट सकता → kg कॉलम से 1 kg (= 1000 g) उधार लिया → 3 बना 13 → 13 − 6 = 7',
-            '👉 ग्राम (g) का परिणाम = 794 g'
-          ]
-        },
-        {
-          title: 'चरण 2: किलोग्राम (kg) कॉलम हल करना (Kilograms Column)',
-          description: '521 kg में से 1 kg ग्राम को उधार देने के बाद 520 kg बचा। अब 520 में से 156 घटाएंगे:',
-          details: [
-            'इकाई: 0 में से 6 नहीं घट सकता → दहाई (2) से 1 उधार लिया (2 बना 1, और 0 बना 10) → 10 − 6 = 4',
-            'दहाई: 1 में से 5 नहीं घट सकता → सैकड़ा (5) से 1 उधार लिया (5 बना 4, और 1 बना 11) → 11 − 5 = 6',
-            'सैकड़ा: 4 − 1 = 3',
-            '👉 किलोग्राम (kg) का परिणाम = 364 kg'
-          ]
-        },
-        {
-          title: 'चरण 3: अंतिम उत्तर (Final Answer)',
-          description: 'दोनों कॉलम के परिणामों को मिलाकर लिखने पर:',
-          details: ['उत्तर = 364 kg 794 g ✅']
-        }
-      ],
-      finalAnswer: '364 kg 794 g'
-    };
-  }
-
-  // Check 2: 624 kg 346 g and 35 kg 810 g
-  if (combined.includes('624') && combined.includes('346') && combined.includes('35') && combined.includes('810')) {
-    return {
-      title: 'कॉलम विधि द्वारा जोड़ (Column Addition with Carry):',
-      operation: '+',
-      unit1: 'kg',
-      unit2: 'g',
-      transferArrowText: 'g ──1 kg हासिल──> kg',
-      carries1: ['—', '1', '1'],
-      carries2: ['—', '—', '—'],
-      row1_unit1: ['6', '2', '4'],
-      row1_unit2: ['3', '4', '6'],
-      row2_unit1: ['0', '3', '5'],
-      row2_unit2: ['8', '1', '0'],
-      ans_unit1: ['6', '6', '0'],
-      ans_unit2: ['1', '5', '6'],
-      borrowCarryFlow: {
-        kahaSeLiTitle: '1️⃣ कहाँ से हासिल (Carry) आई?',
-        kahaSeLiSource: 'ग्राम (346 + 810 = 1156 g)',
-        kahaSeLiTarget: 'किलोग्राम (kg) कॉलम में',
-        kahaSeLiExplanation: [
-          'ग्राम के सैकड़े 3 + 8 = 11 हुआ (1156 g बना)। 156 g नीचे लिखा और 1000 g (= 1 kg) हासिल बनकर किलोग्राम (kg) में गया!',
-          'किलोग्राम इकाई 4 + 5 + 1 (हासिल) = 10 हुआ ➔ 0 नीचे लिखा और 1 हासिल दहाई पर गया!'
-        ],
-        kismeMinusHuaTitle: '2️⃣ यहाँ किसमें जुड़ी?',
-        subtractions: [
-          {
-            columnName: '👉 ग्राम (g) में जोड़:',
-            equation: '346 g + 810 g = 1156 g',
-            detail: '156 g नीचे लिखा और 1 kg हासिल किलोग्राम में गया'
-          },
-          {
-            columnName: '👉 किलोग्राम (kg) में जोड़:',
-            equation: '624 kg + 35 kg + 1 kg (हासिल) = 660 kg',
-            detail: 'इकाई: 4 + 5 + 1 = 10 | दहाई: 2 + 3 + 1 = 6 | सैकड़ा: 6 + 0 = 6 (कुल: 660 kg)'
-          }
-        ]
-      },
-      borrowCarryGuide: {
-        type: 'carry',
-        title: 'हासिल (Carry) कैसे लिया गया और कहाँ जुड़ा?',
-        mainRule: 'जब दो अंकों को जोड़ने पर 9 से बड़ा अंक (जैसे 10, 11) आए, तो इकाई का अंक नीचे उत्तर में लिखते हैं और दहाई का अंक (1 या 2) हासिल (Carry) बनकर बाईं ओर के अगले अंक के ऊपर जुड़ता है!',
-        goldenTip: 'याद रखें: 1000 g = 1 kg होता है। इसलिए जब ग्राम में 1000 या उससे ज्यादा बनता है, तो 1 kg हासिल बनकर किलोग्राम (kg) कॉलम में चला जाता है!',
-        steps: [
-          {
-            tag: 'ग्राम (g) सैकड़ा',
-            badge: '1 हासिल kg गया',
-            title: '3 + 8 = 11 g सैकड़ा',
-            from: 'ग्राम (g)',
-            to: 'किलोग्राम (kg)',
-            ruleExplanation: '346 + 810 = 1156 g बना। इसमें से 156 g ग्राम के नीचे लिखा और 1000 g (= 1 kg) हासिल बनकर किलोग्राम (kg) के ऊपर चला गया!',
-            mathEquation: '3 + 8 = 11  ➔  1 नीचे लिखा, 1 kg हासिल (Carry) गया'
-          },
-          {
-            tag: 'किलोग्राम (kg) इकाई',
-            badge: '1 हासिल दहाई गया',
-            title: '4 + 5 + 1 = 10 kg',
-            from: 'kg इकाई',
-            to: 'kg दहाई',
-            ruleExplanation: '4 + 5 = 9, और ग्राम से आया 1 हासिल जोड़ा तो 9 + 1 = 10 बना। 10 का 0 नीचे लिखा और 1 हासिल दहाई पर गया!',
-            mathEquation: '4 + 5 + 1 (हासिल) = 10  ➔  0 नीचे लिखा, 1 हासिल दहाई गया'
-          },
-          {
-            tag: 'किलोग्राम (kg) दहाई',
-            badge: '6',
-            title: '2 + 3 + 1 = 6 kg',
-            from: 'kg दहाई',
-            to: 'उत्तर',
-            ruleExplanation: '2 + 3 = 5, और इकाई से आया 1 हासिल जोड़ने पर 5 + 1 = 6 बना। 6 को सीधा नीचे लिख दिया!',
-            mathEquation: '2 + 3 + 1 (हासिल) = 6'
-          }
-        ]
-      },
-      steps: [
-        {
-          title: 'चरण 1: ग्राम (g) कॉलम जोड़ना',
-          description: 'ग्राम के अंकों को जोड़ते हैं: 346 + 810 = 1156 g',
-          details: [
-            'इकाई: 6 + 0 = 6',
-            'दहाई: 4 + 1 = 5',
-            'सैकड़ा: 3 + 8 = 11 → 1 ग्राम के सैकड़ा में लिखा और 1 kg को किलोग्राम में कैरी (हासिल) भेजा',
-            '👉 ग्राम (g) का परिणाम = 156 g (1 kg कैरी गया)'
-          ]
-        },
-        {
-          title: 'चरण 2: किलोग्राम (kg) कॉलम जोड़ना',
-          description: 'किलोग्राम के अंकों को 1 कैरी के साथ जोड़ते हैं:',
-          details: [
-            'इकाई: 4 + 5 + 1 (कैरी) = 10 → 0 लिखा, 1 कैरी गया',
-            'दहाई: 2 + 3 + 1 (कैरी) = 6',
-            'सैकड़ा: 6 + 0 = 6',
-            '👉 किलोग्राम (kg) का परिणाम = 660 kg'
-          ]
-        },
-        {
-          title: 'चरण 3: अंतिम उत्तर',
-          description: 'कुल जोड़:',
-          details: ['उत्तर = 660 kg 156 g ✅']
-        }
-      ],
-      finalAnswer: '660 kg 156 g'
-    };
-  }
-
-  // Check 3: General two-unit subtraction / addition
-  // E.g.: 500 kg 150 g + 200 kg 100 g, 44 kg 520 g - 12 kg 502 g, 151 kg 46 g + 231 kg 5 g, 84 kg 350 g - 59 kg, etc.
+  // General two-unit subtraction / addition (100% Dynamic Calculation)
+  // E.g.: 500 kg 150 g + 200 kg 100 g, 44 kg 520 g - 12 kg 502 g, 101 kg 425 g - 79 kg 586 g, etc.
   let isSubtraction = combined.includes('subtract') || combined.includes('difference') || combined.includes('from') || combined.includes('घटा');
   const hasExplicitAddOp = combined.includes('+') || combined.includes('जोड़ें') || combined.includes('जोड़');
   const hasExplicitSubOp = combined.includes('-') || combined.includes('−') || combined.includes('घटाएं') || combined.includes('घटा');
@@ -1277,48 +1050,65 @@ export default function MathNotebookColumnGrid({
         </div>
       )}
 
-      {/* 📋 STEP-BY-STEP COLUMN BREAKDOWN (CHILDREN CAN EASILY FOLLOW) */}
-      <div className="space-y-2.5">
-        <div className="text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-1.5 px-1">
-          <span>📝</span>
-          <span>कॉलम-दर-कॉलम चरणबद्ध समझ (Step-by-Step Calculation):</span>
+      {/* 📋 UNIFIED COMPACT STEP-BY-STEP BREAKDOWN (1 SINGLE CLEAN CARD, MINIMAL SPACE, HIGH-DENSITY USEFUL DATA) */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+        <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-black text-slate-800 dark:text-slate-200">
+            <span>📝</span>
+            <span>चरण-दर-चरण हल (Step-by-Step Calculation)</span>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+            कुल {data.steps.length} चरण
+          </span>
         </div>
 
-        {data.steps.map((st, sIdx) => (
-          <div
-            key={sIdx}
-            className={`p-3.5 rounded-2xl border transition-all ${
-              sIdx === data.steps.length - 1
-                ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-950 dark:text-emerald-100'
-                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className={`text-[11px] font-black uppercase tracking-wide px-2.5 py-0.5 rounded-full border ${
-                sIdx === data.steps.length - 1
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-              }`}>
-                {st.title}
-              </span>
-            </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          {data.steps.map((st, sIdx) => {
+            const isLast = sIdx === data.steps.length - 1;
+            return (
+              <div
+                key={sIdx}
+                className={`p-2.5 sm:px-3 sm:py-2 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 ${
+                  isLast
+                    ? 'bg-emerald-50/50 dark:bg-emerald-950/30'
+                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
+                }`}
+              >
+                <div className="flex items-start sm:items-center gap-2 min-w-0">
+                  <span
+                    className={`shrink-0 text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
+                      isLast
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                    }`}
+                  >
+                    {st.title.replace(/:.*/, '')}
+                  </span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200 leading-snug">
+                    {st.description}
+                  </span>
+                </div>
 
-            <p className="text-xs sm:text-sm font-semibold leading-relaxed">
-              {st.description}
-            </p>
-
-            {st.details && st.details.length > 0 && (
-              <ul className="mt-2 space-y-1 pl-1">
-                {st.details.map((d, dIdx) => (
-                  <li key={dIdx} className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-start gap-1.5">
-                    <span className="text-indigo-500 mt-0.5 font-bold">•</span>
-                    <span>{d}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
+                {st.details && st.details.length > 0 && (
+                  <div className="shrink-0 flex flex-wrap items-center gap-1.5 pl-6 sm:pl-0">
+                    {st.details.map((d, dIdx) => (
+                      <span
+                        key={dIdx}
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                          isLast
+                            ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 font-mono'
+                        }`}
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

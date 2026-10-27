@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@heygen/streaming-avatar": "^2.1.1",
     "@prisma/client": "^5.22.0",
     "clsx": "^2.1.1",
     "firebase": "^13.0.0",

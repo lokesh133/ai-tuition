@@ -1,0 +1,36 @@
+{
+  "studentId": "general",
+  "studentPhone": "general",
+  "studentName": "Student",
+  "classGrade": "कक्षा 4",
+  "board": "RBSE",
+  "medium": "HINDI",
+  "updatedAt": 1793102905341,
+  "createdAt": 1793102872211,
+  "conceptMastery": {},
+  "weakConcepts": [],
+  "revisionSchedule": [],
+  "todayStudyPlan": [
+    {
+      "id": "act-scan-2026-10-27",
+      "type": "PRACTICE_WEAK",
+      "title": "Scan Homework & Instant Mistake Check",
+      "description": "School copy ya textbook ki photo kheenche aur turant check karwayein.",
+      "subjectId": "math",
+      "teacherId": "sharma_sir",
+      "teacherName": "Sharma Sir",
+      "estimatedMinutes": 10,
+      "priority": "RECOMMENDED",
+      "completed": false
+    }
+  ],
+  "stats": {
+    "totalQuestionsAttempted": 0,
+    "totalIndependentSolved": 0,
+    "totalMistakesDiagnosed": 0,
+    "totalRemediationsCompleted": 0,
+    "studyStreakDays": 1,
+    "lastStudyDate": "2026-10-27",
+    "weeklyTimeSpentMinutes": 25
+  }
+}

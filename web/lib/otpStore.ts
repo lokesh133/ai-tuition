@@ -1,7 +1,7 @@
 // In-memory OTP storage with 5-minute validity
 interface OtpRecord {
   code: string;
-  purpose: 'SIGNUP' | 'FORGOT_PASSWORD';
+  purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN';
   expiresAt: number;
 }
 
@@ -13,7 +13,7 @@ const otpMap = globalForOtp.otpMap;
 
 export function generateAndSaveOtp(
   phone: string,
-  purpose: 'SIGNUP' | 'FORGOT_PASSWORD'
+  purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN'
 ): { otp: string; expiresAt: number } {
   const cleanPhone = phone.trim().replace(/\D/g, '');
   // 4-digit secure random OTP (e.g. 1000 - 9999)
@@ -33,7 +33,7 @@ export function generateAndSaveOtp(
 export function verifyOtpCode(
   phone: string,
   enteredOtp: string,
-  purpose: 'SIGNUP' | 'FORGOT_PASSWORD'
+  purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN'
 ): { valid: boolean; message: string } {
   const cleanPhone = phone.trim().replace(/\D/g, '');
   const record = otpMap.get(cleanPhone);
