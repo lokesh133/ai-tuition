@@ -3,6 +3,24 @@
   "testHistory": [],
   "uploads": [
     {
+      "id": "upload-1793112253227-phv9s",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793112253227,
+      "isoDate": "2026-10-27T14:44:13.227Z",
+      "fileName": "WhatsApp Image 2026-10-26 at 4.01.50 PM (1).jpeg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-27T14-44-13-227Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__1_.jpeg.jpg",
+      "fileSizeKb": 193,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
       "id": "upload-1793102905308-89zdr",
       "studentId": "general",
       "studentPhone": "",
@@ -39,7 +57,7 @@
       "teacherReplySummary": ""
     }
   ],
-  "updatedAt": 1793102905308,
+  "updatedAt": 1793112253227,
   "studentName": "Student",
   "classGrade": "कक्षा 4",
   "board": "RBSE"

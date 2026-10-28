@@ -121,6 +121,19 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
     return s.replace(/[.:\-–]+$/, '').trim();
   };
 
+  // Direct Pattern: Standalone numbered question (e.g. "प्रश्न 3. कोरोना के दौरान...", "3. कोरोना के दौरान...", "Q4: दादा जी का...")
+  // Prevents tearing off the first Hindi letter (e.g. 'क' from 'कोरोना' or 'द' from 'दादा')
+  const directQMatch = trimmed.match(/^(?:(?:Question|Q\.?|प्रश्न|सवाल)\s*)?(\d{1,2})[\.:\-–\)]\s+(.*)$/i);
+  if (directQMatch) {
+    const qNum = directQMatch[1];
+    const qRest = directQMatch[2].trim();
+    // Only treat as section heading if qRest explicitly has an embedded sub-question divider like (i), (a), (क)
+    const hasSubQ = /^[\s\S]{3,60}?[:\-–]\s*(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s+(.*)$/i.exec(qRest);
+    if (!hasSubQ) {
+      return { question: `${qNum}. ${qRest}` };
+    }
+  }
+
   // Pattern 0: Numbered/labeled section heading directly followed by sub-question indicator
   // Matches: "3. Write true or false: (i) ..."
   //          "2. Fill in the blanks: (iii) ..."
@@ -129,18 +142,13 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   //          "प्रश्न 3. सही या गलत लिखिए: (क) ..."
   // Sub-question indicators: (i), (ii), (iv), (a), (b), (1), 1., i., (क), etc.
   const subIndexMatch = trimmed.match(
-    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*)?(?:[0-9]+|[A-Z]|[क-ह])[\.\)\-–:]?\s*[\s\S]{2,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|[iIvVxXa-dA-Dक-ह]+[\.\)]|\b\d{1,2}[\.\)]\s+[A-Za-z\u0900-\u097F0-9])\s*(.*)$/i
+    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*(?:[0-9]+|[A-Z]|[क-ह])?[\.\)\-–:]?\s*)?[A-Za-z\u0900-\u097F\s\(\)]{3,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s*(.*)$/i
   );
   if (subIndexMatch) {
     const rawSec = subIndexMatch[1].trim();
     const section = normalizeSection(rawSec);
-    let subIdx = subIndexMatch[2].trim();
-    let qRest = subIndexMatch[3]?.trim() || '';
-    const numSubMatch = subIdx.match(/^(\d{1,2}[\.\)])\s+(.*)$/);
-    if (numSubMatch) {
-      subIdx = numSubMatch[1];
-      qRest = numSubMatch[2] + (qRest ? ' ' + qRest : '');
-    }
+    const subIdx = subIndexMatch[2].trim();
+    const qRest = subIndexMatch[3]?.trim() || '';
     const question = qRest ? `${subIdx} ${qRest}` : subIdx;
     return { section, question };
   }
@@ -1280,6 +1288,19 @@ export default function TuitionClassroomStudio() {
   const formatFormula = (f: string) => {
     if (!f) return '';
     return f
+      // Decode HTML entities
+      .replace(/&#(?:10|x0*a);/gi, '\n')
+      .replace(/&#(?:13|x0*d);/gi, '\r')
+      .replace(/&amp;#(?:10|x0*a);/gi, '\n')
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&amp;/gi, '&')
+      // Re-attach broken Devanagari consonant + space + matra/combining mark (e.g. 'क ोरोना' -> 'कोरोना', 'द ादा' -> 'दादा', 'द ेश' -> 'देश')
+      .replace(/([\u0905-\u0939])\s+([\u0901-\u0903\u093C\u093E-\u094F\u0951-\u0957\u0962-\u0963])/g, (m, c, v) => c + v)
+      // Re-attach broken consonant + space + half-letter conjunct of same letter (e.g. 'म म्मी' -> 'मम्मी')
+      .replace(/([\u0915-\u0939])\s+([\u0915-\u0939]्)/g, (m, c, h) => (c === h[0] ? c + h : m))
       .replace(/≠\s*stimated/gi, 'Estimated')
       .replace(/\\rightarrow/gi, ' → ')
       .replace(/\\leftarrow/gi, ' ← ')
@@ -1310,6 +1331,11 @@ export default function TuitionClassroomStudio() {
     idx?: number
   ) => {
     if (!questionText) return null;
+
+    // Heal broken Devanagari matras/conjuncts
+    questionText = questionText
+      .replace(/([\u0905-\u0939])\s+([\u0901-\u0903\u093C\u093E-\u094F\u0951-\u0957\u0962-\u0963])/g, (m, c, v) => c + v)
+      .replace(/([\u0915-\u0939])\s+([\u0915-\u0939]्)/g, (m, c, h) => (c === h[0] ? c + h : m));
 
     // Never underline words in story reading passages!
     const isStory = Boolean(
