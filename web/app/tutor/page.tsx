@@ -121,12 +121,17 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
     return s.replace(/[.:\-–]+$/, '').trim();
   };
 
-  // Direct Pattern: Standalone numbered question (e.g. "प्रश्न 3. कोरोना के दौरान...", "3. कोरोना के दौरान...", "Q4: दादा जी का...")
+  // Direct Pattern: Standalone numbered question (e.g. "प्रश्न 3. कोरोना के दौरान...", "3. कोरोना के दौरान...", "Q4: दादा जी का...", "1. Estimate of difference... (a) 20000 (b) 50000...")
   // Prevents tearing off the first Hindi letter (e.g. 'क' from 'कोरोना' or 'द' from 'दादा')
   const directQMatch = trimmed.match(/^(?:(?:Question|Q\.?|प्रश्न|सवाल)\s*)?(\d{1,2})[\.:\-–\)]\s+(.*)$/i);
   if (directQMatch) {
     const qNum = directQMatch[1];
     const qRest = directQMatch[2].trim();
+    // If qRest contains multiple MCQ options like (a)..(b).., it is a complete MCQ question, NOT a section heading!
+    const isMcqOptions = /\([a-dA-Dक-घ1-4]\)[\s\S]*\([b-dB-Dख-घ2-4]\)/i.test(qRest);
+    if (isMcqOptions) {
+      return { question: `${qNum}. ${qRest}` };
+    }
     // Only treat as section heading if qRest explicitly has an embedded sub-question divider like (i), (a), (क)
     const hasSubQ = /^[\s\S]{3,60}?[:\-–]\s*(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s+(.*)$/i.exec(qRest);
     if (!hasSubQ) {
@@ -141,16 +146,20 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   //          "1. Multiple Choice Questions (MCQs): Choose the correct option. (i) ..."
   //          "प्रश्न 3. सही या गलत लिखिए: (क) ..."
   // Sub-question indicators: (i), (ii), (iv), (a), (b), (1), 1., i., (क), etc.
-  const subIndexMatch = trimmed.match(
-    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*(?:[0-9]+|[A-Z]|[क-ह])?[\.\)\-–:]?\s*)?[A-Za-z\u0900-\u097F\s\(\)]{3,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s*(.*)$/i
-  );
-  if (subIndexMatch) {
-    const rawSec = subIndexMatch[1].trim();
-    const section = normalizeSection(rawSec);
-    const subIdx = subIndexMatch[2].trim();
-    const qRest = subIndexMatch[3]?.trim() || '';
-    const question = qRest ? `${subIdx} ${qRest}` : subIdx;
-    return { section, question };
+  // CRITICAL: Must NOT match if trimmed has multiple MCQ options (a) ... (b) ...!
+  const hasMcqOptionsInTrimmed = /\([a-dA-Dक-घ1-4]\)[\s\S]*\([b-dB-Dख-घ2-4]\)/i.test(trimmed);
+  if (!hasMcqOptionsInTrimmed) {
+    const subIndexMatch = trimmed.match(
+      /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*(?:[0-9]+|[A-Z]|[क-ह])?[\.\)\-–:]?\s*)?[A-Za-z\u0900-\u097F\s\(\)]{3,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s*(.*)$/i
+    );
+    if (subIndexMatch) {
+      const rawSec = subIndexMatch[1].trim();
+      const section = normalizeSection(rawSec);
+      const subIdx = subIndexMatch[2].trim();
+      const qRest = subIndexMatch[3]?.trim() || '';
+      const question = qRest ? `${subIdx} ${qRest}` : subIdx;
+      return { section, question };
+    }
   }
 
   // Pattern 1: Known section name directly followed by question number (and optional colon/dash/space)
@@ -1692,176 +1701,79 @@ export default function TuitionClassroomStudio() {
     }
 
     if (rawParts.length > 1) {
+      // Separate solution steps from final answer line so everything stays in 1 compact unified container
+      let answerPart: string | null = null;
+      const stepParts: string[] = [];
+
+      for (let i = 0; i < rawParts.length; i++) {
+        const p = rawParts[i];
+        const isAnswer =
+          p.includes('✅') ||
+          p.toLowerCase().includes('correct option') ||
+          p.toLowerCase().includes('सही विकल्प') ||
+          p.includes('अंतिम सही उत्तर') ||
+          p.includes('अंतिम उत्तर') ||
+          (p.toLowerCase().includes('option:') && i === rawParts.length - 1) ||
+          (p.toLowerCase().includes('answer:') && i === rawParts.length - 1);
+        if (isAnswer && !answerPart) {
+          answerPart = p;
+        } else {
+          stepParts.push(p);
+        }
+      }
+
       return (
-        <div className={`rounded-2xl border transition-all overflow-hidden ${
+        <div className={`rounded-xl border transition-all overflow-hidden ${
           isDarkMode || chalkboardTheme === 'green'
-            ? 'bg-slate-950/90 border-slate-800 text-slate-100 shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
+            ? 'bg-slate-950/80 border-slate-800 text-slate-100 shadow-sm'
+            : 'bg-white border-slate-200/90 text-slate-900 shadow-2xs'
         }`}>
-          {/* Compact Unified Card Header */}
-          <div className={`px-3.5 py-2 border-b flex items-center justify-between text-xs font-black ${
+          {/* Header */}
+          <div className={`px-3 py-1.5 border-b flex items-center justify-between text-xs font-bold ${
             isDarkMode || chalkboardTheme === 'green'
               ? 'bg-slate-900/90 border-slate-800 text-indigo-300'
-              : 'bg-slate-50/90 border-slate-200/80 text-indigo-700'
+              : 'bg-indigo-50/70 border-indigo-100 text-indigo-800'
           }`}>
-            <span className="flex items-center gap-1.5 uppercase text-[11px] tracking-wide">
+            <span className="flex items-center gap-1.5 text-[11px] tracking-wide font-black">
               <span>📋</span>
-              <span>{medium === 'english' ? 'Complete Step-by-Step Solution:' : 'चरण-दर-चरण संपूर्ण हल (All Steps):'}</span>
+              <span>{medium === 'english' ? 'Step-by-Step Solution:' : 'चरण-दर-चरण हल (Solution):'}</span>
             </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              {rawParts.length} {medium === 'english' ? 'Steps' : 'चरण'}
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100/80 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              {stepParts.length} {medium === 'english' ? 'Steps' : 'चरण'}
             </span>
           </div>
 
-          {/* Unified Steps List (Compact Space, High Density) */}
-          <div className="p-3 divide-y divide-slate-100 dark:divide-slate-800/80 space-y-2">
-            {rawParts.map((part, pIdx) => {
-              const isAnswerExplicit =
-                part.includes('✅') ||
-                part.toLowerCase().includes('option') ||
-                part.includes('उत्तर:') ||
-                part.includes('सही उत्तर') ||
-                part.includes('अंतिम उत्तर') ||
-                part.toLowerCase().includes('correct option') ||
-                part.toLowerCase().includes('answer:');
-
-              const isDiagram =
-                part.includes('+--') ||
-                part.includes('|---') ||
-                part.includes('📐') ||
-                part.includes('🌱') ||
-                part.includes('🌸') ||
-                /^[\|\+]/.test(part) ||
-                part.includes('आरेख') ||
-                part.includes('diagram');
-
-              const isGiven =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                (part.toLowerCase().includes('given') || part.includes('दिया है') || part.includes('ज्ञात है'));
-
-              const isFormula =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                !isGiven &&
-                (part.toLowerCase().includes('formula') || part.includes('सूत्र') || part.includes('नियम'));
-
-              const isVocab =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                !isGiven &&
-                !isFormula &&
-                part.includes('=') &&
-                !/\d+\s*[\+\-\*\/×÷=]\s*\d+/.test(part) &&
-                (/[A-Za-z\u0900-\u097F]+/.test(part.split('=')[0]));
-
-              const isCalculation =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                !isGiven &&
-                !isFormula &&
-                !isVocab &&
-                (part.toLowerCase().includes('difference') ||
-                  part.includes('अंतर') ||
-                  part.toLowerCase().includes('sum') ||
-                  part.includes('योग') ||
-                  part.toLowerCase().includes('total') ||
-                  part.includes('कुल') ||
-                  /\d+\s*[\+\-\*\/×÷]\s*\d+/.test(part) ||
-                  (/\d+/.test(part) && part.includes('=')));
-
-              const isRounding =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                !isGiven &&
-                !isFormula &&
-                !isVocab &&
-                !isCalculation &&
-                (part.toLowerCase().includes('rounds to') ||
-                  part.toLowerCase().includes('round off') ||
-                  part.includes('निकटतम') ||
-                  part.toLowerCase().includes('since') ||
-                  part.includes('क्योंकि'));
-
-              const isNumberFact =
-                !isAnswerExplicit &&
-                !isDiagram &&
-                !isGiven &&
-                !isFormula &&
-                !isVocab &&
-                !isCalculation &&
-                !isRounding &&
-                (part.toLowerCase().includes('largest') ||
-                  part.toLowerCase().includes('smallest') ||
-                  part.includes('सबसे बड़ी') ||
-                  part.includes('सबसे छोटी') ||
-                  part.toLowerCase().includes('digit number'));
-
-              const stepBadgeText = isAnswerExplicit
-                ? (medium === 'english' ? '🎯 Final Answer' : '🎯 अंतिम सही उत्तर')
-                : isDiagram
-                  ? (medium === 'english' ? '📐 Visual Diagram' : '📐 आरेख व रेखाचित्र')
-                  : isGiven
-                    ? (medium === 'english' ? '📋 Given Data' : '📋 दिया है')
-                    : isFormula
-                      ? (medium === 'english' ? '📐 Formula' : '📐 सूत्र')
-                      : isVocab
-                        ? (medium === 'english' ? `📖 Word #${pIdx + 1}` : `📖 शब्द #${pIdx + 1}`)
-                        : isCalculation
-                          ? (medium === 'english' ? `🧮 Step ${pIdx + 1}: Calculation` : `🧮 चरण ${pIdx + 1}: हल`)
-                          : isRounding
-                            ? (medium === 'english' ? `🔢 Step ${pIdx + 1}: Rounding` : `🔢 चरण ${pIdx + 1}`)
-                            : isNumberFact
-                              ? (medium === 'english' ? `📌 Step ${pIdx + 1}: Concept` : `📌 चरण ${pIdx + 1}`)
-                              : (medium === 'english' ? `✨ Step ${pIdx + 1}` : `✨ चरण ${pIdx + 1}`);
-
+          {/* Unified Solution Body */}
+          <div className="p-3 text-xs sm:text-sm space-y-2 leading-relaxed font-sans">
+            {stepParts.map((part, pIdx) => {
+              const isCol = part.includes('---') || part.includes('-------') || /^[\s\d\+\-\*\/]+$/.test(part);
+              if (isCol) {
+                return (
+                  <pre key={pIdx} className="font-mono text-xs sm:text-sm bg-slate-50 dark:bg-black/30 p-2.5 rounded-lg border border-slate-200/60 dark:border-white/10 whitespace-pre overflow-x-auto leading-tight my-1">
+                    {part}
+                  </pre>
+                );
+              }
               return (
-                <div
-                  key={pIdx}
-                  className={`pt-2 first:pt-0 ${
-                    isAnswerExplicit
-                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 -mx-3 -mb-3 p-3 mt-2 border-t border-emerald-200 dark:border-emerald-800'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span
-                      className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${
-                        isAnswerExplicit
-                          ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700'
-                          : isVocab
-                            ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30'
-                            : isCalculation
-                              ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
-                              : isRounding
-                                ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/20'
-                                : isNumberFact
-                                  ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20'
-                                  : 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
-                      }`}
-                    >
-                      {stepBadgeText}
-                    </span>
-                    {isAnswerExplicit && (
-                      <span className="text-[10px] bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded-md shadow-xs shrink-0 flex items-center gap-1">
-                        <span>✓</span>
-                        <span>{medium === 'english' ? 'Correct' : 'सही'}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className={`leading-relaxed ${
-                      isAnswerExplicit
-                        ? 'text-sm sm:text-base font-black text-emerald-950 dark:text-emerald-100'
-                        : 'text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200'
-                    }`}
-                  >
-                    {renderFormulaAnswer(part)}
-                  </div>
+                <div key={pIdx} className="text-slate-800 dark:text-slate-200 font-medium">
+                  {renderFormulaAnswer(part)}
                 </div>
               );
             })}
+
+            {/* Compact Final Answer at the bottom */}
+            {answerPart && (
+              <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs sm:text-sm font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30 -mx-3 -mb-3 px-3 py-2">
+                <span className="flex items-center gap-1.5">
+                  <span>🎯</span>
+                  <span>{answerPart.replace(/✅/g, '').trim()}</span>
+                </span>
+                <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-md shadow-2xs shrink-0 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>{medium === 'english' ? 'Correct' : 'सही उत्तर'}</span>
+                </span>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -3825,6 +3737,35 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     if (s.startsWith(`${lbl} `) || s.startsWith(`${k}) `) || s.startsWith(`${k}. `)) return true;
     if (txt.length > 1 && (s === txt || s.startsWith(txt))) return true;
     if (s.includes(`(${k})`) || s.includes(`option (${k})`) || s.includes(`option ${k}`)) return true;
+    return false;
+  };
+
+  const isOptionCorrect = (
+    opt: { key: string; label: string; text: string },
+    formulaText?: string | null
+  ): boolean => {
+    if (!formulaText) return false;
+    const fLower = formulaText.toLowerCase();
+
+    // Match exact option key e.g. "correct option: (c)", "सही विकल्प: (c)", "option (c)", "(c)"
+    const optKeyRegex = new RegExp(`(?:correct\\s*option|सही\\s*विकल्प|अंतिम\\s*उत्तर|उत्तर|answer|option)\\s*[:\\-–]?\\s*\\(?${opt.key}\\)?`, 'i');
+    if (optKeyRegex.test(fLower)) return true;
+
+    if (fLower.includes(`(${opt.key.toLowerCase()})`) && (fLower.includes('correct') || fLower.includes('सही') || fLower.includes('✅') || fLower.includes('option') || fLower.includes('विकल्प'))) {
+      return true;
+    }
+
+    // Match option text if it's clean (e.g. "30000", "900000", "29000", "49950", "2,50,000")
+    const cleanOpt = opt.text.replace(/[,₹\s]/g, '');
+    if (cleanOpt.length >= 2) {
+      const cleanFormula = fLower.replace(/[,₹\s]/g, '');
+      const lines = cleanFormula.split('\n');
+      const lastFewLines = lines.slice(-2).join(' ');
+      if (lastFewLines.includes(cleanOpt) && (lastFewLines.includes('option') || lastFewLines.includes('विकल्प') || lastFewLines.includes('answer') || lastFewLines.includes('उत्तर') || lastFewLines.includes('correct'))) {
+        return true;
+      }
+    }
+
     return false;
   };
 
@@ -6008,22 +5949,70 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                   {/* Header: Question Title & Controls */}
                                   <div className={`flex items-start sm:items-center justify-between gap-2.5 pb-2 border-b ${isDarkMode || chalkboardTheme === 'green' ? 'border-white/10' : 'border-slate-100'
                                     }`}>
-                                    <div className="flex items-start gap-2 flex-1">
-                                      <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1" />
-                                      <h3 className={`text-xs sm:text-sm font-bold leading-snug ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                        }`}>
-                                        {activeDictationTestIdx === idx ? (
-                                          <span className="flex flex-wrap items-center gap-1.5">
-                                            <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] font-black">
-                                              🎧 श्रुतलेख टेस्ट
-                                            </span>
-                                            <span>{stepItem.step || 'कठिन शब्द टेस्ट'}</span>
-                                          </span>
-                                        ) : (
-                                          renderQuestionWithBlankFill(displayQuestionText, stepItem, idx)
-                                        )}
-                                      </h3>
-                                    </div>
+                                    {(() => {
+                                      const mcqData = parseMCQOptions(displayQuestionText) || parseMCQOptions(singleQuestion) || parseMCQOptions(stepItem.question);
+                                      const hasMcq = Boolean(mcqData && mcqData.options && mcqData.options.length >= 2);
+                                      const stemText = hasMcq && mcqData ? mcqData.qStem : displayQuestionText;
+
+                                      return (
+                                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                                          <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1" />
+                                          <div className="flex-1 min-w-0">
+                                            <h3 className={`text-xs sm:text-sm font-bold leading-snug ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
+                                              }`}>
+                                              {activeDictationTestIdx === idx ? (
+                                                <span className="flex flex-wrap items-center gap-1.5">
+                                                  <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] font-black">
+                                                    🎧 श्रुतलेख टेस्ट
+                                                  </span>
+                                                  <span>{stepItem.step || 'कठिन शब्द टेस्ट'}</span>
+                                                </span>
+                                              ) : (
+                                                renderQuestionWithBlankFill(stemText, stepItem, idx)
+                                              )}
+                                            </h3>
+
+                                            {/* MCQ Options: Clean student-friendly options grid */}
+                                            {hasMcq && mcqData && (
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
+                                                {mcqData.options.map((opt) => {
+                                                  const isCorrect = isOptionCorrect(opt, currentStepFormula);
+                                                  return (
+                                                    <div
+                                                      key={opt.key}
+                                                      className={`px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between gap-2 border transition-all ${
+                                                        isCorrect
+                                                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-100 shadow-xs'
+                                                          : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                                                      }`}
+                                                    >
+                                                      <span className="flex items-center gap-2 min-w-0">
+                                                        <span
+                                                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                                            isCorrect
+                                                              ? 'bg-emerald-600 text-white'
+                                                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                                          }`}
+                                                        >
+                                                          {opt.key.toUpperCase()}
+                                                        </span>
+                                                        <span className="truncate">{opt.text}</span>
+                                                      </span>
+                                                      {isCorrect && (
+                                                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0 flex items-center gap-1 shadow-xs">
+                                                          <span>✓</span>
+                                                          <span>{medium === 'english' ? 'Correct' : 'सही'}</span>
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
 
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button

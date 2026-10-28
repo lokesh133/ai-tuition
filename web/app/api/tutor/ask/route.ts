@@ -883,12 +883,17 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
     return s.replace(/[.:\-–]+$/, '').trim();
   };
 
-  // Direct Pattern: Standalone numbered question (e.g. "प्रश्न 3. कोरोना के दौरान...", "3. कोरोना के दौरान...", "Q4: दादा जी का...")
+  // Direct Pattern: Standalone numbered question (e.g. "प्रश्न 3. कोरोना के दौरान...", "3. कोरोना के दौरान...", "Q4: दादा जी का...", "1. Estimate of difference... (a) 20000 (b) 50000...")
   // Prevents tearing off the first Hindi letter (e.g. 'क' from 'कोरोना' or 'द' from 'दादा')
   const directQMatch = trimmed.match(/^(?:(?:Question|Q\.?|प्रश्न|सवाल)\s*)?(\d{1,2})[\.:\-–\)]\s+(.*)$/i);
   if (directQMatch) {
     const qNum = directQMatch[1];
     const qRest = directQMatch[2].trim();
+    // If qRest contains multiple MCQ options like (a)..(b).., it is a complete MCQ question, NOT a section heading!
+    const isMcqOptions = /\([a-dA-Dक-घ1-4]\)[\s\S]*\([b-dB-Dख-घ2-4]\)/i.test(qRest);
+    if (isMcqOptions) {
+      return { question: `${qNum}. ${qRest}` };
+    }
     // Only treat as section heading if qRest explicitly has an embedded sub-question divider like (i), (a), (क)
     const hasSubQ = /^[\s\S]{3,60}?[:\-–]\s*(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s+(.*)$/i.exec(qRest);
     if (!hasSubQ) {
@@ -903,16 +908,20 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   //          "1. Multiple Choice Questions (MCQs): Choose the correct option. (i) ..."
   //          "प्रश्न 3. सही या गलत लिखिए: (क) ..."
   // Sub-question indicators: (i), (ii), (iv), (a), (b), (1), 1., i., (क), etc.
-  const subIndexMatch = trimmed.match(
-    /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*(?:[0-9]+|[A-Z]|[क-ह])?[\.\)\-–:]?\s*)?[A-Za-z\u0900-\u097F\s\(\)]{3,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s*(.*)$/i
-  );
-  if (subIndexMatch) {
-    const rawSec = subIndexMatch[1].trim();
-    const section = normalizeSection(rawSec);
-    const subIdx = subIndexMatch[2].trim();
-    const qRest = subIndexMatch[3]?.trim() || '';
-    const question = qRest ? `${subIdx} ${qRest}` : subIdx;
-    return { section, question };
+  // CRITICAL: Must NOT match if trimmed has multiple MCQ options (a) ... (b) ...!
+  const hasMcqOptionsInTrimmed = /\([a-dA-Dक-घ1-4]\)[\s\S]*\([b-dB-Dख-घ2-4]\)/i.test(trimmed);
+  if (!hasMcqOptionsInTrimmed) {
+    const subIndexMatch = trimmed.match(
+      /^((?:(?:Question|Q\.?|प्रश्न|Section|Part|खंड|भाग)\s*(?:[0-9]+|[A-Z]|[क-ह])?[\.\)\-–:]?\s*)?[A-Za-z\u0900-\u097F\s\(\)]{3,100}?)(?:[:\-–.]\s*|\s+)(\([iIvVxXa-dA-D\dक-ह]+\)|(?:(?<=\s)|^)[iIvVxXa-dA-Dक-ह][\.\)]|\b\d{1,2}[\.\)])\s*(.*)$/i
+    );
+    if (subIndexMatch) {
+      const rawSec = subIndexMatch[1].trim();
+      const section = normalizeSection(rawSec);
+      const subIdx = subIndexMatch[2].trim();
+      const qRest = subIndexMatch[3]?.trim() || '';
+      const question = qRest ? `${subIdx} ${qRest}` : subIdx;
+      return { section, question };
+    }
   }
 
   // Pattern 1: Known section name directly followed by question number (and optional colon/dash/space)
