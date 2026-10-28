@@ -405,6 +405,8 @@ export default function TuitionClassroomStudio() {
   // Voice & Speech States
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [isMockListening, setIsMockListening] = useState<boolean>(false);
+  const mockRecognitionRef = useRef<any>(null);
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
   const [speechText, setSpeechText] = useState<string>(
     'नमस्ते बेटा! आज की ट्यूशन में आपका स्वागत है। आप आज कौन सा विषय पढ़ना चाहते हैं? नीचे से विषय चुनें (जैसे Math, English, EVS, Hindi) या बोलकर बताएं (जैसे: "Math का Chapter 8" या "English का Chapter 5")!'
@@ -2471,6 +2473,47 @@ export default function TuitionClassroomStudio() {
       rec.start();
     } catch (e) {
       setIsListening(false);
+    }
+  };
+
+  // Dedicated Voice Answer Speech Recognition for Mock Test (Hindi & English Voice-First)
+  const toggleMockAnswerMic = () => {
+    if (typeof window === 'undefined') return;
+    stopAudio();
+
+    if (isMockListening) {
+      mockRecognitionRef.current?.stop();
+      setIsMockListening(false);
+      return;
+    }
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert('ब्राउज़र में माइक उपलब्ध नहीं है। कृपया Chrome इस्तेमाल करें।');
+      return;
+    }
+
+    try {
+      const rec = new SpeechRec();
+      mockRecognitionRef.current = rec;
+      rec.lang = medium === 'english' ? 'en-IN' : 'hi-IN';
+      rec.interimResults = false;
+
+      rec.onstart = () => setIsMockListening(true);
+      rec.onresult = (e: any) => {
+        const transcript = e.results?.[0]?.[0]?.transcript || '';
+        if (transcript) {
+          setMockAnswers((prev) => ({
+            ...prev,
+            [activeMockQIdx]: transcript,
+          }));
+        }
+      };
+      rec.onerror = () => setIsMockListening(false);
+      rec.onend = () => setIsMockListening(false);
+      rec.start();
+    } catch (e) {
+      setIsMockListening(false);
     }
   };
 
@@ -5265,6 +5308,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         const mcq = parseMCQOptions(currentQ.question, currentQ.options);
                         const studentAns = mockAnswers[activeMockQIdx] || '';
                         const evalData = mockEvaluations[activeMockQIdx];
+                        const isDiagramQ = Boolean(
+                          /triangle|त्रिभुज|त्रिकोण|rectangle|आयत|square|वर्ग|circle|वृत्त|गोल|गोला|radius|त्रिज्या|diameter|व्यास|hypotenuse|कर्ण|समकोण|box|cuboid|घनाभ|डिब्बा|बक्सा|cylinder|बेलन|pyramid|पिरामिड|tower|टॉवर|table|तालिका|सारणी|perimeter|परिमाप|area|क्षेत्रफल|volume|आयतन/i.test(
+                            currentQ.question
+                          )
+                        );
 
                         return (
                           <div className="space-y-4">
@@ -5273,6 +5321,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <span className="text-blue-600 font-black mr-1">{activeMockQIdx + 1}.</span>
                                 <span>{mcq ? mcq.qStem : currentQ.question}</span>
                               </div>
+
+                              {/* Question Diagram if Geometry/Pyramid/Table */}
+                              {isDiagramQ && (
+                                <div className="pt-1">
+                                  <VisualMathDiagramCard
+                                    question={mcq ? mcq.qStem : currentQ.question}
+                                    answer=""
+                                    medium={medium}
+                                  />
+                                </div>
+                              )}
 
                               {/* MCQ Options buttons for interactive test */}
                               {mcq && mcq.options.length > 0 && (
@@ -5301,86 +5360,129 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                               )}
                             </div>
 
-                            {/* Student Work area / Math Toolbar / Answer textarea */}
-                            <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-2xs">
+                            {/* Voice-First Answer Area (NO Hindi typing friction!) */}
+                            <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-2xs">
                               <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-700">
-                                  ✏️ आपका उत्तर (Your Answer):
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-xs sm:text-sm font-black text-slate-900">
+                                    🎙️ बोलकर उत्तर बताएं (Voice Answer)
+                                  </span>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => setIsScratchpadOpen(true)}
-                                  className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1 cursor-pointer"
+                                  className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg border border-amber-200 flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
                                 >
                                   <span>📝</span>
                                   <span>रफ़ कॉपी खोलें</span>
                                 </button>
                               </div>
 
-                              <textarea
-                                ref={mockAnswerTextareaRef}
-                                rows={3}
-                                value={studentAns}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setMockAnswers((prev) => ({ ...prev, [activeMockQIdx]: val }));
-                                }}
-                                placeholder="यहाँ अपना उत्तर लिखें या ऊपर विकल्प चुनें..."
-                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans"
-                              />
+                              {/* Big Voice Mic Button */}
+                              <button
+                                type="button"
+                                onClick={toggleMockAnswerMic}
+                                className={`w-full py-4 px-6 rounded-2xl flex items-center justify-center gap-3 font-black text-sm sm:text-base transition-all shadow-md cursor-pointer ${
+                                  isMockListening
+                                    ? 'bg-red-600 hover:bg-red-700 text-white animate-pulse ring-4 ring-red-200'
+                                    : 'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-blue-500/25'
+                                }`}
+                              >
+                                {isMockListening ? (
+                                  <>
+                                    <MicOff className="w-5 h-5 text-white" />
+                                    <span>🔴 ध्यान से सुन रहा हूँ बेटा, बोलिए... (माइक रोकने के लिए दबाएं)</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Mic className="w-5 h-5 text-amber-300" />
+                                    <span>माइक दबाएं और हिंदी में बोलकर उत्तर बताएं 🎙️</span>
+                                  </>
+                                )}
+                              </button>
 
-                              {/* Toolbar */}
-                              <MathSymbolEditorToolbar
-                                textareaRef={mockAnswerTextareaRef}
-                                currentValue={studentAns}
-                                onValueChange={(newVal) => {
-                                  setMockAnswers((prev) => ({ ...prev, [activeMockQIdx]: newVal }));
-                                }}
-                              />
+                              {/* Display Spoken Answer Bubble */}
+                              {studentAns ? (
+                                <div className="p-3.5 rounded-xl bg-emerald-50/90 border border-emerald-300 flex items-center justify-between gap-3 animate-in fade-in">
+                                  <div className="flex items-center gap-2.5 text-xs sm:text-sm text-emerald-950 font-bold">
+                                    <span className="text-xl">🗣️</span>
+                                    <div>
+                                      <span className="text-[11px] text-emerald-700 block font-semibold">
+                                        आपका रिकॉर्ड किया गया उत्तर:
+                                      </span>
+                                      <span className="text-emerald-900 font-black text-sm sm:text-base">
+                                        "{studentAns}"
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setMockAnswers((prev) => ({ ...prev, [activeMockQIdx]: '' }))}
+                                    className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-white hover:bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 shrink-0 cursor-pointer transition-all"
+                                    title="दोबारा बोलें"
+                                  >
+                                    🔄 दोबारा बोलें
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="text-center text-xs text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+                                  👆 ऊपर नीला माइक दबाकर बोलें, या ऊपर दिए विकल्पों में से सही विकल्प पर टच करें।
+                                </div>
+                              )}
 
                               {/* Submit & Check Button */}
-                              <div className="flex items-center justify-between pt-2">
+                              <div className="flex items-center justify-between pt-1">
                                 <button
                                   type="button"
                                   onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
                                   disabled={!studentAns.trim() || isEvaluatingMock}
-                                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-md cursor-pointer transition-all"
+                                  className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all active:scale-95"
                                 >
                                   {isEvaluatingMock ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-4 h-4 animate-spin text-white" />
                                   ) : (
                                     <span>🚀</span>
                                   )}
-                                  <span>हल जमा करें और चेक करवाएं</span>
+                                  <span>हल जमा करें और नंबर देखें</span>
                                 </button>
 
                                 {activeMockQIdx + 1 < qList.length && (
                                   <button
                                     type="button"
                                     onClick={() => setActiveMockQIdx((i) => i + 1)}
-                                    className="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
+                                    className="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all"
                                   >
-                                    <span>अगला सवाल</span>
+                                    <span>अगला सवाल हल करें</span>
                                     <ChevronRight className="w-4 h-4" />
                                   </button>
                                 )}
                               </div>
 
-                              {/* Evaluation Scorecard */}
+                              {/* Evaluation Scorecard & Answer Diagram */}
                               {evalData && (
-                                <div className="mt-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                                <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
                                   <div className="flex items-center justify-between">
-                                    <span className="font-black text-emerald-900 text-sm">
+                                    <span className="font-black text-emerald-900 text-sm sm:text-base">
                                       🎯 स्कोर: {evalData.score} / {evalData.totalMarks || 10} अंक
                                     </span>
-                                    <span className="text-xs font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                                    <span className="text-xs font-bold text-emerald-700 bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
                                       {evalData.grade || 'बहुत बढ़िया'}
                                     </span>
                                   </div>
                                   {evalData.feedback && (
-                                    <p className="text-xs text-emerald-950 font-medium">
+                                    <p className="text-xs sm:text-sm text-emerald-950 font-medium">
                                       {evalData.feedback}
                                     </p>
+                                  )}
+                                  {isDiagramQ && (
+                                    <div className="pt-2">
+                                      <VisualMathDiagramCard
+                                        question={currentQ.question}
+                                        answer={currentQ.idealAnswer || evalData.feedback || ''}
+                                        medium={medium}
+                                      />
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -5391,7 +5493,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </div>
                   )}
 
-                  {/* 4. DEFAULT & UPLOADED SOLUTIONS VIEW (MATCHING IMAGE 2 EXACTLY) */}
+                  {/* 4. DEFAULT & UPLOADED SOLUTIONS VIEW (MATCHING IMAGE 2 EXACTLY + DIAGRAM SUPPORT) */}
                   {!isCheckingHomework && !activeMathAnim && whiteboardDisplayTab !== 'mock' && (
                     <div className="space-y-6">
                       {/* --- QUESTION 1 CARD (MATCHING IMAGE 2) --- */}
@@ -5403,6 +5505,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         const mcq1 = parseMCQOptions(rawQ1);
                         const q1Text = (mcq1 ? mcq1.qStem : rawQ1).replace(/^\d+[\.\)]\s*/, '');
                         const st1 = whiteboardSteps[0];
+                        const isDiagramQ1 = Boolean(
+                          /triangle|त्रिभुज|त्रिकोण|rectangle|आयत|square|वर्ग|circle|वृत्त|गोल|गोला|radius|त्रिज्या|diameter|व्यास|hypotenuse|कर्ण|समकोण|box|cuboid|घनाभ|डिब्बा|बक्सा|cylinder|बेलन|pyramid|पिरामिड|tower|टॉवर|table|तालिका|सारणी|perimeter|परिमाप|area|क्षेत्रफल|volume|आयतन/i.test(
+                            `${q1Text} ${st1?.formula || ''}`
+                          )
+                        );
 
                         return (
                           <div className="space-y-4">
@@ -5412,6 +5519,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <span className="text-blue-600 font-black mr-1">1.</span>
                                 <span>{q1Text}</span>
                               </div>
+
+                              {/* Question Diagram if Geometry/Pyramid/Table */}
+                              {isDiagramQ1 && (
+                                <div className="pt-1">
+                                  <VisualMathDiagramCard
+                                    question={q1Text}
+                                    answer=""
+                                    medium={medium}
+                                  />
+                                </div>
+                              )}
 
                               {/* 2-Column Options (matching Image 2) */}
                               {mcq1 && mcq1.options.length > 0 && (
@@ -5432,59 +5550,69 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                               )}
                             </div>
 
-                            {/* Question 1 Solution Card (matching Image 2) */}
+                            {/* Question 1 Solution Card (matching Image 2 + Diagram when applicable) */}
                             <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-xs space-y-3.5">
                               {/* Blue Pill 'हल :' */}
                               <div className="inline-block px-3 py-1 rounded-md bg-blue-600 text-white font-bold text-xs">
                                 हल :
                               </div>
 
-                              {/* Step text */}
-                              <p className="text-sm font-medium text-slate-700">
-                                दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
-                              </p>
+                              {isDiagramQ1 ? (
+                                <VisualMathDiagramCard
+                                  question={q1Text}
+                                  answer={st1?.formula || q1Text}
+                                  medium={medium}
+                                />
+                              ) : (
+                                <>
+                                  {/* Step text */}
+                                  <p className="text-sm font-medium text-slate-700">
+                                    दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
+                                  </p>
 
-                              <div className="pl-2 text-sm font-mono font-bold text-slate-800 space-y-0.5">
-                                <div>423516 ≈ 424000</div>
-                                <div>453729 ≈ 454000</div>
-                              </div>
+                                  <div className="pl-2 text-sm font-mono font-bold text-slate-800 space-y-0.5">
+                                    <div>423516 ≈ 424000</div>
+                                    <div>453729 ≈ 454000</div>
+                                  </div>
 
-                              <p className="text-sm font-medium text-slate-700">
-                                अब अंतर निकालते हैं :
-                              </p>
+                                  <p className="text-sm font-medium text-slate-700">
+                                    अब अंतर निकालते हैं :
+                                  </p>
 
-                              {/* Arithmetic Column Subtraction */}
-                              <div className="flex justify-center py-1">
-                                <div className="bg-blue-50/70 rounded-xl p-3 px-6 border border-blue-100 font-mono text-base font-bold text-slate-800 inline-block min-w-[220px]">
-                                  <div className="grid grid-cols-7 gap-2 text-right">
-                                    <span />
-                                    <span>4</span>
-                                    <span>5</span>
-                                    <span>3</span>
-                                    <span>7</span>
-                                    <span>2</span>
-                                    <span>9</span>
+                                  {/* Arithmetic Column Subtraction */}
+                                  <div className="flex justify-center py-1">
+                                    <div className="bg-blue-50/70 rounded-xl p-3 px-6 border border-blue-100 font-mono text-base font-bold text-slate-800 inline-block min-w-[220px]">
+                                      <div className="grid grid-cols-7 gap-2 text-right">
+                                        <span />
+                                        <span>4</span>
+                                        <span>5</span>
+                                        <span>3</span>
+                                        <span>7</span>
+                                        <span>2</span>
+                                        <span>9</span>
+                                      </div>
+                                      <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
+                                        <span>-</span>
+                                        <span>4</span>
+                                        <span>2</span>
+                                        <span>3</span>
+                                        <span>5</span>
+                                        <span>1</span>
+                                        <span>6</span>
+                                      </div>
+                                      <div className="border-t-2 border-slate-700 my-1" />
+                                      <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
+                                        <span />
+                                        <span>3</span>
+                                        <span>0</span>
+                                        <span>2</span>
+                                        <span>1</span>
+                                        <span>3</span>
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
-                                    <span>-</span>
-                                    <span>4</span>
-                                    <span>2</span>
-                                    <span>3</span>
-                                    <span>5</span>
-                                    <span>1</span>
-                                    <span>6</span>
-                                  </div>
-                                  <div className="border-t-2 border-slate-700 my-1" />
-                                  <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
-                                    <span />
-                                    <span>3</span>
-                                    <span>0</span>
-                                    <span>2</span>
-                                    <span>1</span>
-                                    <span>3</span>
-                                  </div>
-                                </div>
-                              </div>
+                                </>
+                              )}
 
                               {/* Green Correct Answer Pill */}
                               <div>
@@ -5510,7 +5638,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         );
                       })()}
 
-                      {/* --- SUBSEQUENT QUESTIONS (QUESTION 2, 3...) (MATCHING IMAGE 2) --- */}
+                      {/* --- SUBSEQUENT QUESTIONS (QUESTION 2, 3...) (MATCHING IMAGE 2 + DIAGRAM) --- */}
                       {(() => {
                         const remainingQList =
                           detectedQuestions.length > 1
@@ -5523,6 +5651,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           const mcq = parseMCQOptions(rawQ);
                           const qNumber = i + 2;
                           const qText = (mcq ? mcq.qStem : rawQ).replace(/^\d+[\.\)]\s*/, '');
+                          const isDiagramQSub = Boolean(
+                            /triangle|त्रिभुज|त्रिकोण|rectangle|आयत|square|वर्ग|circle|वृत्त|गोल|गोला|radius|त्रिज्या|diameter|व्यास|hypotenuse|कर्ण|समकोण|box|cuboid|घनाभ|डिब्बा|बक्सा|cylinder|बेलन|pyramid|पिरामिड|tower|टॉवर|table|तालिका|सारणी|perimeter|परिमाप|area|क्षेत्रफल|volume|आयतन/i.test(
+                              rawQ
+                            )
+                          );
 
                           return (
                             <div key={i} className="pt-2 space-y-2">
@@ -5530,6 +5663,17 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <span className="text-blue-600 font-black mr-1">{qNumber}.</span>
                                 <span>{qText}</span>
                               </div>
+
+                              {/* Question Diagram if Geometry/Pyramid/Table */}
+                              {isDiagramQSub && (
+                                <div className="pt-1">
+                                  <VisualMathDiagramCard
+                                    question={rawQ}
+                                    answer=""
+                                    medium={medium}
+                                  />
+                                </div>
+                              )}
 
                               {/* 2-Column Options */}
                               {mcq && mcq.options.length > 0 && (

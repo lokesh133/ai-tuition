@@ -30,13 +30,15 @@ interface ParsedColumnArithmetic {
 }
 
 interface ParsedGeometryShape {
-  type: 'triangle' | 'rectangle' | 'square' | 'circle' | 'cuboid' | 'cylinder';
+  type: 'triangle' | 'rectangle' | 'square' | 'circle' | 'cuboid' | 'cylinder' | 'pyramid' | 'table';
   title: string;
   label1?: string;
   label2?: string;
   label3?: string;
   formula: string;
   calculation: string;
+  tableData?: { headers: string[]; rows: string[][] };
+  pyramidData?: { tiers: number[][] };
 }
 
 /**
@@ -378,6 +380,61 @@ function tryExtractGeometry(question: string, answer: string): ParsedGeometrySha
     };
   }
 
+  // 6. Math Number Pyramid (संख्या पिरामिड / पहेली टॉवर)
+  if (combined.includes('pyramid') || combined.includes('पिरामिड') || combined.includes('number tower') || combined.includes('संख्या टॉवर') || combined.includes('ब्लॉक') || combined.includes('tower')) {
+    const numbers = (question.match(/\d+/g) || answer.match(/\d+/g) || []).map(Number);
+    const n1 = numbers[0] || 5;
+    const n2 = numbers[1] || 10;
+    const n3 = numbers[2] || 15;
+    const mid1 = n1 + n2;
+    const mid2 = n2 + n3;
+    const top = mid1 + mid2;
+
+    return {
+      type: 'pyramid',
+      title: 'गणित संख्या पिरामिड (Number Pyramid Diagram)',
+      label1: `आधार ब्लॉक: ${n1}, ${n2}, ${n3}`,
+      label2: `मध्यम ब्लॉक: ${mid1}, ${mid2}`,
+      label3: `शीर्ष ब्लॉक = ${top}`,
+      formula: 'नियम: नीचे के दो पास-पास वाले ब्लॉकों को जोड़कर ऊपर का ब्लॉक बनता है।',
+      calculation: `नीचे: [${n1}] + [${n2}] = [${mid1}]  तथा  [${n2}] + [${n3}] = [${mid2}] ➔ शीर्ष: [${mid1}] + [${mid2}] = ${top} ✅`,
+      pyramidData: {
+        tiers: [
+          [top],
+          [mid1, mid2],
+          [n1, n2, n3]
+        ]
+      }
+    };
+  }
+
+  // 7. Table Format (तालिका / सारणी / Data Table)
+  if (combined.includes('table') || combined.includes('तालिका') || combined.includes('सारणी') || combined.includes('frequency') || combined.includes('chart') || combined.includes('आँकड़े') || combined.includes('data')) {
+    const numbers = (question.match(/\d+(?:\.\d+)?/g) || answer.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    const v1 = numbers[0] || 12;
+    const v2 = numbers[1] || 18;
+    const v3 = numbers[2] || 24;
+    const total = v1 + v2 + v3;
+
+    return {
+      type: 'table',
+      title: 'गणित तालिका / सारणी (Data Table Diagram)',
+      label1: 'क्रमबद्ध आँकड़े (Tabular Data)',
+      label2: `कुल प्रविष्टियाँ: ${Math.max(3, numbers.length)}`,
+      formula: 'सारणी नियम: मद (Item) और मान (Value) का क्रमबद्ध विश्लेषण',
+      calculation: `तालिका मान: ${v1}, ${v2}, ${v3} ➔ कुल योग (Total Sum) = ${total} ✅`,
+      tableData: {
+        headers: ['क्र.सं. (S.No)', 'मद / विवरण (Item)', 'संख्या / मान (Value)'],
+        rows: [
+          ['1', 'प्रथम मद (Item 1)', `${v1}`],
+          ['2', 'द्वितीय मद (Item 2)', `${v2}`],
+          ['3', 'तृतीय मद (Item 3)', `${v3}`],
+          ['कुल (Total)', 'कुल योग (Sum)', `${total}`]
+        ]
+      }
+    };
+  }
+
   return null;
 }
 
@@ -653,6 +710,70 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
                     {geometry.label1 || 'त्रिज्या r'}
                   </text>
                 </svg>
+              )}
+
+              {/* Number Pyramid Shape */}
+              {geometry.type === 'pyramid' && (
+                <div className="flex flex-col items-center gap-1.5 py-2">
+                  {geometry.pyramidData?.tiers.map((tier, rIdx) => (
+                    <div key={rIdx} className="flex items-center gap-2">
+                      {tier.map((val, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className={`w-12 h-10 rounded-lg flex items-center justify-center font-mono font-black text-sm border shadow-xs transition-transform ${
+                            rIdx === 0
+                              ? 'bg-amber-400 border-amber-600 text-amber-950 scale-105 ring-2 ring-amber-300'
+                              : rIdx === 1
+                              ? 'bg-indigo-100 border-indigo-400 text-indigo-900'
+                              : 'bg-emerald-100 border-emerald-400 text-emerald-900'
+                          }`}
+                        >
+                          {val}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  <span className="text-[10px] text-slate-500 font-semibold mt-1">
+                    ▲ निचली संख्याओं का योग ऊपर बनता है
+                  </span>
+                </div>
+              )}
+
+              {/* Table Data Diagram */}
+              {geometry.type === 'table' && (
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-blue-600 text-white font-bold">
+                        {geometry.tableData?.headers.map((h, hIdx) => (
+                          <th key={hIdx} className="p-1.5 border border-blue-700 text-center">
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {geometry.tableData?.rows.map((row, rIdx) => (
+                        <tr
+                          key={rIdx}
+                          className={
+                            rIdx === (geometry.tableData?.rows.length || 0) - 1
+                              ? 'bg-emerald-100 font-black text-emerald-950'
+                              : rIdx % 2 === 0
+                              ? 'bg-white'
+                              : 'bg-slate-50'
+                          }
+                        >
+                          {row.map((cell, cIdx) => (
+                            <td key={cIdx} className="p-1.5 border border-slate-200 text-center">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
