@@ -39,6 +39,17 @@ import {
   Plus,
   ChevronDown,
   Eye,
+  Bell,
+  Crown,
+  Maximize2,
+  Home,
+  MessageSquare,
+  BarChart2,
+  Users,
+  Boxes,
+  FileCheck,
+  Settings,
+  Image as ImageIcon,
 } from 'lucide-react';
 // Student reports now handled centrally on /reports
 import PrintableSundayExamModal from '@/components/PrintableSundayExamModal';
@@ -327,6 +338,62 @@ export default function TuitionClassroomStudio() {
     role: 'Class 1st-8th Math Mentor',
     emoji: '👨‍🏫',
   });
+
+  const TEACHER_LIST_DATA = [
+    {
+      id: 'sharma',
+      name: 'Sharma Sir',
+      subject: 'गणित',
+      subjectEn: 'Mathematics',
+      subjectId: 'math',
+      role: 'गणित शिक्षक',
+      image: '/teachers/sharma.jpg',
+      online: true,
+      prompt: 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।',
+      greeting: 'आओ, गणित को आसान और मज़ेदार बनाएं !',
+    },
+    {
+      id: 'riya',
+      name: 'Riya Didi',
+      subject: 'English',
+      subjectEn: 'English',
+      subjectId: 'english',
+      role: 'English',
+      image: '/teachers/riya.jpg',
+      online: true,
+      prompt: 'Spelling, story reading or grammar doubt? Just ask!',
+      greeting: 'Let\'s make English easy and fun!',
+    },
+    {
+      id: 'neha',
+      name: 'Neha Mam',
+      subject: 'Science',
+      subjectEn: 'Science',
+      subjectId: 'science',
+      role: 'Science',
+      image: '/teachers/neha.jpg',
+      online: true,
+      prompt: 'पेड़-पौधे, जानवर और विज्ञान के सवाल पूछें।',
+      greeting: 'विज्ञान के मजेदार प्रयोग और सीख!',
+    },
+    {
+      id: 'pooja',
+      name: 'Pooja Mam',
+      subject: 'हिंदी',
+      subjectEn: 'Hindi',
+      subjectId: 'hindi',
+      role: 'हिंदी',
+      image: '/teachers/kabir.jpg',
+      online: true,
+      prompt: 'हिंदी व्याकरण, विलोम शब्द या पाठ के प्रश्न पूछें।',
+      greeting: 'हिंदी को समझें और सुंदर लिखें!',
+    },
+  ];
+
+  const [activeSidebarItem, setActiveSidebarItem] = useState<string>('tutor');
+  const [whiteboardDisplayTab, setWhiteboardDisplayTab] = useState<'book' | 'notebook'>('book');
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isFullscreenMode, setIsFullscreenMode] = useState<boolean>(false);
 
   // Whiteboard Steps (empty initially until chapter is selected or doubt asked)
   const [whiteboardSteps, setWhiteboardSteps] = useState<WhiteboardStepItem[]>([]);
@@ -4327,2317 +4394,874 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f8fafc] text-slate-900'
-      }`}>
-      {/* 1. WORLD-CLASS UNIFIED EDUCATION TOP NAVIGATION HEADER */}
-      <header className={`sticky top-0 z-40 border-b px-3 sm:px-6 py-2 transition-all duration-200 backdrop-blur-md ${
-        isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200/80 shadow-xs'
-      }`}>
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
-          {/* Left: Brand + Unified Academic Pill + Chapters */}
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <Link href="/dashboard" className="flex items-center gap-2 group shrink-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-base shadow-sm group-hover:scale-105 transition-transform">
+    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+      isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f4f7fb] text-slate-900'
+    }`}>
+      {/* Hidden file inputs for upload and camera */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoUpload}
+        accept="image/*,application/pdf"
+        className="hidden"
+        aria-label="Upload Worksheet or Textbook"
+      />
+      <input
+        type="file"
+        ref={cameraInputRef}
+        onChange={handlePhotoUpload}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        aria-label="Camera Capture"
+      />
+
+      {/* 1. TOP NAVBAR (MATCHING MOCKUP) */}
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 px-4 py-2.5 shadow-2xs">
+        <div className="w-full flex items-center justify-between gap-3">
+          {/* Left: Brand Logo + Academic Selectors + Language Pill */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <Link href="/dashboard" className="flex items-center gap-2.5 group shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-black text-lg shadow-sm group-hover:scale-105 transition-transform">
                 🎓
               </div>
-              <div className="hidden sm:block">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="text-sm font-black tracking-tight text-slate-900 dark:text-white">
-                    {medium === 'english' ? 'Vidya AI' : 'विद्या AI'}
+              <div className="leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base font-black tracking-tight text-slate-900">
+                    Vidya AI
                   </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
-                  {medium === 'english' ? 'Class 1st–8th Tuition' : 'कक्षा 1st–8th ट्यूशन'}
+                <span className="text-[10px] font-semibold text-slate-400">
+                  AI Tutor for Class 1-8
                 </span>
               </div>
             </Link>
 
-            {/* Unified Academic Context Pill (Khan Academy Course Switcher Style) */}
+            {/* Dropdown 1: Class 4 */}
             <button
               type="button"
               onClick={() => setIsAcademicSelectorOpen(true)}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 sm:gap-2 shadow-2xs hover:scale-102 active:scale-98 cursor-pointer shrink-0 ${
-                isDarkMode
-                  ? 'bg-slate-800/90 hover:bg-slate-800 border-slate-700 text-slate-200'
-                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-800'
-              }`}
-              title="कक्षा, विषय व बोर्ड बदलें"
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
-              <span className="text-sm">
-                {selectedSubject?.emoji || '📐'}
-              </span>
-              <span className="truncate max-w-[120px] sm:max-w-none">
-                {selectedSubject ? (medium === 'english' ? selectedSubject.subject : selectedSubject.subjectHindi) : (medium === 'english' ? 'Math' : 'गणित')}
-                {' • '}
-                {className}
-                {' • '}
-                {board}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span>{className || 'Class 4'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
 
-            {/* Chapters Pill Button */}
+            {/* Dropdown 2: RBSE */}
             <button
               type="button"
-              onClick={() => setIsChaptersOpen((prev) => !prev)}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border shadow-2xs shrink-0 cursor-pointer ${
-                isChaptersOpen
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                  : isDarkMode
-                  ? 'bg-slate-800/80 text-blue-300 border-slate-700 hover:border-blue-400'
-                  : 'bg-white text-blue-700 border-slate-200 hover:border-blue-300'
-              }`}
-              title="पाठ्यक्रम चैप्टर्स देखें"
+              onClick={() => setIsAcademicSelectorOpen(true)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             >
-              <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span className="hidden md:inline">{medium === 'english' ? 'Chapters' : 'चैप्टर्स'}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                {selectedSubject?.chapters?.length || 0}
-              </span>
+              <span className="text-xs">🏫</span>
+              <span>{board || 'RBSE'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
             </button>
+
+            {/* Dropdown 3: Mathematics */}
+            <button
+              type="button"
+              onClick={() => setIsAcademicSelectorOpen(true)}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <span className="text-xs text-blue-600">⊞</span>
+              <span>{selectedSubject?.subject || 'Mathematics'}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+
+            {/* Language Switcher Pill (हिंदी | English) */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setMedium('hindi')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  medium === 'hindi'
+                    ? 'bg-white text-slate-900 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                हिंदी
+              </button>
+              <button
+                type="button"
+                onClick={() => setMedium('english')}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                  medium === 'english'
+                    ? 'bg-white text-slate-900 shadow-2xs font-black'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                English
+              </button>
+            </div>
           </div>
 
-          {/* Right: Language + Streak & Stars + Audio + Student Menu */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Language Pill */}
-            <div className={`p-0.5 rounded-xl border flex items-center text-[10px] font-bold ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
-            }`}>
-              <button
-                type="button"
-                onClick={() => {
-                  setMedium('hindi');
-                  const intro = 'नमस्ते बेटा! अब हम हिंदी माध्यम में पढ़ाई करेंगे।';
-                  setSpeechText(intro);
-                  speakText(intro, undefined, true);
-                }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
-                  medium === 'hindi'
-                    ? 'bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                🇮🇳 हिंदी
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setMedium('english');
-                  const intro = 'Hello! Now we will study in English medium.';
-                  setSpeechText(intro);
-                  speakText(intro, undefined, true);
-                }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
-                  medium === 'english'
-                    ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
-                }`}
-              >
-                🇬🇧 EN
-              </button>
+          {/* Right: Coins + Upgrade Plan + Notification Bell + Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* 320 Coins Pill */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold text-xs shadow-2xs">
+              <span className="text-amber-500">⭐</span>
+              <span>{studentStars > 0 ? studentStars : 320} Coins</span>
             </div>
 
-            {/* Streak & Stars Badge */}
-            <div className={`hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-xl border text-xs font-black ${
-              isDarkMode ? 'bg-slate-900 border-slate-800 text-amber-300' : 'bg-amber-50/80 border-amber-200 text-amber-900'
-            }`}>
-              <span className="flex items-center gap-1">
-                <span className="text-orange-500">🔥</span>
-                <span>{streakDays}</span>
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="flex items-center gap-1">
-                <span className="text-amber-500">⭐</span>
-                <span>{studentStars}</span>
-              </span>
-            </div>
-
-            {/* 📂 Past Records / History Button (पिछला रिकॉर्ड) */}
+            {/* Upgrade Plan Button */}
             <button
               type="button"
-              onClick={() => setIsHistoryModalOpen(true)}
-              className={`px-2.5 py-1 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs hover:scale-102 active:scale-95 cursor-pointer shrink-0 ${
-                isDarkMode
-                  ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30'
-                  : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
-              }`}
-              title={medium === 'english' ? 'View Past Worksheets & Records' : 'पिछला रिकॉर्ड व वर्कशीट इतिहास देखें'}
+              onClick={() => setIsSubscriptionModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold text-xs shadow-xs transition-all hover:scale-102 active:scale-98 cursor-pointer"
             >
-              <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>{medium === 'english' ? 'Records' : 'पिछला रिकॉर्ड'}</span>
-              {worksheetHistory.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-white leading-none">
-                  {worksheetHistory.length}
-                </span>
-              )}
+              <Crown className="w-3.5 h-3.5 fill-white text-white" />
+              <span>Upgrade Plan</span>
             </button>
 
-            {/* Audio Toggle */}
+            {/* Notification Bell */}
             <button
               type="button"
-              onClick={() => {
-                if (!isAudioMuted) {
-                  stopAudio();
-                  setIsAudioMuted(true);
-                } else {
-                  setIsAudioMuted(false);
-                  speakText(medium === 'english' ? 'Sound is ON' : 'ध्वनि चालू है', undefined, true);
-                }
-              }}
-              className={`p-1.5 sm:px-2.5 sm:py-1 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                isAudioMuted
-                  ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/40 dark:border-rose-800 dark:text-rose-300'
-                  : 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300'
-              }`}
-              title={isAudioMuted ? 'Sound OFF' : 'Sound ON'}
+              className="relative w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              title="Notifications"
             >
-              {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-rose-500" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />}
-              <span className="hidden md:inline">{isAudioMuted ? 'Mute' : 'Sound'}</span>
+              <Bell className="w-4 h-4" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
             </button>
 
-            {/* Student Avatar & Tools Menu */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setIsStudentMenuOpen((prev) => !prev)}
-                className={`flex items-center gap-1.5 sm:gap-2 pl-2 pr-2.5 py-1 rounded-xl border text-xs font-black transition-all cursor-pointer shadow-2xs hover:scale-102 ${
-                  isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
-                }`}
-              >
-                <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs">
-                  {currentStudentName.charAt(0).toUpperCase() || 'S'}
+            {/* Student Profile Chip */}
+            <div className="flex items-center gap-2 pl-1 cursor-pointer" onClick={() => setIsAcademicSelectorOpen(true)}>
+              <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-sm font-black text-amber-800 overflow-hidden shadow-2xs">
+                👦
+              </div>
+              <div className="hidden sm:block text-left leading-tight">
+                <div className="text-xs font-bold text-slate-900 truncate max-w-[80px]">
+                  {studentUser?.name || 'Lokesh'}
                 </div>
-                <span className="hidden sm:inline truncate max-w-[90px]">{currentStudentName}</span>
-                <ChevronDown className="w-3 h-3 text-slate-400" />
-              </button>
-
-              {/* Dropdown Menu */}
-              {isStudentMenuOpen && (
-                <div
-                  className={`absolute right-0 mt-2 w-56 rounded-2xl border p-2 shadow-xl z-50 animate-in fade-in zoom-in-95 ${
-                    isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                    <p className="text-xs font-black truncate">{currentStudentName}</p>
-                    <p className="text-[10px] text-slate-400 font-bold">{className} • {board}</p>
-                  </div>
-                  <Link
-                    href="/test-series"
-                    onClick={() => setIsStudentMenuOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 hover:bg-indigo-50 dark:hover:bg-slate-800 text-indigo-600 dark:text-indigo-400 transition-colors"
-                  >
-                    <span>📝</span>
-                    <span>साप्ताहिक टेस्ट सीरीज़</span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsStudentMenuOpen(false);
-                      setIsHistoryModalOpen(true);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 hover:bg-amber-50 dark:hover:bg-slate-800 text-amber-700 dark:text-amber-300 transition-colors text-left"
-                  >
-                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>पिछला रिकॉर्ड ({worksheetHistory.length})</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsStudentMenuOpen(false);
-                      setIsParentReportModalOpen(true);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 hover:bg-emerald-50 dark:hover:bg-slate-800 text-emerald-700 dark:text-emerald-300 transition-colors text-left"
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>पेरेंट WhatsApp रिपोर्ट</span>
-                  </button>
-                  <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsStudentMenuOpen(false);
-                      handleFullPageReset();
-                    }}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors text-left"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                    <span>पेज रीसेट करें</span>
-                  </button>
+                <div className="text-[10px] text-slate-400 font-medium">
+                  Student
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* 2. MAIN WORKSPACE CANVAS (FULL-WIDTH, DISTRACTION-FREE & EXPANSIVE) */}
-      <main className="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-5 space-y-4">
-        {/* KHANMIGO STYLE TEACHER COACH HERO BAR */}
-        <div className={`rounded-3xl p-4 sm:p-5 border transition-all duration-200 relative overflow-hidden shadow-xs ${
-          isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/90 text-slate-900'
-        }`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-              <div className="relative shrink-0">
-                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-3xl border transition-all ${
-                  isSpeaking ? 'ring-4 ring-blue-500/40 scale-105' : ''
-                } ${isDarkMode ? 'bg-blue-950/60 border-blue-500/30' : 'bg-blue-50 border-blue-200'}`}>
-                  {currentTeacher.emoji}
+      {/* 2. MAIN CONTAINER WITH SIDEBAR + WORKSPACE */}
+      <div className="flex-1 flex min-h-[calc(100vh-65px)]">
+        {/* LEFT SIDEBAR (MATCHING MOCKUP) */}
+        <aside className="w-48 lg:w-52 bg-white border-r border-slate-200 flex flex-col justify-between py-4 px-2.5 shrink-0 select-none">
+          {/* Navigation Items */}
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => setActiveSidebarItem('tutor')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'tutor'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              <span>AI Tutor</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('upload');
+                fileInputRef.current?.click();
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'upload'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Camera className="w-4 h-4" />
+              <span>Upload Worksheet</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('tests');
+                setIsSundayExamModalOpen(true);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'tests'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <FileCheck className="w-4 h-4" />
+              <span>Test Series</span>
+            </button>
+
+            <Link
+              href="/dashboard/homework"
+              onClick={() => setActiveSidebarItem('homework')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'homework'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Homework</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('doubts');
+                inputRef.current?.focus();
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'doubts'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span>Doubt Solving</span>
+            </button>
+
+            <Link
+              href="/dashboard"
+              onClick={() => setActiveSidebarItem('progress')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'progress'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <BarChart2 className="w-4 h-4" />
+              <span>My Progress</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('parent');
+                setIsParentReportModalOpen(true);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'parent'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Parent Report</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('visual');
+                setIsScratchpadOpen((prev) => !prev);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'visual'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <Boxes className="w-4 h-4" />
+              <span>Visual Learning</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidebarItem('notes');
+                setIsChaptersOpen(true);
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'notes'
+                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Notes & Revision</span>
+            </button>
+          </div>
+
+          {/* Bottom Settings Button */}
+          <div className="pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsAcademicSelectorOpen(true)}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN WORKSPACE CONTENT */}
+        <main className="flex-1 p-3 sm:p-5 pb-28 max-w-[1550px] mx-auto w-full flex flex-col gap-4">
+          {/* 3. TEACHER HERO BANNER CARD (MATCHING MOCKUP) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-4">
+            {/* Left: Chalkboard graphic with 3D Teacher Avatar */}
+            <div className="flex items-center gap-4 w-full lg:w-auto">
+              <div className="relative w-44 sm:w-56 h-28 rounded-xl bg-[#1c4731] border-4 border-[#7d512d] shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                {/* Chalk doodles background */}
+                <div className="absolute inset-0 opacity-20 pointer-events-none select-none text-white font-mono text-xs p-2 flex flex-col justify-between">
+                  <div className="flex justify-between"><span>1 2 3</span><span>+-×÷</span></div>
+                  <div className="text-center text-sm">📐 3D</div>
+                  <div className="flex justify-between"><span>√x</span><span>a²+b²</span></div>
                 </div>
-                <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-900 ${
-                  isSpeaking ? 'bg-emerald-500 animate-ping' : isListening ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'
-                }`} />
+                {/* Teacher Avatar */}
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="w-20 h-20 rounded-full border-2 border-amber-300 shadow-lg overflow-hidden bg-amber-50 flex items-center justify-center">
+                    <img
+                      src={
+                        currentTeacher.id === 'sharma'
+                          ? '/teachers/sharma.jpg'
+                          : currentTeacher.id === 'riya'
+                          ? '/teachers/riya.jpg'
+                          : currentTeacher.id === 'neha'
+                          ? '/teachers/neha.jpg'
+                          : '/teachers/kabir.jpg'
+                      }
+                      alt={currentTeacher.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                    <span className="text-3xl font-black">{currentTeacher.emoji}</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="min-w-0 flex-1">
+              {/* Center Teacher Info & Prompt */}
+              <div className="space-y-1.5 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                    {currentTeacher.name}
-                  </h3>
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    {currentTeacher.role}
+                  <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                    {currentTeacher.name} • {currentTeacher.role}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Online
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                  {currentTeacher.id === 'sharma'
+                    ? 'आओ, गणित को आसान और मज़ेदार बनाएं !'
+                    : currentTeacher.id === 'riya'
+                    ? "Let's make English easy and fun!"
+                    : currentTeacher.id === 'neha'
+                    ? 'विज्ञान के मजेदार प्रयोग और सीख!'
+                    : 'हिंदी को समझें और सुंदर लिखें!'}
+                </p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-700 text-xs font-bold">
+                  <span>⏱️</span>
+                  <span>{currentTeacher.id === 'sharma' ? 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।' : 'कोई भी सवाल पूछें, तुरंत हल मिलेगा!'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: 4 Teacher Cards for 1-Click Switch */}
+            <div className="grid grid-cols-4 gap-2 w-full lg:w-auto shrink-0">
+              {TEACHER_LIST_DATA.map((t) => {
+                const isSelected = currentTeacher.id === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setCurrentTeacher({
+                        id: t.id,
+                        name: t.name,
+                        role: t.role,
+                        emoji: t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫',
+                      });
+                      const matchingSub = allSubjects.find(
+                        (s) =>
+                          s.id.toLowerCase().includes(t.subjectId.toLowerCase()) ||
+                          s.subject.toLowerCase().includes(t.subjectEn.toLowerCase()) ||
+                          s.subjectHindi.includes(t.subject)
+                      );
+                      if (matchingSub) {
+                        setSelectedSubject(matchingSub);
+                      }
+                      speakText(t.greeting);
+                    }}
+                    className={`flex flex-col items-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-50/80 border-blue-500 shadow-2xs ring-1 ring-blue-500/20'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center mb-1">
+                      <img
+                        src={t.image}
+                        alt={t.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <span className="text-lg">{t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫'}</span>
+                    </div>
+                    <span className="text-[11px] font-black text-slate-800 leading-tight truncate w-full">
+                      {t.name}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {t.subject}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols) */}
+            <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <span className="text-sm font-black text-slate-800">
+                  अपलोड की गई वर्कशीट
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreenMode((prev) => !prev)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                  title="Fullscreen"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Scanned Worksheet View Area */}
+              <div
+                className="relative bg-slate-50 p-3 min-h-[500px] flex items-center justify-center cursor-pointer group"
+                onClick={() => fileInputRef.current?.click()}
+                title="क्लिक करके नई वर्कशीट अपलोड करें"
+              >
+                {uploadedImage ? (
+                  <img
+                    src={uploadedImage}
+                    alt="Uploaded Worksheet"
+                    className="max-h-[520px] w-auto object-contain rounded-lg shadow-2xs border border-slate-200"
+                  />
+                ) : (
+                  <div className="relative w-full max-h-[520px] bg-[#f9f5f0] border border-amber-200/60 rounded-lg p-4 font-serif text-[11px] leading-relaxed text-slate-800 shadow-2xs overflow-hidden select-none">
+                    <div className="text-center font-bold text-rose-700 text-xs mb-3 tracking-wide">
+                      WORKSHEET 3
+                    </div>
+                    <div className="text-[10px] font-bold text-blue-900 mb-2">
+                      Multiple Choice Questions
+                    </div>
+                    <div className="space-y-2 mb-3">
+                      <div>
+                        <b>1.</b> Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :
+                        <div className="grid grid-cols-2 gap-1 mt-1 text-[10px] text-slate-700 pl-3">
+                          <span>(a) 20000</span>
+                          <span>(b) 50000</span>
+                          <span>(c) 30000</span>
+                          <span>(d) 40000</span>
+                        </div>
+                      </div>
+                      <div>
+                        <b>2.</b> Largest 6-digit number exceeds largest 5-digit number by :
+                        <div className="grid grid-cols-2 gap-1 mt-1 text-[10px] text-slate-700 pl-3">
+                          <span>(a) 100000</span>
+                          <span>(b) 90000</span>
+                          <span>(c) 990000</span>
+                          <span>(d) 900000</span>
+                        </div>
+                      </div>
+                      <div>
+                        <b>3.</b> Difference of 377236 and 348236 is :
+                        <div className="grid grid-cols-2 gap-1 mt-1 text-[10px] text-slate-700 pl-3">
+                          <span>(a) 39000</span>
+                          <span>(b) 29000</span>
+                          <span>(c) 29001</span>
+                          <span>(d) 49000</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-center text-[10px] font-bold text-slate-400 pt-2 border-t border-slate-200">
+                      53
+                    </div>
+
+                    {/* Subtle upload badge overlay */}
+                    <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-2xs rounded-lg">
+                      <div className="bg-white/95 px-3 py-2 rounded-xl shadow-lg border border-blue-200 text-xs font-bold text-blue-600 flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        <span>अपनी वर्कशीट बदलें / अपलोड करें</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer: Pagination + File Chip with Red Trash */}
+              <div className="p-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                  <button
+                    type="button"
+                    onClick={handlePrevQuestion}
+                    className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                    title="Previous"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-[11px] px-1">Page 1 / 1</span>
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                    title="Next"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* File Chip */}
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium">
+                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="truncate max-w-[120px]">
+                    {uploadedFileName || 'Worksheet_3_Class4.jpg'}
                   </span>
                   <button
                     type="button"
-                    onClick={() => speakText(speechText, undefined, true)}
-                    className={`p-1 rounded-lg text-xs font-bold border transition-all shrink-0 ${
-                      isDarkMode
-                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                        : 'bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border-slate-200'
-                    }`}
-                    title="आवाज़ दोबारा सुनें (Replay)"
+                    onClick={() => setUploadedImage(null)}
+                    className="text-red-500 hover:text-red-700 transition-colors cursor-pointer ml-1"
+                    title="वर्कशीट हटाएं"
                   >
-                    <Volume2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium mt-1 leading-relaxed">
-                  &quot;{cleanSpeechText(speechText) || (medium === 'english' ? 'Hello! Show me your notebook photo or ask any math question.' : 'नमस्ते बेटा! कोई भी सवाल पूछिए या किताब/कॉपी की फोटो दिखाएं।')}&quot;
-                </p>
               </div>
             </div>
 
-            {/* Mode Switcher Buttons */}
-            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shrink-0 self-stretch sm:self-auto justify-center">
-              <button
-                type="button"
-                onClick={() => handleTriggerMode('teach')}
-                disabled={isCheckingHomework}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  currentUploadMode === 'teach'
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {isCheckingHomework && currentUploadMode === 'teach' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                ) : (
-                  <span>💡</span>
-                )}
-                <span>{medium === 'english' ? 'Learn' : 'समझना है'}</span>
-              </button>
+            {/* RIGHT COLUMN: SMART WHITEBOARD (7 or 8 cols) */}
+            <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+              {/* Top Bar with Action Buttons */}
+              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                    📋
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 leading-tight">
+                      Smart Whiteboard
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      AI के साथ पढ़ें, समझें और हर सवाल हल करें
+                    </p>
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => handleTriggerMode('check')}
-                disabled={isCheckingHomework}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                  currentUploadMode === 'check'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                {isCheckingHomework && currentUploadMode === 'check' ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                ) : (
-                  <span>✍️</span>
-                )}
-                <span>{medium === 'english' ? 'Check Copy' : 'कॉपी चेक'}</span>
-              </button>
+                {/* Action Pills (किताब जैसा, कॉपी में हल, हिंट लें, सुनें, अगला सवाल) */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setWhiteboardDisplayTab('book')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      whiteboardDisplayTab === 'book'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>किताब जैसा</span>
+                  </button>
 
-              <Link
-                href="/mock-test"
-                className="px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 border border-amber-500/30"
-              >
-                <span>🎯</span>
-                <span>{medium === 'english' ? 'Mock Test' : 'मॉक टेस्ट'}</span>
-              </Link>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const nextMode = !socraticMode;
-                  setSocraticMode(nextMode);
-                  try {
-                    localStorage.setItem('tuition_socratic', String(nextMode));
-                  } catch {}
-                }}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1 ${
-                  socraticMode
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
-                }`}
-                title={socraticMode ? 'Socratic Hint Mode Active' : 'Direct Solution Mode'}
-              >
-                <span>💡</span>
-                <span className="hidden md:inline">{socraticMode ? 'हिंट' : 'हल'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* HIDDEN FILE INPUT */}
-        <input
-          id="homework-upload-input"
-          type="file"
-          ref={fileInputRef}
-          accept="image/*,.pdf"
-          multiple
-          className="sr-only"
-          onChange={handlePhotoUpload}
-        />
-
-        {/* 📚 HOMEWORK UPLOAD & DOCUMENT SECTION (किताब या कॉपी का पेज & पिछला इतिहास) */}
-        <div className={`rounded-3xl p-4 sm:p-5 border transition-all duration-200 space-y-3.5 shadow-xs ${
-          isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200/90 text-slate-900'
-        }`}>
-          {/* Header Bar: Title + Upload Count + History Button */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg shrink-0 border border-blue-200 dark:border-blue-800">
-                📸
-              </span>
-              <div>
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">
-                  {medium === 'english' ? 'Homework & Book Page' : 'किताब या कॉपी का पेज'}
-                </h3>
-                <p className="text-[10px] sm:text-[11px] text-slate-400 font-bold">
-                  {uploadedFiles.length > 0
-                    ? `${uploadedFiles.length} ${medium === 'english' ? 'pages scanned' : 'पेज तैयार हैं'}`
-                    : (medium === 'english' ? 'Scan notebook or textbook for step-by-step help' : 'स्टेप-बाय-स्टेप हल व चेकिंग के लिए फोटो दिखाएं')}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {/* 📂 History Section Button (पिछला रिकॉर्ड) */}
-              <button
-                type="button"
-                onClick={() => setIsHistoryModalOpen(true)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-black transition-all flex items-center gap-1.5 shadow-2xs hover:scale-102 active:scale-95 cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30'
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
-                }`}
-                title="पिछला रिकॉर्ड व वर्कशीट इतिहास देखें"
-              >
-                <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                <span>{medium === 'english' ? 'History' : 'पिछला रिकॉर्ड'}</span>
-                {worksheetHistory.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-amber-500 text-white leading-none">
-                    {worksheetHistory.length}
-                  </span>
-                )}
-              </button>
-
-              <span className={`text-[11px] font-black px-2.5 py-1 rounded-xl border ${
-                dailyUploadCount >= MAX_DAILY_UPLOADS
-                  ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-              }`}>
-                📸 {dailyUploadCount}/{MAX_DAILY_UPLOADS} {medium === 'english' ? 'Pages' : 'पेज'}
-              </span>
-            </div>
-          </div>
-
-          {/* Body: Uploaded Files vs Empty State */}
-          {uploadedFiles.length > 0 ? (
-            <div className="space-y-3">
-              {/* Horizontal Document Switcher & Action Tray */}
-              <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5">
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 flex-1 min-w-0">
-                  <span className="text-[11px] font-black uppercase text-slate-400 shrink-0">
-                    {medium === 'english' ? 'Pages:' : 'पेज:'}
-                  </span>
-                  {uploadedFiles.map((file, idx) => {
-                    const isThisActive = (activeFileDoc?.id || uploadedFiles[0]?.id) === file.id;
-                    return (
-                      <button
-                        key={file.id}
-                        type="button"
-                        onClick={() => handleSwitchPage(file.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                          isThisActive
-                            ? 'bg-blue-600 text-white shadow-xs scale-102 ring-2 ring-blue-400/40'
-                            : isDarkMode
-                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
-                        }`}
-                      >
-                        <span>📄</span>
-                        <span>{medium === 'english' ? `Page #${idx + 1}` : `पेज #${idx + 1}`}</span>
-                        {isThisActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                      </button>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={() => setWhiteboardDisplayTab('notebook')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      whiteboardDisplayTab === 'notebook'
+                        ? 'bg-blue-600 text-white shadow-2xs'
+                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>कॉपी में हल</span>
+                  </button>
 
                   <button
                     type="button"
                     onClick={() => {
-                      if (!isSubscribed && trialUploadCount >= 3) {
-                        setIsFourthUploadAttempt(true);
-                        setIsSubscriptionModalOpen(true);
-                        return;
-                      }
-                      fileInputRef.current?.click();
+                      speakText('बेटा, इस सवाल में दोनों संख्याओं को पहले निकटतम हज़ार पर राउंड करें, फिर बड़ी संख्या से छोटी संख्या घटाएं!');
                     }}
-                    className="px-2.5 py-1.5 rounded-xl border border-dashed border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-xs font-bold flex items-center gap-1 shrink-0 transition-all cursor-pointer"
-                    title="और पेज जोड़ें"
+                    className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-800 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{medium === 'english' ? 'Add Page' : 'पेज जोड़ें'}</span>
+                    <span className="text-amber-500">💡</span>
+                    <span>हिंट लें</span>
                   </button>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {activeFileDoc?.url && (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImageUrl(activeFileDoc.url)}
-                      className={`px-3 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
-                        isDarkMode
-                          ? 'bg-slate-800 hover:bg-slate-700 text-blue-300 border-slate-700'
-                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-                      }`}
-                      title="छात्र की मूल कॉपी / फोटो देखें"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">{medium === 'english' ? 'Original Copy' : 'मूल कॉपी देखें'}</span>
-                    </button>
-                  )}
 
                   <button
                     type="button"
-                    onClick={() => handleRemoveFile(activeFileDoc?.id || '')}
-                    className="px-2.5 py-1.5 rounded-xl border border-rose-200 hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950 text-rose-600 hover:text-rose-700 text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                    title={medium === 'english' ? 'Delete this page' : 'यह पेज हटाएं'}
+                    onClick={() => {
+                      if (isSpeaking) {
+                        stopAudio();
+                      } else {
+                        speakText(speechText);
+                      }
+                    }}
+                    className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>{medium === 'english' ? 'Delete' : 'पेज हटाएं'}</span>
+                    <Volume2 className="w-3.5 h-3.5 text-blue-600" />
+                    <span>{isSpeaking ? 'रुकें' : 'सुनें'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>अगला सवाल</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
-            </div>
-          ) : (
-            /* Inviting Dropzone when empty */
-            <div className="space-y-3">
-              <label
-                htmlFor={!isSubscribed && trialUploadCount >= 3 ? undefined : 'homework-upload-input'}
-                onClick={(e) => {
-                  if (!isSubscribed && trialUploadCount >= 3) {
-                    e.preventDefault();
-                    setIsFourthUploadAttempt(true);
-                    setIsSubscriptionModalOpen(true);
-                  }
+
+              {/* RULED SCHOOL NOTEBOOK PAPER AREA */}
+              <div
+                className="p-6 min-h-[500px] relative font-sans"
+                style={{
+                  background:
+                    'repeating-linear-gradient(transparent, transparent 27px, #e2e8f0 28px)',
+                  backgroundColor: '#ffffff',
                 }}
-                className={`rounded-2xl border-2 border-dashed p-6 sm:p-7 flex flex-col items-center justify-center gap-2.5 transition-all cursor-pointer group ${
-                  isDarkMode
-                    ? 'border-slate-800 hover:border-blue-500 bg-slate-950/50 hover:bg-blue-950/20'
-                    : 'border-slate-300 hover:border-blue-500 bg-slate-50/60 hover:bg-blue-50/40 shadow-xs'
-                }`}
               >
-                <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shadow-xs">
-                  📸
-                </div>
-                <div className="text-center space-y-0.5">
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    {medium === 'english' ? 'Click here to upload notebook photo or PDF' : 'यहाँ क्लिक करके कॉपी / किताब की फोटो या PDF अपलोड करें'}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {medium === 'english' ? 'Mobile camera or file upload • All subjects supported' : 'मोबाइल कैमरे से फोटो खींचे या गैलरी से चुनें • सभी विषय समर्थित'}
-                  </p>
-                </div>
-              </label>
-
-              {/* Quick History Restore Bar if history records exist */}
-              {worksheetHistory.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsHistoryModalOpen(true)}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer"
-                >
-                  <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                  <span>पिछला काम / रिकॉर्ड देखें ({worksheetHistory.length} वर्कशीट सुरक्षित)</span>
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* CHAPTER SYLLABUS GRID (COLLAPSIBLE) */}
-        {selectedSubject && (
-          <div className="space-y-3">
-            {isChaptersOpen && (
-              <div className={`rounded-3xl p-5 border transition-all animate-in fade-in duration-200 space-y-3 ${
-                isDarkMode
-                  ? 'bg-slate-900/95 border-blue-500/30 shadow-2xl'
-                  : 'bg-blue-50/40 border-blue-200 shadow-sm'
-              }`}>
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
-                  <span className="text-xs font-black text-blue-700 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>📑</span> {medium === 'english' ? `${selectedSubject?.subject || 'Textbook'} - All ${selectedSubject?.chapters?.length || 0} Chapters` : `${selectedSubject?.subjectHindi || 'पाठ्यपुस्तक'} - सभी ${selectedSubject?.chapters?.length || 0} चैप्टर्स`}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsChaptersOpen(false)}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white px-2 py-1 rounded-lg"
-                  >
-                    {medium === 'english' ? '✕ Close' : '✕ बंद करें'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
-                  {(selectedSubject?.chapters || []).map((ch) => {
-                    const isChSelected = selectedChapter?.id === ch.id;
-                    return (
-                      <button
-                        key={ch.id}
-                        onClick={() => {
-                          handleStartChapter(ch);
-                          setIsChaptersOpen(false);
-                        }}
-                        className={`p-3 rounded-2xl border text-left font-bold text-xs transition-all flex flex-col justify-between cursor-pointer ${
-                          isChSelected
-                            ? isDarkMode
-                              ? 'bg-blue-950/60 border-blue-400 text-white shadow-md'
-                              : 'bg-blue-50 border-blue-400 text-blue-950 shadow-xs'
-                            : isDarkMode
-                              ? 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
-                              : 'bg-white border-slate-200 hover:border-blue-300 text-slate-700 shadow-2xs'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-[10px] font-black uppercase ${isDarkMode ? 'text-amber-400' : 'text-indigo-700'}`}>
-                            {medium === 'english' ? `Chapter ${ch.chapterNumber}` : `पाठ ${ch.chapterNumber}`}
-                          </span>
-                          <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                            {ch.term === 'half_yearly'
-                              ? (medium === 'english' ? 'Half Yearly' : 'अर्धवार्षिक')
-                              : (medium === 'english' ? 'Annual' : 'वार्षिक')}
-                          </span>
-                        </div>
-                        <span className={`text-xs font-black truncate ${isChSelected && !isDarkMode ? 'text-indigo-950' : ''}`}>
-                          {medium === 'english' ? (ch.titleEnglish || ch.titleHindi) : ch.titleHindi}
-                        </span>
-                        <span className={`text-[10px] truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {medium === 'english' ? ch.titleHindi : ch.titleEnglish}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* DIGITAL CLASSROOM & WHITEBOARD */}
-          <div className={`rounded-2xl border overflow-hidden flex flex-col transition-all duration-200 ${isDarkMode
-            ? 'bg-slate-900 border-slate-800 shadow-xl'
-            : 'bg-white border-slate-200/90 shadow-xs'
-            }`}>
-            <div className={`px-3 py-1.5 border-b flex items-center justify-between transition-colors ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50/80 border-slate-200'
-              }`}>
-              <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className={`text-[11px] font-black uppercase tracking-wide shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-700'
-                  }`}>
-                  {selectedSubject
-                    ? (medium === 'english' ? `${selectedSubject.subject} Classroom` : `${selectedSubject.subjectHindi} क्लासरूम`)
-                    : (medium === 'english' ? 'Digital Classroom' : 'डिजिटल क्लासरूम')}
-                </span>
-                <span className={`shrink-0 ${isDarkMode ? 'text-slate-600' : 'text-slate-300'}`}>•</span>
-                <span className={`text-xs font-bold truncate max-w-sm sm:max-w-xl ${isDarkMode ? 'text-slate-200' : 'text-slate-800'
-                  }`}>
-                  {getDisplayWhiteboardHeading(whiteboardHeading)}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                {/* 📝 Kid Scratchpad / Rough Work Notebook Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsScratchpadOpen(!isScratchpadOpen)}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-black border flex items-center gap-1 transition-all shadow-2xs ${isScratchpadOpen
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-extrabold shadow-md ring-2 ring-amber-400/40'
-                    : isDarkMode
-                      ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
-                      : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-200'
-                    }`}
-                  title={medium === 'english' ? "Open Student's Rough Work Notebook" : "बच्चे की रफ़ कॉपी खोलें"}
-                >
-                  <span>📝</span>
-                  <span>{medium === 'english' ? 'Rough Notebook' : 'रफ़ कॉपी'}</span>
-                  {isScratchpadOpen ? (
-                    <span className="text-[9px] bg-slate-950 text-amber-300 rounded px-1 py-0.2 font-bold">
-                      {medium === 'english' ? 'Open ✕' : 'खुली है ✕'}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] bg-amber-400/30 text-amber-800 dark:text-amber-200 rounded px-1 font-bold">
-                      {medium === 'english' ? 'Scratchpad' : 'हिसाब करें'}
-                    </span>
-                  )}
-                </button>
-
-                {whiteboardSteps.length > 0 && (
-                  <>
-                    {/* Skip / Show Full Solution Immediately */}
-                    {!activeMathAnim && revealedSteps < whiteboardSteps.length && (
-                      <button
-                        type="button"
-                        onClick={() => setRevealedSteps(whiteboardSteps.length)}
-                        className={`px-2 py-1 rounded-lg text-[11px] font-black border flex items-center gap-1 transition-all shadow-2xs ${isDarkMode
-                          ? 'bg-blue-950/80 hover:bg-blue-900 text-blue-300 border-blue-700/60'
-                          : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
-                          }`}
-                        title={medium === 'english' ? 'Show all solution steps together' : 'पूरा हल एक साथ देखें'}
-                      >
-                        <span>⏩</span>
-                        <span>{medium === 'english' ? 'Full Solution' : 'पूरा हल'}</span>
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setRevealedSteps(1)}
-                      className={`px-2 py-1 rounded-lg text-[11px] font-black flex items-center gap-1 border transition-all shadow-2xs ${isDarkMode
-                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'
-                        }`}
-                      title={medium === 'english' ? 'Restart explanation from step 1' : 'शुरू से फिर से समझें'}
-                    >
-                      <RotateCcw className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                      <span>{medium === 'english' ? 'Replay' : 'शुरू से देखें'}</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-
-            <div className={`p-2.5 sm:p-3 space-y-2 transition-all duration-300 min-h-[200px] ${!isDarkMode
-              ? chalkboardTheme === 'green'
-                ? 'bg-[#0f2e1d] text-white shadow-inner'
-                : 'bg-white text-slate-900'
-              : chalkboardTheme === 'green'
-                ? 'bg-[#0b2416] border-emerald-900/40 shadow-inner text-white'
-                : 'bg-slate-900/95 text-white'
-              }`}>
-              {isCheckingHomework ? (
-                <div className="py-12 px-4 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-300">
-                  {/* Glowing Radar & Teacher Avatar */}
-                  <div className="relative">
-                    <div className="w-20 h-20 rounded-3xl bg-blue-500/20 border-2 border-blue-400/50 flex items-center justify-center shadow-[0_0_35px_rgba(37,99,235,0.3)] animate-pulse">
-                      <span className="text-4xl animate-bounce">{currentTeacher.emoji}</span>
-                    </div>
-                    <div className="absolute -inset-2 rounded-3xl border border-amber-400/40 animate-spin border-t-transparent" />
+                {/* Red vertical notebook margin line */}
+                <div className="border-l-2 border-rose-300 pl-4 sm:pl-6 space-y-6">
+                  {/* Worksheet Title Header */}
+                  <div className="text-center">
+                    <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
+                      WORKSHEET  3
+                    </h2>
                   </div>
 
-                  {/* Loader Headings */}
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-black uppercase tracking-wider">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
-                      <span>{medium === 'english' ? 'Scanning Questions' : 'सवाल पढ़े जा रहे हैं...'}</span>
+                  {/* Section Title */}
+                  <div>
+                    <h3 className="text-sm font-black text-blue-900 tracking-tight">
+                      Multiple Choice Questions
+                    </h3>
+                  </div>
+
+                  {/* Active Question 1 Box */}
+                  <div className="bg-blue-50/50 rounded-xl border border-blue-200/80 p-4 space-y-3.5 shadow-2xs">
+                    {/* Question Stem */}
+                    <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
+                      <span className="text-blue-600 font-black mr-1">1.</span>
+                      {detectedQuestions[0] ||
+                        'Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :'}
                     </div>
 
-                    <h4 className={`text-base sm:text-lg font-black ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'}`}>
-                      {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर')
-                        ? (medium === 'english' ? 'Preparing step-by-step solution... ✍️' : 'सवाल का हल तैयार किया जा रहा है... ✍️')
-                        : uploadedFileName
-                          ? (medium === 'english' ? `Reading questions from "${uploadedFileName}"... 🔍` : `दस्तावेज़ "${uploadedFileName}" से सवाल पढ़े जा रहे हैं... 🔍`)
-                          : (medium === 'english' ? `${currentTeacher.name} is writing on the board... ⏳` : `${currentTeacher.name} व्हाइटबोर्ड पर हल तैयार कर रहे हैं... ⏳`)}
-                    </h4>
+                    {/* MCQ Options Grid */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-600">(a)</span>
+                        <span>20000</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-600">(b)</span>
+                        <span>50000</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-blue-700 font-black">
+                        <span className="font-bold text-blue-600">(c)</span>
+                        <span>30000</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-600">(d)</span>
+                        <span>40000</span>
+                      </div>
+                    </div>
 
-                    {activeTargetQuestion && !activeTargetQuestion.includes('Master') && !activeTargetQuestion.includes('मास्टर') && (
-                      <p className={`text-xs font-semibold line-clamp-2 px-3 py-1.5 rounded-xl border ${isDarkMode || chalkboardTheme === 'green'
-                        ? 'text-amber-300 bg-slate-900/90 border-slate-800'
-                        : 'text-blue-900 bg-blue-50 border-blue-200'
-                        }`}>
-                        {activeTargetQuestion}
+                    {/* Solution Box */}
+                    <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
+                      {/* Hal Badge */}
+                      <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
+                        हल :
+                      </div>
+
+                      {/* Step 1 Text */}
+                      <p className="text-xs font-medium text-slate-700">
+                        दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
                       </p>
-                    )}
 
-                    <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {medium === 'english'
-                        ? 'Please wait a few seconds. Questions are being analyzed directly from your page.'
-                        : 'बस कुछ सेकंड प्रतीक्षा करें बेटा, सारे सवाल और हल तैयार हो रहे हैं।'}
-                    </p>
-                  </div>
-
-                  {/* Pulsing Skeleton Step Cards */}
-                  <div className="w-full max-w-md space-y-2 pt-2">
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse ${isDarkMode || chalkboardTheme === 'green'
-                      ? 'bg-slate-900/80 border-slate-800/80'
-                      : 'bg-slate-50 border-slate-200'
-                      }`}>
-                      <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
-                        {medium === 'english' ? 'Step 1: Given values & question' : 'चरण 1: प्रश्न व दिया गया मान'}
-                      </span>
-                      <div className={`h-2 rounded w-1/3 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    </div>
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-150 ${isDarkMode || chalkboardTheme === 'green'
-                      ? 'bg-slate-900/80 border-slate-800/80'
-                      : 'bg-slate-50 border-slate-200'
-                      }`}>
-                      <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
-                        {medium === 'english' ? 'Step 2: Formula & calculation' : 'चरण 2: गणना व नियम'}
-                      </span>
-                      <div className={`h-2 rounded w-1/4 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    </div>
-                    <div className={`p-3.5 rounded-2xl border flex items-center gap-3 animate-pulse delay-300 ${isDarkMode || chalkboardTheme === 'green'
-                      ? 'bg-slate-900/80 border-slate-800/80'
-                      : 'bg-slate-50 border-slate-200'
-                      }`}>
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                      <span className={`text-xs font-bold ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-600'}`}>
-                        {medium === 'english' ? 'Step 3: Final answer & verification' : 'चरण 3: अंतिम उत्तर व विकल्प'}
-                      </span>
-                      <div className={`h-2 rounded w-1/5 ml-auto ${isDarkMode || chalkboardTheme === 'green' ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    </div>
-                  </div>
-                </div>
-              ) : whiteboardSteps.length === 0 ? (
-                <div className="text-center py-12 space-y-2">
-                  <span className="text-3xl">📝</span>
-                  <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'}`}>
-                    {medium === 'english'
-                      ? 'The whiteboard is currently empty. Pick a chapter, upload your notebook photo, or ask with the mic!'
-                      : 'व्हाइटबोर्ड अभी खाली है। कोई भी पाठ चुनें, कॉपी की फोटो भेजें, या माइक से सवाल पूछें!'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* Previous Worksheet Archived Notice Banner */}
-                  {lastArchivedNotice && (
-                    <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 flex items-center justify-between gap-3 text-xs font-bold animate-in fade-in">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-                        <span className="truncate">
-                          {medium === 'english'
-                            ? `📂 Previous worksheet "${lastArchivedNotice.title}" (${lastArchivedNotice.count} questions) archived to history!`
-                            : `📂 पिछली वर्कशीट "${lastArchivedNotice.title}" (${lastArchivedNotice.count} सवाल) रिकॉर्ड में सुरक्षित कर दी गई है!`}
-                        </span>
+                      <div className="pl-3 text-xs font-mono font-bold text-slate-800 space-y-0.5">
+                        <div>423516 ≈ 424000</div>
+                        <div>453729 ≈ 454000</div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setIsHistoryModalOpen(true)}
-                          className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs transition-all shadow-xs"
-                        >
-                          {medium === 'english' ? 'View History' : 'पुराना रिकॉर्ड देखें'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setLastArchivedNotice(null)}
-                          className="p-1 text-slate-400 hover:text-slate-600"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Real Teacher Animated Whiteboard (for 10+10, math expressions, addition, etc.) */}
-                  {activeMathAnim && (
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2 px-1">
-                        <span className="text-xs font-black uppercase text-amber-400 flex items-center gap-1.5">
-                          <span>✨</span> {medium === 'english' ? `${currentTeacher.name}'s Live Blackboard` : `${currentTeacher.name} का लाइव ब्लैकबोर्ड`}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveMathAnim(null);
-                            setActiveTargetQuestion('');
-                            setWhiteboardSteps([]);
-                          }}
-                          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 flex items-center gap-1 transition-all"
-                          title={medium === 'english' ? 'Close Blackboard' : 'ब्लैकबोर्ड बंद करें'}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>{medium === 'english' ? 'Close' : 'बंद करें'}</span>
-                        </button>
-                      </div>
-                      <TeacherWhiteboardAnimation
-                        key={`${activeMathAnim.num1}-${activeMathAnim.op}-${activeMathAnim.num2}`}
-                        num1={activeMathAnim.num1}
-                        op={activeMathAnim.op}
-                        num2={activeMathAnim.num2}
-                        result={activeMathAnim.result}
-                        teacherName={currentTeacher.name}
-                        theme="slate"
-                        onAudioPlay={(t) => speakText(t)}
-                        isAudioMuted={isAudioMuted}
-                        onScoreUpdate={(pts) => setTotalScore((prev) => prev + pts)}
-                        medium={medium}
-                      />
-                    </div>
-                  )}
+                      {/* Step 2 Text */}
+                      <p className="text-xs font-medium text-slate-700">
+                        अब अंतर निकालते हैं :
+                      </p>
 
-
-
-                  {!activeMathAnim && (
-                    currentUploadMode === 'quiz' ? (
-                      /* MOCK TEST INTERACTIVE ARENA */
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        {/* Mock Test Header Banner */}
-                        <div className={`p-4 rounded-2xl border ${isDarkMode || chalkboardTheme === 'green'
-                          ? 'bg-gradient-to-r from-amber-950/40 via-indigo-950/40 to-slate-900 border-amber-500/30'
-                          : 'bg-gradient-to-r from-amber-50 via-indigo-50 to-white border-amber-200'
-                          }`}>
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-lg font-black shrink-0">
-                                🎯
-                              </span>
-                              <div>
-                                <h3 className={`text-sm sm:text-base font-black ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                  }`}>
-                                  {medium === 'english' ? 'Worksheet Mock Test Arena' : 'वर्कशीट मॉक टेस्ट (Mock Test Arena)'}
-                                </h3>
-                                <p className={`text-xs ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                  }`}>
-                                  {medium === 'english'
-                                    ? 'Only questions are shown. Type your full answer, click "Save & Check", and get instant grading!'
-                                    : 'यहाँ केवल सवाल दिखाए गए हैं। अपना उत्तर लिखें और "उत्तर सेव करें" दबाकर स्कोर, गलतियां व स्पेलिंग चेक करें!'}
-                                </p>
-                              </div>
-                            </div>
-
-                            {/* Total Questions Badge */}
-                            {getMockQuestionsList().length > 0 && (
-                              <span className="px-3 py-1 rounded-full text-xs font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 self-start sm:self-auto">
-                                {medium === 'english'
-                                  ? `Total ${getMockQuestionsList().length} Questions`
-                                  : `कुल ${getMockQuestionsList().length} सवाल`}
-                              </span>
-                            )}
+                      {/* Arithmetic Column Subtraction */}
+                      <div className="flex justify-center py-1">
+                        <div className="bg-blue-50/40 rounded-lg p-3 border border-blue-100 font-mono text-sm sm:text-base font-bold text-slate-800 inline-block">
+                          <div className="grid grid-cols-7 gap-2 text-right">
+                            <span />
+                            <span>4</span>
+                            <span>5</span>
+                            <span>3</span>
+                            <span>7</span>
+                            <span>2</span>
+                            <span>9</span>
                           </div>
+                          <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
+                            <span>-</span>
+                            <span>4</span>
+                            <span>2</span>
+                            <span>3</span>
+                            <span>5</span>
+                            <span>1</span>
+                            <span>6</span>
+                          </div>
+                          <div className="border-t-2 border-slate-700 my-1" />
+                          <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
+                            <span />
+                            <span>3</span>
+                            <span>0</span>
+                            <span>2</span>
+                            <span>1</span>
+                            <span>3</span>
+                          </div>
+                        </div>
+                      </div>
 
-                          {/* Question Selector Tabs */}
-                          {getMockQuestionsList().length > 1 && (
-                            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200/80 dark:border-white/10 overflow-x-auto pb-1 scrollbar-none">
-                              {getMockQuestionsList().map((item, qIdx) => {
-                                const isEvaluated = Boolean(mockEvaluations[qIdx]);
-                                const isCurrent = activeMockQIdx === qIdx;
-                                return (
-                                  <button
-                                    key={qIdx}
-                                    type="button"
-                                    onClick={() => setActiveMockQIdx(qIdx)}
-                                    className={`px-3 py-1.5 rounded-xl text-xs font-black border transition-all flex items-center gap-1.5 shrink-0 ${isCurrent
-                                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
-                                      : isEvaluated
-                                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300'
-                                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300'
-                                    }`}
-                                  >
-                                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black ${
-                                      isCurrent
-                                        ? 'bg-slate-950 text-amber-300'
-                                        : isEvaluated
-                                          ? 'bg-emerald-500 text-white'
-                                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                                    }`}>
-                                      {isEvaluated ? '✓' : qIdx + 1}
-                                    </span>
-                                    <span>{medium === 'english' ? `Q${qIdx + 1}` : `सवाल ${qIdx + 1}`}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
+                      {/* Green Correct Answer Pill */}
+                      <div>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs shadow-2xs">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          सही उत्तर: (c) 30000
+                        </span>
+                      </div>
+
+                      {/* Green Explanation Box */}
+                      <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
+                        <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
+                        <span>
+                          423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Question 2 */}
+                  <div className="pt-2 space-y-2">
+                    <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
+                      <span className="text-blue-600 font-black mr-1">2.</span>
+                      {detectedQuestions[1] ||
+                        'Largest 6-digit number exceeds largest 5-digit number by :'}
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-slate-700 pl-4">
+                      <div>(a) 100000</div>
+                      <div>(b) 90000</div>
+                      <div>(c) 990000</div>
+                      <div>(d) 900000</div>
+                    </div>
+                  </div>
+
+                  {/* Additional Dynamic Steps if student uploaded their worksheet */}
+                  {whiteboardSteps.length > 0 && (
+                    <div className="pt-4 border-t border-slate-200 space-y-3">
+                      <div className="text-xs font-black text-blue-700 uppercase tracking-wider">
+                        आपकी अपलोड की गई वर्कशीट के हल:
+                      </div>
+                      {whiteboardSteps.map((st, idx) => (
+                        <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+                          <div className="font-bold text-slate-900">{st.step}</div>
+                          <div className="text-slate-600">{st.question}</div>
+                          {st.annotation && (
+                            <div className="text-blue-600 font-medium">{st.annotation}</div>
                           )}
                         </div>
-
-                        {/* Active Question Box */}
-                        {getMockQuestionsList().length > 0 ? (
-                          (() => {
-                            const questionsList = getMockQuestionsList();
-                            const activeItem = questionsList[activeMockQIdx] || questionsList[0];
-                            const studentAns = mockAnswers[activeMockQIdx] || '';
-                            const evalData = mockEvaluations[activeMockQIdx];
-
-                            // Detect if this question is an explicit Pyramid puzzle (only for pyramid questions, NOT subtraction/standard questions)
-                            const qTextLower = (activeItem?.question || '').toLowerCase();
-                            const isPyramidQuestion = Boolean(
-                              activeItem?.type === 'pyramid' ||
-                              qTextLower.includes('pyramid') ||
-                              qTextLower.includes('पिरामिड') ||
-                              (qTextLower.includes('topmost') && qTextLower.includes('row'))
-                            );
-                            const isPyramid2 = Boolean(
-                              qTextLower.includes('40') ||
-                              qTextLower.includes(' 9') ||
-                              qTextLower.includes(' 5') ||
-                              qTextLower.includes(' 7')
-                            );
-
-                            // Detect if this question has Multiple Choice Options (MCQ e.g. 4 options (a), (b), (c), (d))
-                            const mcqData = parseMCQOptions(activeItem?.question, activeItem?.options);
-                            const isMcq = Boolean(mcqData && mcqData.options && mcqData.options.length >= 2);
-
-                            // Detect if this question is a Visual Weight/Capacity Estimation Question
-                            const isEstimationQuestion = Boolean(
-                              /estimate\s+(?:the\s+)?(?:nearest\s+)?weight|वजन\s*का\s*(?:सही\s*)?अनुमान|निकटतम\s*वजन/i.test(qTextLower) ||
-                              (/crackers|biscuits|school bag|t-shirt/i.test(qTextLower) && /2000\s*g|320\s*g|40\s*g|4\s*kg/i.test(qTextLower))
-                            );
-
-                            return (
-                              <div className="space-y-4">
-                                {/* The Question Card (STICKY & FIXED WHEN PINNED, COMPACT FONT) */}
-                                <div className={`p-3.5 sm:p-4 rounded-2xl border backdrop-blur-md transition-all ${
-                                  isQuestionPinned ? 'sticky top-14 z-20 shadow-md ring-1 ring-amber-300' : 'relative shadow-xs'
-                                } ${isDarkMode || chalkboardTheme === 'green'
-                                  ? 'bg-slate-900/95 border-amber-500/40 text-white shadow-xl'
-                                  : 'bg-white/95 border-amber-300 text-slate-900 shadow-sm ring-1 ring-amber-100'
-                                  }`}>
-                                  <div className="flex items-center justify-between gap-2 mb-1.5 pb-1.5 border-b border-black/5 dark:border-white/10">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                                        {medium === 'english' ? `Question #${activeMockQIdx + 1}` : `प्रश्न #${activeMockQIdx + 1}`}
-                                      </span>
-                                      {isMcq && (
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                                          MCQ ({mcqData?.options.length} {medium === 'english' ? 'Options' : 'विकल्प'})
-                                        </span>
-                                      )}
-                                      {isPyramidQuestion && (
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30">
-                                          🔺 {medium === 'english' ? 'Pyramid Puzzle' : 'पिरामिड पहेली'}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => setIsQuestionPinned((prev) => !prev)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all flex items-center gap-1 cursor-pointer border ${
-                                          isQuestionPinned
-                                            ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs ring-1 ring-amber-300'
-                                            : isDarkMode
-                                            ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                                            : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
-                                        }`}
-                                        title={
-                                          isQuestionPinned
-                                            ? medium === 'english'
-                                              ? 'Click to unpin from top'
-                                              : 'स्क्रीन से अनपिन करने के लिए क्लिक करें'
-                                            : medium === 'english'
-                                            ? 'Click to pin on top'
-                                            : 'स्क्रीन पर फिक्स करने के लिए क्लिक करें'
-                                        }
-                                      >
-                                        <span>📌</span>
-                                        <span>
-                                          {isQuestionPinned
-                                            ? medium === 'english'
-                                              ? 'Pinned on Top ✓'
-                                              : 'स्क्रीन पर फिक्स है ✓'
-                                            : medium === 'english'
-                                            ? 'Pin on Top'
-                                            : 'स्क्रीन पर फिक्स करें'}
-                                        </span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const rawToSpeak = isMcq && mcqData ? mcqData.qStem : activeItem.question;
-                                          const qLower = rawToSpeak.toLowerCase();
-                                          let spoken = rawToSpeak;
-                                          if (qLower.includes('pleasant') || qLower.includes('first place')) spoken = spoken.replace(/\bmeadow\b/i, 'blank');
-                                          else if (qLower.includes('weather was hot')) spoken = spoken.replace(/\bpond\b/i, 'blank');
-                                          else if (qLower.includes('older and could eat grass')) spoken = spoken.replace(/\bmother\b/i, 'blank');
-                                          else if (qLower.includes('called him darkie')) spoken = spoken.replace(/\bblack\b/i, 'blank');
-                                          speakText(spoken.replace(/_{2,}/g, 'blank'), undefined, true);
-                                        }}
-                                        className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
-                                          isSpeaking
-                                            ? 'bg-amber-500 text-white animate-pulse'
-                                            : isDarkMode || chalkboardTheme === 'green'
-                                              ? 'bg-white/10 hover:bg-white/20 text-amber-300'
-                                              : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200'
-                                        }`}
-                                        title={medium === 'english' ? 'Listen to question' : 'सवाल बोलकर सुनें'}
-                                      >
-                                        <Volume2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-300 shrink-0" />
-                                        <span className="text-[10px] font-bold">{medium === 'english' ? 'Listen' : 'बोलकर सुनें'}</span>
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  {/* Compact Question Prompt (If MCQ, shows clean question prompt without trailing options list) */}
-                                  <h3 className="text-xs sm:text-sm font-extrabold leading-snug text-slate-900 dark:text-amber-200">
-                                    {renderMockQuestionBlank(isMcq && mcqData ? mcqData.qStem : activeItem.question, activeItem.idealAnswer)}
-                                  </h3>
-                                </div>
-
-                                {/* Answer Input Area: Dynamically Adapts to Question Type (MCQ, Pyramid, or Calculation/Solve) */}
-                                <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 transition-all shadow-xs ${isDarkMode || chalkboardTheme === 'green'
-                                  ? 'bg-slate-950/90 border-slate-800 text-white shadow-xl'
-                                  : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
-                                  }`}>
-
-                                  {/* TYPE 1: MULTIPLE CHOICE QUESTION (4 OPTIONS SELECTOR) */}
-                                  {isMcq && mcqData && (
-                                    <div className="space-y-3">
-                                      <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
-                                        <label className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                          <span>🔘</span>
-                                          <span>{medium === 'english' ? 'Choose the Correct Option (MCQ):' : 'सही विकल्प चुनें (Choose the Correct Option):'}</span>
-                                        </label>
-                                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                                          {studentAns ? (medium === 'english' ? 'Option Selected ✓' : 'विकल्प चुना गया ✓') : (medium === 'english' ? 'Tap an option' : 'विकल्प पर क्लिक करें')}
-                                        </span>
-                                      </div>
-
-                                      {/* Interactive 4-Option Cards Grid */}
-                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                                        {mcqData.options.map((opt) => {
-                                          const isSelected = checkIsOptionSelected(studentAns, opt);
-                                          return (
-                                            <button
-                                              key={opt.key}
-                                              type="button"
-                                              onClick={() => {
-                                                const formatted = `${opt.label} ${opt.text}`;
-                                                setMockAnswers((prev) => ({
-                                                  ...prev,
-                                                  [activeMockQIdx]: formatted,
-                                                }));
-                                                setTimeout(() => {
-                                                  const el = mockAnswerTextareaRef.current;
-                                                  if (el) {
-                                                    el.style.height = 'auto';
-                                                    el.style.height = `${Math.max(100, el.scrollHeight)}px`;
-                                                  }
-                                                }, 20);
-                                              }}
-                                              className={`p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-3 cursor-pointer group transform active:scale-[0.98] ${
-                                                isSelected
-                                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 dark:border-emerald-400 shadow-md ring-2 ring-emerald-400/30'
-                                                  : isDarkMode || chalkboardTheme === 'green'
-                                                  ? 'bg-slate-900/80 hover:bg-slate-800 border-slate-700 hover:border-amber-400/60 text-slate-200'
-                                                  : 'bg-white hover:bg-amber-50/50 border-slate-200 hover:border-amber-300 text-slate-800 shadow-2xs'
-                                              }`}
-                                            >
-                                              {/* Badge (A, B, C, D) */}
-                                              <span
-                                                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs sm:text-sm font-black shrink-0 transition-all ${
-                                                  isSelected
-                                                    ? 'bg-emerald-500 text-white shadow-xs scale-105'
-                                                    : isDarkMode || chalkboardTheme === 'green'
-                                                    ? 'bg-slate-800 text-amber-300 border border-slate-700 group-hover:bg-amber-500 group-hover:text-slate-950'
-                                                    : 'bg-slate-100 text-slate-700 border border-slate-200 group-hover:bg-amber-400 group-hover:text-slate-950'
-                                                }`}
-                                              >
-                                                {opt.key.toUpperCase()}
-                                              </span>
-
-                                              {/* Option Text */}
-                                              <div className="flex-1 min-w-0 pt-0.5">
-                                                <span
-                                                  className={`text-xs sm:text-sm font-extrabold block leading-snug ${
-                                                    isSelected
-                                                      ? 'text-emerald-900 dark:text-emerald-100'
-                                                      : isDarkMode || chalkboardTheme === 'green'
-                                                      ? 'text-slate-100'
-                                                      : 'text-slate-800'
-                                                  }`}
-                                                >
-                                                  {opt.text}
-                                                </span>
-                                              </div>
-
-                                              {/* Radio / Checkmark Indicator */}
-                                              <div className="shrink-0 pt-0.5">
-                                                <div
-                                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                                    isSelected
-                                                      ? 'border-emerald-500 bg-emerald-500 text-white shadow-xs'
-                                                      : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
-                                                  }`}
-                                                >
-                                                  {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                                                </div>
-                                              </div>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-
-                                      {/* Optional Solution Steps / Working Toggle */}
-                                      <div className="pt-2 border-t border-black/5 dark:border-white/10 flex items-center justify-between">
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setShowMcqSteps((prev) => ({
-                                              ...prev,
-                                              [activeMockQIdx]: !prev[activeMockQIdx],
-                                            }))
-                                          }
-                                          className="text-xs font-bold text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-                                        >
-                                          <span>✍️</span>
-                                          <span>
-                                            {showMcqSteps[activeMockQIdx]
-                                              ? (medium === 'english' ? 'Hide Solution Steps / Rough Work' : 'हल व स्टेप्स छुपाएं')
-                                              : (medium === 'english' ? 'Show Solution Steps / Rough Work (Optional)' : 'हल या रफ़ स्टेप्स भी लिखें (वैकल्पिक)')}
-                                          </span>
-                                          <ChevronDown
-                                            className={`w-3.5 h-3.5 transition-transform ${
-                                              showMcqSteps[activeMockQIdx] ? 'rotate-180' : ''
-                                            }`}
-                                          />
-                                        </button>
-                                        {studentAns && (
-                                          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                                            ✓ {studentAns.split('\n')[0]}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* Expandable Textarea & Math Toolbar for MCQ Steps */}
-                                      {showMcqSteps[activeMockQIdx] && (
-                                        <div className="pt-2 space-y-3 animate-in fade-in duration-200">
-                                          <MathSymbolEditorToolbar
-                                            textareaRef={mockAnswerTextareaRef}
-                                            currentValue={studentAns}
-                                            onValueChange={(newVal) => {
-                                              setMockAnswers((prev) => ({
-                                                ...prev,
-                                                [activeMockQIdx]: newVal,
-                                              }));
-                                              setTimeout(() => {
-                                                const el = mockAnswerTextareaRef.current;
-                                                if (el) {
-                                                  el.style.height = 'auto';
-                                                  el.style.height = `${Math.max(100, el.scrollHeight)}px`;
-                                                }
-                                              }, 15);
-                                            }}
-                                            isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                            medium={medium}
-                                            activeQuestionText={activeItem?.question}
-                                          />
-
-                                          <textarea
-                                            ref={mockAnswerTextareaRef}
-                                            rows={3}
-                                            value={studentAns}
-                                            onChange={(e) => {
-                                              const val = e.target.value;
-                                              setMockAnswers((prev) => ({
-                                                ...prev,
-                                                [activeMockQIdx]: val,
-                                              }));
-                                              e.target.style.height = 'auto';
-                                              e.target.style.height = `${Math.max(100, e.target.scrollHeight)}px`;
-                                            }}
-                                            placeholder={medium === 'english'
-                                              ? 'Type your calculations or explanation here...'
-                                              : 'यहाँ अपना हल, गणना या रफ़ कार्य टाइप करें...'}
-                                            className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[100px] ${isDarkMode || chalkboardTheme === 'green'
-                                              ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
-                                              : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
-                                              }`}
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* TYPE 2: INTERACTIVE PYRAMID PUZZLE SOLVER IN EDITOR */}
-                                  {!isMcq && isPyramidQuestion && (
-                                    <div className="space-y-3.5">
-                                      <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
-                                        <label className="text-xs sm:text-sm font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                          <span>🔺</span>
-                                          <span>{medium === 'english' ? 'Solve Number Pyramid in Editor:' : 'पिरामिड पहेली के खाली डिब्बे यहाँ भरें (Solve Pyramid in Editor):'}</span>
-                                        </label>
-                                        <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/80 dark:bg-indigo-950 px-2.5 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700">
-                                          {medium === 'english' ? 'Interactive Puzzle' : 'लाइव पहेली एडिटर'}
-                                        </span>
-                                      </div>
-
-                                      {/* Interactive Visual Pyramid Widget directly inside Editor */}
-                                      <MathPyramidWidget
-                                        presetType={isPyramid2 ? 'pyramid2' : 'pyramid1'}
-                                        isEditable={true}
-                                        onInsertToAnswer={(pyramidText) => {
-                                          setMockAnswers((prev) => {
-                                            const existing = (prev[activeMockQIdx] || '').trim();
-                                            const nextVal = existing ? `${existing}\n\n${pyramidText}` : pyramidText;
-                                            return {
-                                              ...prev,
-                                              [activeMockQIdx]: nextVal,
-                                            };
-                                          });
-                                          setTimeout(() => {
-                                            const el = mockAnswerTextareaRef.current;
-                                            if (el) {
-                                              el.style.height = 'auto';
-                                              el.style.height = `${Math.max(140, el.scrollHeight)}px`;
-                                            }
-                                          }, 25);
-                                        }}
-                                        onAutoUpdate={(pyramidText) => {
-                                          setMockAnswers((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: pyramidText,
-                                          }));
-                                        }}
-                                        isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                        medium={medium}
-                                      />
-
-                                      {/* Editor Textarea with live pyramid representation */}
-                                      <div className="pt-1 space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
-                                          <span>📝</span>
-                                          <span>{medium === 'english' ? 'Pyramid Formatted Solution (Auto-Filled):' : 'पिरामिड हल का लिखित स्वरूप (यहाँ कॉपी की तरह दिखता है):'}</span>
-                                        </label>
-                                        <textarea
-                                          ref={mockAnswerTextareaRef}
-                                          rows={4}
-                                          value={studentAns}
-                                          onChange={(e) => {
-                                            const val = e.target.value;
-                                            setMockAnswers((prev) => ({
-                                              ...prev,
-                                              [activeMockQIdx]: val,
-                                            }));
-                                            e.target.style.height = 'auto';
-                                            e.target.style.height = `${Math.max(140, e.target.scrollHeight)}px`;
-                                          }}
-                                          placeholder={medium === 'english'
-                                            ? 'Fill the pyramid boxes above, or type steps here...'
-                                            : 'ऊपर पिरामिड के डिब्बों में संख्याएँ भरें, हल यहाँ स्वतः आ जाएगा...'}
-                                          className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[140px] ${isDarkMode || chalkboardTheme === 'green'
-                                            ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
-                                            : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
-                                            }`}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* TYPE 3: VISUAL ESTIMATION 3-OPTION WIDGET */}
-                                  {!isMcq && !isPyramidQuestion && isEstimationQuestion && (
-                                    <div className="space-y-3.5">
-                                      <div className="flex items-center justify-between pb-1 border-b border-black/5 dark:border-white/10">
-                                        <label className="text-xs sm:text-sm font-black text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                                          <span>⚖️</span>
-                                          <span>{medium === 'english' ? 'Estimate Nearest Weight (Tap Choices):' : 'निकटतम वजन का सही अनुमान (विकल्प चुनें):'}</span>
-                                        </label>
-                                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
-                                          {medium === 'english' ? 'Visual Estimation' : 'चित्र व वजन पहेली'}
-                                        </span>
-                                      </div>
-
-                                      <VisualEstimationWidget
-                                        questionTitle={activeItem?.question}
-                                        mode="practice"
-                                        isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                        medium={medium}
-                                        onAudioPlay={(t) => speakText(t)}
-                                        onAnswerChange={(selectedMap) => {
-                                          const lines = Object.entries(selectedMap).map(([id, opt]) => {
-                                            const itm = DEFAULT_WEIGHT_ITEMS.find((x) => x.id === id);
-                                            return `${itm?.num || ''} ${itm?.labelEn || id}: ${opt}`;
-                                          });
-                                          setMockAnswers((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: lines.join('\n'),
-                                          }));
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-
-                                  {/* TYPE 4: STANDARD DESCRIPTIVE / SOLVE / FILL QUESTIONS */}
-                                  {!isMcq && !isPyramidQuestion && !isEstimationQuestion && (
-                                    <div className="space-y-3.5">
-                                      <div className="flex items-center justify-between pb-1">
-                                        <label className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                                          <span>✍️</span>
-                                          <span>{medium === 'english' ? 'Type Your Answer / Solution Steps:' : 'अपना उत्तर या हल यहाँ लिखें (Type Your Answer):'}</span>
-                                        </label>
-                                        {studentAns && (
-                                          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                                            {studentAns.trim().split(/\s+/).filter(Boolean).length} {medium === 'english' ? 'words' : 'शब्द'}
-                                          </span>
-                                        )}
-                                      </div>
-
-                                      {/* 🧮 Math Symbols, Powers, Calculator & Pyramid Toolbar */}
-                                      <MathSymbolEditorToolbar
-                                        textareaRef={mockAnswerTextareaRef}
-                                        currentValue={studentAns}
-                                        onValueChange={(newVal) => {
-                                          setMockAnswers((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: newVal,
-                                          }));
-                                          setTimeout(() => {
-                                            const el = mockAnswerTextareaRef.current;
-                                            if (el) {
-                                              el.style.height = 'auto';
-                                              el.style.height = `${Math.max(140, el.scrollHeight)}px`;
-                                            }
-                                          }, 15);
-                                        }}
-                                        isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                        medium={medium}
-                                        activeQuestionText={activeItem?.question}
-                                        isPyramidActive={isPyramidQuestion}
-                                      />
-
-                                      {/* Dynamic Auto-Expanding Textarea (Grows in height as student types) */}
-                                      <textarea
-                                        ref={mockAnswerTextareaRef}
-                                        rows={4}
-                                        value={studentAns}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          setMockAnswers((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: val,
-                                          }));
-                                          // Auto-expand height dynamically with content
-                                          e.target.style.height = 'auto';
-                                          e.target.style.height = `${Math.max(140, e.target.scrollHeight)}px`;
-                                        }}
-                                        placeholder={medium === 'english'
-                                          ? 'Type your step-by-step solution here (e.g. c² = a² + b² or fill pyramid boxes)... Use the toolbar above for Calculator, Powers & Box Pyramids!'
-                                          : 'यहाँ कॉपी की तरह पूरा हल या उत्तर टाइप करें (जैसे c² = a² + b² या पिरामिड बॉक्स)... कैलकुलेटर, पावर्स व पिरामिड जोड़ने के लिए ऊपर टूलबार का उपयोग करें!'}
-                                        className={`w-full p-4 rounded-2xl border text-sm sm:text-base font-mono outline-none transition-all leading-relaxed resize-none overflow-hidden min-h-[140px] ${isDarkMode || chalkboardTheme === 'green'
-                                          ? 'bg-slate-900 border-slate-700 focus:border-amber-400 text-white placeholder-slate-500 shadow-inner'
-                                          : 'bg-slate-50/50 border-slate-300 focus:border-blue-500 focus:bg-white text-slate-900 placeholder-slate-400 shadow-inner'
-                                          }`}
-                                      />
-                                    </div>
-                                  )}
-
-                                  {/* Action Buttons: Save & Evaluate, Clear */}
-                                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
-                                      disabled={!studentAns.trim() || isEvaluatingMock}
-                                      className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/25 transition-all transform active:scale-95 cursor-pointer"
-                                    >
-                                      {isEvaluatingMock ? (
-                                        <Loader2 className="w-4 h-4 animate-spin text-white" />
-                                      ) : (
-                                        <span>🚀</span>
-                                      )}
-                                      <span>
-                                        {evalData
-                                          ? (medium === 'english' ? 'Re-check Answer' : 'दोबारा चेक करें')
-                                          : (medium === 'english' ? 'Check Answer' : 'उत्तर चेक करें')}
-                                      </span>
-                                    </button>
-
-                                    {studentAns && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setMockAnswers((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: '',
-                                          }))
-                                        }
-                                        className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 transition-all border border-transparent hover:border-rose-200 cursor-pointer"
-                                      >
-                                        {medium === 'english' ? 'Clear' : 'साफ़ करें (Clear)'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Evaluation Scorecard (REVEALED AFTER SUBMISSION) */}
-                                {evalData && (
-                                  <div className={`p-4 md:p-6 rounded-3xl border space-y-4 animate-in fade-in duration-300 ${isDarkMode || chalkboardTheme === 'green'
-                                    ? 'bg-slate-900/95 border-indigo-500/30 shadow-xl'
-                                    : 'bg-white border-slate-200/90 shadow-md ring-1 ring-slate-100'
-                                    }`}>
-                                    {/* 1. Score & Badge Header */}
-                                    <div className={`p-4 sm:p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                                      isDarkMode
-                                        ? 'bg-gradient-to-r from-amber-950/50 via-indigo-950/40 to-slate-900 border-amber-500/40'
-                                        : 'bg-gradient-to-r from-amber-50/80 via-indigo-50/50 to-white border-amber-300 shadow-2xs'
-                                    }`}>
-                                      <div className="flex items-center gap-3.5">
-                                        <span className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-400/30 flex items-center justify-center text-2xl shrink-0 shadow-xs">
-                                          🏆
-                                        </span>
-                                        <div>
-                                          <span className="text-[11px] uppercase font-black tracking-wider text-amber-700 dark:text-amber-400 block">
-                                            {medium === 'english' ? 'Mock Test Scorecard:' : 'मॉक टेस्ट रिजल्ट (Score Card):'}
-                                          </span>
-                                          <h4 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                            <span>{evalData.score} / {evalData.totalMarks || 10} {medium === 'english' ? 'Marks' : 'अंक'}</span>
-                                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                                              ({evalData.percentage || evalData.score * 10}%)
-                                            </span>
-                                          </h4>
-                                        </div>
-                                      </div>
-
-                                      <span className="px-4 py-1.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 self-start sm:self-auto shadow-xs">
-                                        {evalData.badge || (medium === 'english' ? '⭐ Excellent Effort!' : '⭐ शानदार प्रयास!')}
-                                      </span>
-                                    </div>
-
-                                    {/* 2. Strengths: Kya Achha Kiya */}
-                                    {evalData.strengths && evalData.strengths.length > 0 && (
-                                      <div className={`p-4 rounded-2xl border space-y-2 ${
-                                        isDarkMode
-                                          ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
-                                          : 'bg-emerald-50/80 border-emerald-200 text-emerald-950 shadow-2xs'
-                                      }`}>
-                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
-                                          <span>👏</span> {medium === 'english' ? 'Strengths (What you wrote well):' : 'क्या अच्छा लिखा (Strengths):'}
-                                        </span>
-                                        <ul className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 list-disc list-inside space-y-1 font-medium">
-                                          {evalData.strengths.map((str: string, i: number) => (
-                                            <li key={i}>{str}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-
-                                    {/* 3. Mistakes: Kahan Galti Hui */}
-                                    {evalData.mistakes && evalData.mistakes.length > 0 && (
-                                      <div className={`p-4 rounded-2xl border space-y-2 ${
-                                        isDarkMode
-                                          ? 'bg-rose-950/40 border-rose-500/30 text-rose-200'
-                                          : 'bg-rose-50/80 border-rose-200 text-rose-950 shadow-2xs'
-                                      }`}>
-                                        <span className="text-xs font-black text-rose-700 dark:text-rose-400 flex items-center gap-1.5 uppercase tracking-wide">
-                                          <span>❌</span> {medium === 'english' ? 'Mistakes to Fix:' : 'कहाँ गलती हुई (Mistakes to Fix):'}
-                                        </span>
-                                        <ul className="text-xs sm:text-sm text-rose-900 dark:text-rose-200 list-disc list-inside space-y-1 font-medium">
-                                          {evalData.mistakes.map((mst: string, i: number) => (
-                                            <li key={i}>{mst}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-
-                                    {/* 4. Spelling Mistakes: Speling mistke thi */}
-                                    <div className={`p-4 rounded-2xl border space-y-2 ${
-                                      isDarkMode
-                                        ? 'bg-amber-950/40 border-amber-500/30 text-amber-200'
-                                        : 'bg-amber-50/80 border-amber-200 text-amber-950 shadow-2xs'
-                                    }`}>
-                                      <span className="text-xs font-black text-amber-800 dark:text-amber-400 flex items-center gap-1.5 uppercase tracking-wide">
-                                        <span>✍️</span> {medium === 'english' ? 'Spelling Check:' : 'स्पेलिंग जांच (Spelling Check):'}
-                                      </span>
-                                      {evalData.spellingMistakes && evalData.spellingMistakes.length > 0 ? (
-                                        <div className="flex flex-wrap gap-2 pt-1">
-                                          {evalData.spellingMistakes.map(
-                                            (sp: { wrong: string; correct: string }, i: number) => (
-                                              <span
-                                                key={i}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white dark:bg-black/50 border border-amber-300 dark:border-amber-500/40 text-xs font-bold shadow-2xs"
-                                              >
-                                                <span className="text-rose-600 dark:text-rose-400 line-through">{sp.wrong}</span>
-                                                <span className="text-slate-400">➔</span>
-                                                <span className="text-emerald-700 dark:text-emerald-300 font-black">{sp.correct}</span>
-                                              </span>
-                                            )
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                                          {medium === 'english'
-                                            ? '✅ Great job! Zero spelling errors found in your answer!'
-                                            : '✅ शाबाश बेटा! आपके उत्तर में कोई स्पेलिंग गलती नहीं मिली!'}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {/* 5. Missing Points: Kha add krna h */}
-                                    {evalData.missingPoints && evalData.missingPoints.length > 0 && (
-                                      <div className={`p-4 rounded-2xl border space-y-2 ${
-                                        isDarkMode
-                                          ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200'
-                                          : 'bg-indigo-50/80 border-indigo-200 text-indigo-950 shadow-2xs'
-                                      }`}>
-                                        <span className="text-xs font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 uppercase tracking-wide">
-                                          <span>💡</span> {medium === 'english' ? 'Key Points to Add for 10/10 Score:' : 'कहाँ और क्या जोड़ना है (Points to Add for 10/10):'}
-                                        </span>
-                                        <ul className="text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 list-disc list-inside space-y-1 font-medium">
-                                          {evalData.missingPoints.map((mp: string, i: number) => (
-                                            <li key={i}>{mp}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-
-                                    {/* 6. Ideal Complete Model Answer */}
-                                    {evalData.idealAnswer && (
-                                      <div className={`p-4 rounded-2xl border space-y-2 ${
-                                        isDarkMode
-                                          ? 'bg-slate-950 border-slate-800 text-slate-200'
-                                          : 'bg-slate-100 border-slate-200 text-slate-900 shadow-2xs'
-                                      }`}>
-                                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-                                          {medium === 'english' ? '📖 Complete Model Answer:' : '📖 आदर्श उत्तर (Full Model Answer):'}
-                                        </span>
-                                        <p className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-sans font-medium whitespace-pre-wrap">
-                                          {evalData.idealAnswer}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {/* 7. Teacher Spoken Voice Praise */}
-                                    {evalData.teacherPraise && (
-                                      <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
-                                        isDarkMode
-                                          ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200'
-                                          : 'bg-indigo-50 border-indigo-200 text-indigo-950 shadow-2xs'
-                                      }`}>
-                                        <div className="flex items-center gap-3">
-                                          <span className="text-3xl shrink-0">{currentTeacher.emoji}</span>
-                                          <p className="text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 font-semibold leading-relaxed">
-                                            {evalData.teacherPraise}
-                                          </p>
-                                        </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => speakText(evalData.teacherPraise)}
-                                          className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all shrink-0 shadow-xs cursor-pointer"
-                                          title={medium === 'english' ? 'Listen' : 'बोलकर सुनें'}
-                                        >
-                                          <Volume2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    {/* Next Question Navigation */}
-                                    {activeMockQIdx + 1 < questionsList.length && (
-                                      <button
-                                        type="button"
-                                        onClick={() => setActiveMockQIdx((prev) => prev + 1)}
-                                        className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transform active:scale-95 cursor-pointer"
-                                      >
-                                        <span>{medium === 'english' ? `Next Question (Question #${activeMockQIdx + 2})` : `अगला सवाल हल करें (Question #${activeMockQIdx + 2})`}</span>
-                                        <span>→</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()
-                        ) : (
-                          <div className="p-8 text-center text-slate-400 text-xs">
-                            {medium === 'english' ? 'Preparing questions for mock test...' : 'मॉक टेस्ट के लिए सवाल तैयार किए जा रहे हैं...'}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      /* NORMAL WHITEBOARD STEPS (TEACH / CHECK MODE) */
-                      <div className={`space-y-4 transition-all duration-300 ${
-                        isPageFlipping ? 'opacity-0 translate-y-3 scale-98' : 'opacity-100 translate-y-0 scale-100 animate-in fade-in duration-300'
-                      }`}>
-                        {(() => {
-                          const filtered = filterFillerWhiteboardSteps(whiteboardSteps);
-                          let stepsToRender = filtered;
-                          if (
-                            detectedQuestions.length > filtered.length &&
-                            (!activeTargetQuestion || activeTargetQuestion === 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी')
-                          ) {
-                            const coveredTexts = new Set(
-                              filtered.map((s) => (s.question || s.step).toLowerCase().trim())
-                            );
-                            const additionalSteps: WhiteboardStepItem[] = [];
-                            detectedQuestions.forEach((qText, qIdx) => {
-                              const qLower = qText.toLowerCase().trim();
-                              const isAlreadyCovered = Array.from(coveredTexts).some(
-                                (ct) => ct.includes(qLower.slice(0, 25)) || qLower.includes(ct.slice(0, 25))
-                              );
-                              if (!isAlreadyCovered) {
-                                additionalSteps.push({
-                                  step: `सवाल #${qIdx + 1}: ${parseQuestionAndSection(qText).section || 'अभ्यास प्रश्न'}`,
-                                  question: qText,
-                                  formula: qText,
-                                  annotation: `${currentTeacher.name}: "बेटा, यह वर्कशीट का सवाल #${qIdx + 1} है। इसका पूरा हल देखने के लिए इस पर क्लिक करें!"`,
-                                });
-                              }
-                            });
-                            stepsToRender = [...filtered, ...additionalSteps];
-                          }
-
-                          return stepsToRender.map((stepItem, idx) => {
-                            const allFiltered = stepsToRender;
-                            const multiItems = parseMultiAnswerFormula(stepItem.formula, stepItem.step);
-                            const singleQuestion = getQuestionForStep(stepItem, idx);
-                            const parsed = parseQuestionAndSection(singleQuestion || stepItem.step);
-
-                            // Master multi-question breakdown only applies if the whiteboard has exactly ONE master card
-                            const isMasterBreakdown = stepsToRender.length === 1 && Boolean(multiItems && multiItems.length >= 2);
-
-                            const displayQuestionText = isMasterBreakdown
-                              ? (medium === 'english' ? '📋 Practice Questions: Complete Master Solutions' : '📋 अभ्यास प्रश्नों के संपूर्ण हल व मास्टर कुंजी')
-                              : (parsed.question || singleQuestion || stepItem.step);
-
-                            // For individual cards, isolate the formula that belongs to this specific question
-                            let currentStepFormula = stepItem.formula;
-                            if (!isMasterBreakdown && multiItems && multiItems.length > 0) {
-                              const currentQNum = idx + 1;
-                              const matched = multiItems.find((it) => it.num === currentQNum) ||
-                                multiItems.find((it) => displayQuestionText && (
-                                  displayQuestionText.toLowerCase().includes(`q${it.num}:`) ||
-                                  displayQuestionText.toLowerCase().includes(`q${it.num} `) ||
-                                  displayQuestionText.toLowerCase().includes(`सवाल ${it.num}`) ||
-                                  displayQuestionText.toLowerCase().includes(`प्रश्न ${it.num}`)
-                                )) ||
-                                multiItems[idx];
-
-                              if (matched && matched.answer) {
-                                currentStepFormula = matched.answer;
-                              }
-                            }
-
-                            // Check if this step starts a new section heading (e.g. "A. Complete the sentences")
-                            const prevStepRaw = idx > 0 ? (getQuestionForStep(allFiltered[idx - 1], idx - 1) || allFiltered[idx - 1]?.step) : null;
-                            const prevParsed = prevStepRaw ? parseQuestionAndSection(prevStepRaw) : null;
-                            const isNewSection = Boolean(parsed.section && (!prevParsed || prevParsed.section !== parsed.section));
-
-                            // Check if question is already shown in the top focus banner
-                            const cleanQ = (s?: string | null) =>
-                              (s || '').toLowerCase().replace(/^(?:q\d+:?|सवाल\s*\d+:?|प्रश्ना\s*\d+:?)\s*/i, '').trim();
-                            const isTopBannerShowing = Boolean(
-                              activeTargetQuestion &&
-                              activeTargetQuestion !== 'सभी 15 सवालों के सही उत्तर व मास्टर कुंजी'
-                            );
-                            const isSameAsTop = isTopBannerShowing && (
-                              cleanQ(displayQuestionText) === cleanQ(activeTargetQuestion) ||
-                              (displayQuestionText && activeTargetQuestion.includes(displayQuestionText)) ||
-                              (displayQuestionText && displayQuestionText.includes(activeTargetQuestion))
-                            );
-                            const prevQ = idx > 0 ? getQuestionForStep(allFiltered[idx - 1], idx - 1) : null;
-                            const isSameAsPrev = idx > 0 && cleanQ(displayQuestionText) === cleanQ(prevQ);
-
-                            return (
-                              <React.Fragment key={idx}>
-                                {/* Main Section Heading Banner (Shown once per section, never repeated on every question) */}
-                                {isNewSection && (
-                                  <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-indigo-500/15 to-emerald-500/10 border border-amber-400/40 flex items-center justify-between shadow-2xs mb-2">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-base shrink-0">📌</span>
-                                      <div>
-                                        <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                                          मुख्य निर्देश / सेक्शन (Main Section)
-                                        </span>
-                                        <h4 className="text-xs font-black text-slate-900 dark:text-white leading-tight">
-                                          {parsed.section}
-                                        </h4>
-                                      </div>
-                                    </div>
-                                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-800 dark:text-amber-200 border border-amber-400/30 shrink-0">
-                                      सेक्शन
-                                    </span>
-                                  </div>
-                                )}
-
-                                <div
-                                  className={`p-3 sm:p-3.5 rounded-xl border transition-all ${stepItem.isMistake
-                                    ? isDarkMode || chalkboardTheme === 'green'
-                                      ? 'bg-rose-950/40 border-rose-500/40 text-rose-200 border-l-4 border-l-rose-500'
-                                      : 'bg-rose-50 border-rose-200 text-rose-950 border-l-4 border-l-rose-500'
-                                    : idx === revealedSteps - 1
-                                      ? isDarkMode || chalkboardTheme === 'green'
-                                        ? 'bg-blue-950/40 border-blue-500/50 shadow-md shadow-blue-500/10 border-l-4 border-l-blue-500'
-                                        : 'bg-white border-blue-200 shadow-xs border-l-4 border-l-blue-600'
-                                      : isDarkMode || chalkboardTheme === 'green'
-                                        ? 'bg-slate-900/90 border-slate-800 text-slate-300'
-                                        : 'bg-white border-slate-200 text-slate-800 shadow-2xs'
-                                    }`}
-                                >
-                                  {/* Header: Question Title & Controls */}
-                                  <div className={`flex items-start sm:items-center justify-between gap-2.5 pb-2 border-b ${isDarkMode || chalkboardTheme === 'green' ? 'border-white/10' : 'border-slate-100'
-                                    }`}>
-                                    {(() => {
-                                      const mcqData = parseMCQOptions(displayQuestionText) || parseMCQOptions(singleQuestion) || parseMCQOptions(stepItem.question);
-                                      const hasMcq = Boolean(mcqData && mcqData.options && mcqData.options.length >= 2);
-                                      const stemText = hasMcq && mcqData ? mcqData.qStem : displayQuestionText;
-
-                                      return (
-                                        <div className="flex items-start gap-2 flex-1 min-w-0">
-                                          <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0 mt-1" />
-                                          <div className="flex-1 min-w-0">
-                                            <h3 className={`text-xs sm:text-sm font-bold leading-snug ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                              }`}>
-                                              {activeDictationTestIdx === idx ? (
-                                                <span className="flex flex-wrap items-center gap-1.5">
-                                                  <span className="px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] font-black">
-                                                    🎧 श्रुतलेख टेस्ट
-                                                  </span>
-                                                  <span>{stepItem.step || 'कठिन शब्द टेस्ट'}</span>
-                                                </span>
-                                              ) : (
-                                                renderQuestionWithBlankFill(stemText, stepItem, idx)
-                                              )}
-                                            </h3>
-
-                                            {/* MCQ Options: Clean student-friendly options grid */}
-                                            {hasMcq && mcqData && (
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
-                                                {mcqData.options.map((opt) => {
-                                                  const isCorrect = isOptionCorrect(opt, currentStepFormula);
-                                                  return (
-                                                    <div
-                                                      key={opt.key}
-                                                      className={`px-3 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between gap-2 border transition-all ${
-                                                        isCorrect
-                                                          ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-600 text-emerald-950 dark:text-emerald-100 shadow-xs'
-                                                          : 'bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
-                                                      }`}
-                                                    >
-                                                      <span className="flex items-center gap-2 min-w-0">
-                                                        <span
-                                                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                                                            isCorrect
-                                                              ? 'bg-emerald-600 text-white'
-                                                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                                          }`}
-                                                        >
-                                                          {opt.key.toUpperCase()}
-                                                        </span>
-                                                        <span className="truncate">{opt.text}</span>
-                                                      </span>
-                                                      {isCorrect && (
-                                                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white shrink-0 flex items-center gap-1 shadow-xs">
-                                                          <span>✓</span>
-                                                          <span>{medium === 'english' ? 'Correct' : 'सही'}</span>
-                                                        </span>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      );
-                                    })()}
-
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => handleSocraticHint(idx, stepItem)}
-                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border flex items-center gap-1 transition-all ${isDarkMode || chalkboardTheme === 'green'
-                                          ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30'
-                                          : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
-                                          }`}
-                                      >
-                                        <Sparkles className="w-2.5 h-2.5 text-amber-500" />
-                                        <span>{medium === 'english' ? 'Hint' : 'हिंट लें'}</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => speakText(`${displayQuestionText}: ${currentStepFormula}. ${stepItem.annotation}`, undefined, true)}
-                                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 ${isDarkMode || chalkboardTheme === 'green'
-                                          ? 'bg-white/10 hover:bg-white/20 text-white'
-                                          : 'bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 shadow-2xs'
-                                          }`}
-                                        title={medium === 'english' ? 'Listen to this step' : 'यह स्टेप बोलकर सुनें'}
-                                      >
-                                        <Volume2 className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                                        <span className="hidden sm:inline">{medium === 'english' ? 'Listen' : 'सुनें'}</span>
-                                      </button>
-                                      {uploadedFiles.length > 0 && uploadedFiles[0]?.url && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setPreviewImageUrl(uploadedFiles[0].url)}
-                                          className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 ${isDarkMode || chalkboardTheme === 'green'
-                                            ? 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                                            : 'bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 shadow-2xs'
-                                            }`}
-                                          title={medium === 'english' ? 'View textbook photo / illustration' : 'किताब का चित्र / पेज देखें'}
-                                        >
-                                          <span>🖼️</span>
-                                          <span className="hidden md:inline">{medium === 'english' ? 'Photo' : 'चित्र देखें'}</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* CASE A: Multi-Question Master Key (Only when exactly 1 master card holds all questions) */}
-                                  {isMasterBreakdown && multiItems && multiItems.length > 0 ? (
-                                    <div className="mt-2 space-y-2">
-                                      <span className={`text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${isDarkMode || chalkboardTheme === 'green' ? 'text-slate-400' : 'text-slate-500'
-                                        }`}>
-                                        <span>📋</span> {medium === 'english' ? 'Questions & Answers Breakdown:' : 'हर सवाल व उसका सही उत्तर:'}
-                                      </span>
-                                      <div className="grid grid-cols-1 gap-3.5">
-                                        {multiItems.map((item, mIdx) => (
-                                          <div
-                                            key={mIdx}
-                                            className={`p-3.5 sm:p-4 rounded-2xl border transition-all space-y-2.5 shadow-xs ${isDarkMode || chalkboardTheme === 'green'
-                                              ? 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/50'
-                                              : 'bg-white border-slate-200/90 hover:border-emerald-300 text-slate-900 shadow-xs'
-                                              }`}
-                                          >
-                                            {/* 1. Full-Width Question Header */}
-                                            <div className="flex items-start gap-2.5">
-                                              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${isDarkMode || chalkboardTheme === 'green'
-                                                ? 'text-amber-300 bg-amber-500/20 border border-amber-500/30'
-                                                : 'text-amber-800 bg-amber-100 border border-amber-200 shadow-2xs'
-                                                }`}>
-                                                {item.num}
-                                              </span>
-                                              <div className="flex-1 min-w-0">
-                                                <h4 className={`text-xs sm:text-sm font-black leading-snug tracking-tight ${isDarkMode || chalkboardTheme === 'green' ? 'text-white' : 'text-slate-900'
-                                                  }`}>
-                                                  <ChalkTypewriter
-                                                    text={item.matchedQuestion}
-                                                    speed={16}
-                                                    delay={isTypewriterEnabled ? mIdx * 100 : 0}
-                                                    enabled={isTypewriterEnabled}
-                                                    isChalkboard={chalkboardTheme === 'green'}
-                                                  />
-                                                </h4>
-                                              </div>
-                                            </div>
-
-                                            {/* 2. Full-Width Notebook Column Grid & Geometry Card */}
-                                            <VisualMathDiagramCard
-                                              question={item.matchedQuestion}
-                                              answer={item.answer}
-                                              isDarkMode={isDarkMode || chalkboardTheme === 'green'}
-                                              medium={medium}
-                                            />
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    /* CASE B: Single Question Step - Direct Solution & Answer */
-                                    <div className={`mt-2 p-2.5 sm:p-3 rounded-xl border shadow-2xs ${isDarkMode || chalkboardTheme === 'green'
-                                      ? 'bg-slate-950/90 border-white/10'
-                                      : 'bg-slate-50/70 border-slate-200/90'
-                                      }`}>
-                                      
-                                      {activeDictationTestIdx === idx ? (
-                                        <div className="space-y-2">
-                                          <div className="flex items-center justify-end">
-                                            <button
-                                              type="button"
-                                              onClick={() => setActiveDictationTestIdx(null)}
-                                              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-bold transition-all"
-                                            >
-                                              ✕ वापस हल देखें (Back to Homework)
-                                            </button>
-                                          </div>
-                                          <HardWordsDictationCard
-                                            formula={currentStepFormula}
-                                            stepTitle={stepItem.step}
-                                            annotation={stepItem.annotation}
-                                            isDarkMode={isDarkMode}
-                                            chalkboardTheme={chalkboardTheme}
-                                            medium={medium}
-                                            initialMode="dictation"
-                                            onSpeak={(t) => speakText(t)}
-                                            onScoreUpdate={(pts) => setTotalScore((prev) => prev + pts)}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-2">
-                                          {renderFormulaBlocks(currentStepFormula, displayQuestionText)}
-
-                                          {Boolean(
-                                            (displayQuestionText && /hard words?|कठिन शब्द|श्रुतलेख/i.test(displayQuestionText)) ||
-                                            (stepItem?.step && /hard words?|कठिन शब्द|श्रुतलेख/i.test(stepItem.step))
-                                          ) && (
-                                            <div className="mt-3 p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex flex-wrap items-center justify-between gap-2.5">
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-lg">🎯</span>
-                                                <div>
-                                                  <p className="text-xs font-black text-indigo-950 dark:text-indigo-200">
-                                                    कठिन शब्द श्रुतलेख (Spelling Dictation Test)
-                                                  </p>
-                                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                                                    सभी स्पेलिंग याद हो जाने पर शिक्षिका से बोलकर टेस्ट दें!
-                                                  </p>
-                                                </div>
-                                              </div>
-
-                                              <button
-                                                type="button"
-                                                onClick={() => setActiveDictationTestIdx(idx)}
-                                                className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm transition-all hover:scale-105 active:scale-95"
-                                              >
-                                                <span>🎧</span>
-                                                <span>स्पेलिंग टेस्ट शुरू करें</span>
-                                              </button>
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Teacher Annotation (Khan Academy friendly speech balloon) */}
-                                  {stepItem.annotation && (
-                                    <div className="mt-3">
-                                      {(() => {
-                                        const isExpanded = Boolean(expandedExplanations[idx]);
-                                        return (
-                                          <>
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setExpandedExplanations((prev) => ({
-                                                  ...prev,
-                                                  [idx]: !prev[idx],
-                                                }))
-                                              }
-                                              className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-2 transition-all cursor-pointer ${isExpanded
-                                                ? isDarkMode || chalkboardTheme === 'green'
-                                                  ? 'bg-blue-900/70 text-blue-200 border-blue-500/50 shadow-sm'
-                                                  : 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                                : isDarkMode || chalkboardTheme === 'green'
-                                                  ? 'bg-slate-900/80 hover:bg-slate-800 text-blue-300 border-blue-500/30'
-                                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-900 border-blue-200 shadow-2xs'
-                                                }`}
-                                              title={medium === 'english' ? 'Show or hide teacher explanation' : 'टीचर का स्पष्टीकरण देखें या छुपाएं'}
-                                            >
-                                              <span>{currentTeacher.emoji}</span>
-                                              <span className="font-bold">
-                                                {isExpanded
-                                                  ? (medium === 'english' ? `Hide ${currentTeacher.name}'s Tip ▲` : `${currentTeacher.name} की सीख छुपाएं ▲`)
-                                                  : (medium === 'english' ? `💬 View ${currentTeacher.name}'s Tip ▼` : `💬 ${currentTeacher.name} की सीख देखें ▼`)}
-                                              </span>
-                                            </button>
-
-                                            {isExpanded && (
-                                              <div className={`mt-2 p-3.5 rounded-2xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-200 ${isDarkMode || chalkboardTheme === 'green'
-                                                ? 'bg-slate-900/90 border-slate-800 text-slate-200'
-                                                : 'bg-blue-50/80 border-blue-200 text-slate-800 shadow-xs'
-                                                }`}>
-                                                <span className="text-2xl shrink-0 mt-0.5">{currentTeacher.emoji}</span>
-                                                <div className="flex-1">
-                                                  <span className={`text-[11px] font-black block mb-0.5 ${isDarkMode || chalkboardTheme === 'green' ? 'text-amber-300' : 'text-blue-900'
-                                                    }`}>
-                                                    {medium === 'english' ? `${currentTeacher.name}'s Tip:` : `${currentTeacher.name} की सीख:`}
-                                                  </span>
-                                                  <p className="text-xs sm:text-sm font-medium leading-relaxed">
-                                                    {stepItem.annotation}
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </>
-                                        );
-                                      })()}
-                                    </div>
-                                  )}
-                                </div>
-                              </React.Fragment>
-                            );
-                          });
-                        })()}
-
-                        {revealedSteps < whiteboardSteps.length && (
-                          <button
-                            onClick={() => {
-                              const next = revealedSteps + 1;
-                              setRevealedSteps(next);
-                              const s = whiteboardSteps[revealedSteps];
-                              if (s) speakText(`${s.step}: ${s.formula}. ${s.annotation}`);
-                            }}
-                            className="w-full py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs md:text-sm shadow-md shadow-blue-600/30 flex items-center justify-center gap-2 transition-all transform active:scale-98"
-                          >
-                            <span>{medium === 'english' ? 'Next Step' : 'अगला कदम समझें (Next Step)'}</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    )
-                  )}
-
-                  {/* Bottom Multi-Page Pagination Bar (Only when multiple pages exist, NO question pagination) */}
-                  {!activeMathAnim && uploadedFiles.length > 1 && (
-                    <div className={`p-4 rounded-3xl border-2 flex items-center justify-between gap-3 shadow-lg mt-6 ${!isDarkMode && chalkboardTheme !== 'green'
-                      ? 'bg-gradient-to-r from-amber-50 via-white to-indigo-50 border-indigo-200 text-slate-900'
-                      : 'bg-gradient-to-r from-slate-900 via-indigo-950/70 to-slate-900 border-white/10 text-white'
-                      }`}>
-                      {(() => {
-                        const activeIdx = uploadedFiles.findIndex(
-                          (f) => f.id === (activeFileDoc?.id || uploadedFiles[0]?.id)
-                        );
-                        const currentPageNum = activeIdx !== -1 ? activeIdx + 1 : 1;
-                        const totalPages = uploadedFiles.length;
-                        const hasPrev = activeIdx > 0;
-                        const hasNext = activeIdx < totalPages - 1;
-
-                        return (
-                          <div className="flex items-center justify-between w-full gap-3">
-                            {/* Previous Page Button */}
-                            <button
-                              type="button"
-                              onClick={() => hasPrev && handleSwitchPage(uploadedFiles[activeIdx - 1].id)}
-                              disabled={!hasPrev || isCheckingHomework}
-                              className={`px-4 sm:px-5 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-xs ${!hasPrev || isCheckingHomework
-                                ? 'opacity-30 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5'
-                                : !isDarkMode && chalkboardTheme !== 'green'
-                                  ? 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 hover:scale-102 active:scale-95 cursor-pointer shadow-sm'
-                                  : 'bg-white/10 hover:bg-white/20 text-white border-white/20 hover:scale-102 active:scale-95 cursor-pointer shadow-sm'
-                                }`}
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                              <span>{medium === 'english' ? `Prev Page (P.${activeIdx})` : `← पिछला पेज (पेज ${activeIdx})`}</span>
-                            </button>
-
-                            {/* Current Page Indicator */}
-                            <div className="text-center px-4 py-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20">
-                              <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block mb-0.5">
-                                {medium === 'english' ? 'Worksheet Page' : 'वर्कशीट पेज'}
-                              </span>
-                              <span className={`text-sm sm:text-base font-black ${!isDarkMode && chalkboardTheme !== 'green' ? 'text-indigo-950' : 'text-amber-300'
-                                }`}>
-                                {medium === 'english' ? `Page ${currentPageNum} of ${totalPages}` : `पेज ${currentPageNum} / ${totalPages}`}
-                              </span>
-                            </div>
-
-                            {/* Next Page Button */}
-                            <button
-                              type="button"
-                              onClick={() => hasNext && handleSwitchPage(uploadedFiles[activeIdx + 1].id)}
-                              disabled={!hasNext || isCheckingHomework}
-                              className={`px-4 sm:px-5 py-2.5 rounded-2xl border text-xs sm:text-sm font-black transition-all flex items-center gap-1.5 shadow-md ${!hasNext || isCheckingHomework
-                                ? 'opacity-30 cursor-not-allowed bg-slate-100 text-slate-400 border-slate-200 dark:bg-white/5 dark:text-slate-500 dark:border-white/5'
-                                : 'bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white shadow-indigo-600/30 hover:scale-102 active:scale-95 cursor-pointer'
-                                }`}
-                            >
-                              <span>{medium === 'english' ? `Next Page (P.${activeIdx + 2})` : `अगला पेज (पेज ${activeIdx + 2}) →`}</span>
-                              <ChevronRight className="w-4 h-4" />
-                            </button>
-                          </div>
-                        );
-                      })()}
+                      ))}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
+        </main>
+      </div>
 
-          {/* INTERACTIVE PRACTICE QUESTION (If chapter is loaded) */}
-          {currentQ && (
-            <div className={`rounded-3xl p-6 border transition-all duration-200 space-y-4 ${isDarkMode
-              ? 'bg-gradient-to-br from-indigo-950/70 via-slate-900 to-slate-950 border-indigo-500/30 shadow-2xl'
-              : 'bg-white border-slate-200 shadow-sm text-slate-900'
-              }`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-xs font-black px-3 py-1 rounded-full border flex items-center gap-1.5 ${isDarkMode
-                  ? 'text-indigo-300 bg-indigo-500/20 border-indigo-500/30'
-                  : 'text-indigo-700 bg-indigo-50 border-indigo-200'
-                  }`}>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  अभ्यास प्रश्न #{activeQuestionIdx + 1}
-                </span>
-                <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  प्रश्न {activeQuestionIdx + 1} / {totalQuestionsCount}
-                </span>
-              </div>
+      {/* 5. BOTTOM FLOATING DOCK (MATCHING MOCKUP) */}
+      <div className="fixed bottom-4 inset-x-0 z-40 flex items-center justify-center px-4 pointer-events-none">
+        <div className="flex items-center gap-3 w-full max-w-2xl pointer-events-auto">
+          {/* Big Circular Blue Mic Button */}
+          <button
+            type="button"
+            onClick={toggleMic}
+            className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-xl transition-all shrink-0 cursor-pointer ${
+              isListening
+                ? 'bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-300'
+                : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-blue-500/30'
+            }`}
+            title={isListening ? 'माइक बंद करें' : 'माइक से बोलकर सवाल पूछें'}
+          >
+            {isListening ? (
+              <MicOff className="w-6 h-6 text-white" />
+            ) : (
+              <Mic className="w-6 h-6 text-white" />
+            )}
+          </button>
 
-              <h3 className={`text-base md:text-lg font-bold leading-relaxed ${isDarkMode ? 'text-white' : 'text-slate-900'
-                }`}>
-                {currentQ.question}
-              </h3>
-
-              {/* MCQs */}
-              {currentQ.type === 'mcq' && currentQ.options && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  {currentQ.options.map((opt, i) => {
-                    const isSelected = selectedMCQ === opt;
-                    const isCorrect = answerStatus === 'correct' && isSelected;
-                    const isWrong = answerStatus === 'wrong' && isSelected;
-
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handleCheckMCQ(opt, currentQ.correctAnswer, currentQ.explanation)}
-                        className={`p-3.5 rounded-2xl border text-left font-bold text-xs md:text-sm transition-all flex items-center justify-between ${isCorrect
-                          ? isDarkMode
-                            ? 'bg-emerald-600/30 border-emerald-500 text-emerald-200'
-                            : 'bg-emerald-100 border-emerald-400 text-emerald-900'
-                          : isWrong
-                            ? isDarkMode
-                              ? 'bg-rose-600/30 border-rose-500 text-rose-200'
-                              : 'bg-rose-100 border-rose-400 text-rose-900'
-                            : isSelected
-                              ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
-                              : isDarkMode
-                                ? 'bg-slate-900/90 border-slate-700 hover:border-indigo-400 text-slate-200'
-                                : 'bg-slate-50 border-slate-200 hover:border-indigo-300 hover:bg-white text-slate-800 shadow-2xs'
-                          }`}
-                      >
-                        <span>{opt}</span>
-                        {isCorrect && <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
-                        {isWrong && <X className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Typed Answer */}
-              {currentQ.type === 'solve' && (
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={typedAnswer}
-                      onChange={(e) => setTypedAnswer(e.target.value)}
-                      placeholder="अपना उत्तर लिखें (जैसे: 14 cm)..."
-                      className={`flex-1 border-2 rounded-2xl px-5 py-3 text-sm outline-none transition-all ${isDarkMode
-                        ? 'bg-slate-900 border-slate-700 focus:border-indigo-400 text-white'
-                        : 'bg-slate-50 border-slate-300 focus:border-indigo-500 focus:bg-white text-slate-900'
-                        }`}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCheckTypedAnswer(currentQ.correctAnswer, currentQ.explanation)}
-                    />
-                    <button
-                      onClick={() => handleCheckTypedAnswer(currentQ.correctAnswer, currentQ.explanation)}
-                      className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs md:text-sm shadow-md transition-all"
-                    >
-                      जांचें
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Status */}
-              {answerStatus === 'correct' && (
-                <div className={`p-3.5 rounded-2xl border text-xs flex items-center justify-between ${isDarkMode
-                  ? 'bg-emerald-950/70 border-emerald-500/50 text-emerald-300'
-                  : 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                  }`}>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span className="font-bold">बिल्कुल सही! {currentQ.explanation}</span>
-                  </div>
-
-                  {selectedChapter && activeQuestionIdx + 1 < selectedChapter.sampleQuestions.length && (
-                    <button
-                      onClick={() => {
-                        setActiveQuestionIdx((prev) => prev + 1);
-                        setSelectedMCQ(null);
-                        setTypedAnswer('');
-                        setAnswerStatus('idle');
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs transition-all ml-2"
-                    >
-                      अगला प्रश्न →
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {answerStatus === 'wrong' && (
-                <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 ${isDarkMode
-                  ? 'bg-rose-950/70 border-rose-500/50 text-rose-300'
-                  : 'bg-rose-50 border-rose-200 text-rose-800'
-                  }`}>
-                  <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                  <span>गलत उत्तर है बेटा। हिंट: {currentQ.explanation}</span>
-                </div>
-              )}
-            </div>
-          )}
-      </main>
-
-      {/* 4. CHATGPT-STYLE FLOATING VOICE & CHAT DOCK (Compact & Sleek) */}
-      <footer className="sticky bottom-0 pb-3 pt-1 px-3 sm:px-4 z-20 pointer-events-none transition-colors duration-200">
-        <div className="max-w-xl sm:max-w-2xl mx-auto pointer-events-auto">
-          <div className={`rounded-full border shadow-xl backdrop-blur-xl p-1.5 pl-2.5 sm:pl-3 flex items-center gap-1.5 transition-all duration-200 ${
-            isDarkMode
-              ? 'bg-slate-900/95 border-slate-800 text-white shadow-black/40'
-              : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-200/70'
-          }`}>
-            {/* Attachment / Photo Button */}
-            <label
-              htmlFor="homework-upload-input"
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                isDarkMode
-                  ? 'hover:bg-slate-800 text-slate-400 hover:text-white'
-                  : 'hover:bg-slate-100 text-slate-500 hover:text-blue-600'
-              }`}
-              title={medium === 'english' ? 'Upload photo or PDF' : 'फोटो या कॉपी अपलोड करें'}
-            >
-              <Camera className="w-4 h-4 text-amber-500 hover:scale-110 transition-transform" />
-            </label>
-
-            {/* Clean Input Field */}
+          {/* Rounded Input Bar with Camera, Gallery & Send Button */}
+          <div className="flex-1 bg-white border border-slate-200/90 rounded-full px-4 py-2 shadow-xl flex items-center gap-2 transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
             <input
               ref={inputRef}
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={
-                isListening
-                  ? (medium === 'english' ? 'Listening... Speak now!' : 'सुन रहे हैं... बोलिए बेटा!')
-                  : (medium === 'english' ? 'Ask a question or tap mic...' : 'माइक दबाकर बोलें या सवाल यहाँ टाइप करें...')
-              }
-              className="flex-1 bg-transparent border-0 outline-none text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 px-1 py-1.5 min-w-0"
-              onKeyDown={(e) => e.key === 'Enter' && handleStudentQuery(inputText || inputRef.current?.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleStudentQuery(inputText);
+                }
+              }}
+              placeholder={`${currentTeacher.name} से सवाल पूछें...`}
+              className="flex-1 bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
             />
 
-            {/* Voice Mic Button */}
+            {/* Photo button */}
             <button
               type="button"
-              onClick={toggleMic}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
-                isListening
-                  ? 'bg-rose-600 text-white animate-pulse ring-4 ring-rose-500/30 shadow-md'
-                  : isDarkMode
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-blue-600'
-              }`}
-              title={medium === 'english' ? 'Speak with voice' : 'माइक से बोलें'}
+              onClick={() => cameraInputRef.current?.click()}
+              className="px-2.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
             >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              <Camera className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">फोटो भेजें</span>
             </button>
 
-            {/* Send Button */}
+            {/* Gallery icon */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
+              title="वर्कशीट या फोटो चुनें"
+            >
+              <ImageIcon className="w-4 h-4" />
+            </button>
+
+            {/* Send button */}
             <button
               type="button"
               onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
               disabled={!inputText.trim()}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                 inputText.trim()
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30 hover:scale-105 active:scale-95'
+                  : 'bg-blue-400 text-white opacity-60 cursor-not-allowed'
               }`}
-              title={medium === 'english' ? 'Send question' : 'सवाल भेजें'}
+              title="सवाल भेजें"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
-      </footer>
-      {/* Student All Report link available on header and celebration modal */}
+      </div>
 
       {/* SUNDAY PRINTABLE TEST PAPER & TEST SERIES MODAL */}
       <PrintableSundayExamModal
