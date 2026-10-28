@@ -391,7 +391,8 @@ export default function TuitionClassroomStudio() {
   ];
 
   const [activeSidebarItem, setActiveSidebarItem] = useState<string>('tutor');
-  const [whiteboardDisplayTab, setWhiteboardDisplayTab] = useState<'book' | 'notebook'>('book');
+  const [whiteboardDisplayTab, setWhiteboardDisplayTab] = useState<'book' | 'notebook' | 'mock'>('book');
+  const [imageZoom, setImageZoom] = useState<number>(1);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreenMode, setIsFullscreenMode] = useState<boolean>(false);
 
@@ -4268,8 +4269,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
           setActiveMathAnim(null);
           const cleaned = filterFillerWhiteboardSteps(data.whiteboard_steps);
-          const firstTitle = cleaned[0]?.question || activeDoc.name;
-          const pageTitle = `पेज #1 हल: ${firstTitle}`;
+          const cleanDocTitle = activeDoc.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+          const pageTitle = data.detected_chapter?.title
+            ? `अध्याय: ${data.detected_chapter.title}`
+            : `WORKSHEET: ${cleanDocTitle}`;
           setWhiteboardHeading(pageTitle);
           setWhiteboardSteps(cleaned);
           setRevealedSteps(cleaned.length);
@@ -4543,16 +4546,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       </header>
 
       {/* 2. MAIN CONTAINER WITH SIDEBAR + WORKSPACE */}
-      <div className="flex-1 flex min-h-[calc(100vh-65px)]">
-        {/* LEFT SIDEBAR (MATCHING MOCKUP) */}
-        <aside className="w-48 lg:w-52 bg-white border-r border-slate-200 flex flex-col justify-between py-4 px-2.5 shrink-0 select-none">
+      <div className="flex-1 flex min-h-[calc(100vh-65px)] relative">
+        {/* LEFT SIDEBAR - FIXED ON DESKTOP */}
+        <aside className="w-48 lg:w-52 bg-white border-r border-slate-200 flex flex-col justify-between py-4 px-2.5 shrink-0 select-none sticky top-[65px] h-[calc(100vh-65px)] overflow-y-auto z-20">
           {/* Navigation Items */}
           <div className="space-y-1">
             <button
               type="button"
-              onClick={() => setActiveSidebarItem('tutor')}
+              onClick={() => {
+                setActiveSidebarItem('tutor');
+                setWhiteboardDisplayTab('book');
+              }}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSidebarItem === 'tutor'
+                activeSidebarItem === 'tutor' && whiteboardDisplayTab !== 'mock'
                   ? 'bg-blue-50 text-blue-600 shadow-2xs'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
@@ -4604,16 +4610,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               type="button"
               onClick={() => {
                 setActiveSidebarItem('tests');
-                setIsSundayExamModalOpen(true);
+                setWhiteboardDisplayTab('mock');
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeSidebarItem === 'tests'
-                  ? 'bg-blue-50 text-blue-600 shadow-2xs'
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'tests' || whiteboardDisplayTab === 'mock'
+                  ? 'bg-amber-50 text-amber-800 shadow-2xs font-black'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <FileCheck className="w-4 h-4" />
-              <span>Test Series</span>
+              <div className="flex items-center gap-3">
+                <FileCheck className="w-4 h-4 text-amber-600" />
+                <span>मॉक टेस्ट (Mock)</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.2 rounded font-black bg-amber-200 text-amber-800">
+                🎯
+              </span>
             </button>
 
             <Link
@@ -4840,10 +4851,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols) */}
-            <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
-              {/* Header with Pichla Upload / History button */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (5 cols - LARGER) */}
+            <div className="lg:col-span-5 xl:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+              {/* Header with Pichla Upload, Zoom & Fullscreen */}
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-black text-slate-800">
@@ -4855,7 +4866,40 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  {/* Zoom Controls */}
+                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setImageZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))}
+                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      title="छोटा करें (Zoom Out)"
+                    >
+                      −
+                    </button>
+                    <span className="px-1.5 text-[10px] font-mono font-bold text-slate-700">
+                      {Math.round(imageZoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setImageZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
+                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      title="बड़ा करें (Zoom In)"
+                    >
+                      +
+                    </button>
+                    {imageZoom !== 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setImageZoom(1)}
+                        className="px-1.5 py-0.5 text-[10px] font-bold text-blue-600 hover:bg-white rounded cursor-pointer"
+                        title="रीसेट"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(true)}
@@ -4868,7 +4912,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     type="button"
                     onClick={() => setIsFullscreenMode((prev) => !prev)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer"
                     title="Fullscreen"
                   >
                     <Maximize2 className="w-4 h-4" />
@@ -4876,9 +4920,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </div>
               </div>
 
-              {/* Scanned Worksheet View Area */}
+              {/* Scanned Worksheet View Area - LARGER HEIGHT & CONTAINER */}
               <div
-                className="relative bg-slate-50 p-3 min-h-[500px] flex items-center justify-center cursor-pointer group"
+                className="relative bg-slate-100/60 p-2 sm:p-3 min-h-[620px] lg:min-h-[720px] max-h-[820px] overflow-auto flex items-center justify-center cursor-pointer group"
                 onClick={() => fileInputRef.current?.click()}
                 title="क्लिक करके नई वर्कशीट अपलोड करें"
               >
@@ -4887,9 +4931,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <img
                       src={uploadedImage}
                       alt="Uploaded Worksheet"
-                      className="max-h-[520px] w-auto object-contain rounded-lg shadow-2xs border border-slate-200"
+                      style={{
+                        transform: `scale(${imageZoom})`,
+                        transformOrigin: 'top center',
+                        transition: 'transform 0.15s ease',
+                      }}
+                      className="max-h-[720px] w-full object-contain rounded-xl shadow-md border border-slate-200 bg-white"
                     />
-                    <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-2xs rounded-lg">
+                    <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-2xs rounded-lg pointer-events-none">
                       <div className="bg-white/95 px-3.5 py-2 rounded-xl shadow-lg border border-blue-200 text-xs font-bold text-blue-600 flex items-center gap-2">
                         <Upload className="w-4 h-4" />
                         <span>नई वर्कशीट या पेज बदलें</span>
@@ -4897,7 +4946,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </div>
                   </div>
                 ) : (
-                  <div className="relative w-full max-h-[520px] bg-[#f9f5f0] border border-amber-200/60 rounded-lg p-4 font-serif text-[11px] leading-relaxed text-slate-800 shadow-2xs overflow-hidden select-none">
+                  <div className="relative w-full min-h-[620px] max-h-[720px] bg-[#f9f5f0] border border-amber-200/60 rounded-lg p-5 font-serif text-xs leading-relaxed text-slate-800 shadow-2xs overflow-hidden select-none">
                     <div className="text-center font-bold text-rose-700 text-xs mb-3 tracking-wide">
                       WORKSHEET 3
                     </div>
@@ -5015,8 +5064,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SMART WHITEBOARD (7 or 8 cols) */}
-            <div className="lg:col-span-7 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+            {/* RIGHT COLUMN: SMART WHITEBOARD (7 cols) */}
+            <div className="lg:col-span-7 xl:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
               {/* Top Bar with Action Buttons */}
               <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -5033,7 +5082,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   </div>
                 </div>
 
-                {/* Action Pills (किताब जैसा, कॉपी में हल, हिंट लें, सुनें, अगला सवाल) */}
+                {/* Action Pills (किताब जैसा, कॉपी में हल, मॉक टेस्ट, हिंट लें, सुनें, अगला सवाल) */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
                     type="button"
@@ -5059,6 +5108,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   >
                     <FileText className="w-3.5 h-3.5" />
                     <span>कॉपी में हल</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWhiteboardDisplayTab('mock')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      whiteboardDisplayTab === 'mock'
+                        ? 'bg-amber-600 text-white shadow-2xs font-black'
+                        : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-50'
+                    }`}
+                  >
+                    <span>🎯</span>
+                    <span>मॉक टेस्ट</span>
                   </button>
 
                   <button
@@ -5100,31 +5162,35 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* RULED SCHOOL NOTEBOOK PAPER AREA */}
               <div
-                className="p-6 min-h-[500px] relative font-sans"
+                className="p-5 sm:p-6 min-h-[550px] relative font-sans"
                 style={{
                   background:
-                    'repeating-linear-gradient(transparent, transparent 27px, #e2e8f0 28px)',
+                    'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 28px)',
                   backgroundColor: '#ffffff',
                 }}
               >
                 {/* Red vertical notebook margin line */}
                 <div className="border-l-2 border-rose-300 pl-4 sm:pl-6 space-y-6">
-                  {/* Worksheet Title Header */}
+                  {/* Worksheet Title Header - NEVER RENDERS RAW QUESTION */}
                   <div className="text-center">
                     <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
-                      {uploadedFiles.length > 0 || whiteboardSteps.length > 0
-                        ? getDisplayWhiteboardHeading(whiteboardHeading || uploadedFileName || 'WORKSHEET')
+                      {isCheckingHomework
+                        ? 'WORKSHEET'
+                        : detectedChapter
+                        ? `WORKSHEET: ${detectedChapter.title}`
+                        : uploadedFiles.length > 0
+                        ? `WORKSHEET: ${uploadedFileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')}`
                         : 'WORKSHEET  3'}
                     </h2>
                   </div>
 
                   {/* Section Title */}
                   <div>
-                    <h3 className="text-sm font-black text-blue-900 tracking-tight">
-                      {detectedChapter
-                        ? `पाठ: ${detectedChapter.title}`
-                        : uploadedFiles.length > 0 || whiteboardSteps.length > 0
-                        ? 'अभ्यास प्रश्न व संपूर्ण हल (Step-by-Step Solutions)'
+                    <h3 className="text-base font-black text-blue-900 tracking-tight">
+                      {isCheckingHomework
+                        ? 'दस्तावेज़ स्कैनिंग व हल तैयार हो रहा है...'
+                        : whiteboardDisplayTab === 'mock'
+                        ? 'Worksheet Mock Test Arena (परीक्षा तैयारी)'
                         : 'Multiple Choice Questions'}
                     </h3>
                   </div>
@@ -5169,208 +5235,321 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </div>
                   )}
 
-                  {/* 3. Dynamic Whiteboard Steps (when upload or doubt or chapter is active) */}
-                  {!isCheckingHomework && !activeMathAnim && whiteboardSteps.length > 0 && (
-                    <div className="space-y-6">
-                      {whiteboardSteps.map((st, idx) => {
-                        const displayQ = st.question || st.step;
-                        const mcqData = parseMCQOptions(displayQ);
+                  {/* 3. MOCK TEST ARENA (Active when whiteboardDisplayTab === 'mock') */}
+                  {!isCheckingHomework && !activeMathAnim && whiteboardDisplayTab === 'mock' && (
+                    <div className="space-y-4">
+                      <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-black text-amber-900 flex items-center gap-2">
+                            <span>🎯</span>
+                            <span>वर्कशीट मॉक टेस्ट (Mock Test Arena)</span>
+                          </h4>
+                          <p className="text-xs text-amber-700">
+                            बिना हल देखे खुद सवाल हल करें और इंस्टेंट स्कोर देखें!
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-amber-800 bg-white px-2.5 py-1 rounded-full border border-amber-200 shadow-2xs">
+                            सवाल {activeMockQIdx + 1} / {Math.max(1, getMockQuestionsList().length)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Mock Question Card */}
+                      {(() => {
+                        const qList = getMockQuestionsList();
+                        const currentQ = qList[activeMockQIdx] || {
+                          question: '1. Estimate of difference of 423516 and 453729 by rounding to nearest thousands is : (a) 20000 (b) 50000 (c) 30000 (d) 40000',
+                          options: ['(a) 20000', '(b) 50000', '(c) 30000', '(d) 40000'],
+                        };
+                        const mcq = parseMCQOptions(currentQ.question, currentQ.options);
+                        const studentAns = mockAnswers[activeMockQIdx] || '';
+                        const evalData = mockEvaluations[activeMockQIdx];
 
                         return (
-                          <div
-                            key={idx}
-                            className={`rounded-xl border p-4 space-y-3.5 shadow-2xs transition-all ${
-                              idx === 0
-                                ? 'bg-blue-50/50 border-blue-200/80 ring-1 ring-blue-200/40'
-                                : 'bg-white border-slate-200'
-                            }`}
-                          >
-                            {/* Question Stem */}
-                            <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
-                              <span className="text-blue-600 font-black mr-1">{idx + 1}.</span>
-                              {mcqData ? mcqData.qStem : displayQ}
-                            </div>
+                          <div className="space-y-4">
+                            <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-5 space-y-3">
+                              <div className="text-sm sm:text-base font-bold text-slate-900">
+                                <span className="text-blue-600 font-black mr-1">{activeMockQIdx + 1}.</span>
+                                <span>{mcq ? mcq.qStem : currentQ.question}</span>
+                              </div>
 
-                            {/* MCQ Options Grid (if MCQ) */}
-                            {mcqData && mcqData.options.length > 0 && (
-                              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
-                                {mcqData.options.map((opt) => {
-                                  const isSelected = selectedMCQ === opt.key;
-                                  return (
+                              {/* MCQ Options buttons for interactive test */}
+                              {mcq && mcq.options.length > 0 && (
+                                <div className="grid grid-cols-2 gap-3 pt-2">
+                                  {mcq.options.map((opt) => (
                                     <button
                                       key={opt.key}
                                       type="button"
                                       onClick={() => {
-                                        const cleanFormula = (st.formula || '').toLowerCase();
-                                        const isCorrectOpt =
-                                          cleanFormula.includes(`(${opt.key})`) ||
-                                          cleanFormula.includes(`उत्तर: (${opt.key})`) ||
-                                          cleanFormula.includes(`option ${opt.key}`) ||
-                                          cleanFormula.includes(opt.text.toLowerCase());
-                                        handleCheckMCQ(
-                                          opt.key,
-                                          isCorrectOpt ? opt.key : 'correct',
-                                          st.annotation || ''
-                                        );
+                                        setMockAnswers((prev) => ({
+                                          ...prev,
+                                          [activeMockQIdx]: `${opt.label} ${opt.text}`,
+                                        }));
                                       }}
-                                      className={`flex items-center gap-2 p-1.5 rounded-lg border text-left transition-all cursor-pointer ${
-                                        isSelected
-                                          ? 'bg-blue-100 border-blue-400 font-bold text-blue-900 shadow-2xs'
-                                          : 'bg-white border-slate-200/70 hover:bg-blue-50/50 text-slate-700'
+                                      className={`flex items-center gap-2 p-2.5 rounded-xl border text-sm font-medium transition-all cursor-pointer ${
+                                        studentAns.includes(opt.label) || studentAns.includes(opt.text)
+                                          ? 'bg-blue-600 text-white font-bold border-blue-600 shadow-sm'
+                                          : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/40 text-slate-800'
                                       }`}
                                     >
-                                      <span className="font-bold text-blue-600">{opt.label}</span>
+                                      <span className="font-bold">{opt.label}</span>
                                       <span>{opt.text}</span>
                                     </button>
-                                  );
-                                })}
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              )}
+                            </div>
 
-                            {/* Solution Box (हल) */}
-                            <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
-                              {/* Badge */}
-                              <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
-                                {st.step || 'हल :'}
+                            {/* Student Work area / Math Toolbar / Answer textarea */}
+                            <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-2xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-slate-700">
+                                  ✏️ आपका उत्तर (Your Answer):
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsScratchpadOpen(true)}
+                                  className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>📝</span>
+                                  <span>रफ़ कॉपी खोलें</span>
+                                </button>
                               </div>
 
-                              {/* Formatted Calculation / Column Math / Formula */}
-                              <div className="space-y-2">
-                                {renderFormulaBlocks(st.formula, displayQ)}
+                              <textarea
+                                ref={mockAnswerTextareaRef}
+                                rows={3}
+                                value={studentAns}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setMockAnswers((prev) => ({ ...prev, [activeMockQIdx]: val }));
+                                }}
+                                placeholder="यहाँ अपना उत्तर लिखें या ऊपर विकल्प चुनें..."
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans"
+                              />
+
+                              {/* Toolbar */}
+                              <MathSymbolEditorToolbar
+                                textareaRef={mockAnswerTextareaRef}
+                                currentValue={studentAns}
+                                onValueChange={(newVal) => {
+                                  setMockAnswers((prev) => ({ ...prev, [activeMockQIdx]: newVal }));
+                                }}
+                              />
+
+                              {/* Submit & Check Button */}
+                              <div className="flex items-center justify-between pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
+                                  disabled={!studentAns.trim() || isEvaluatingMock}
+                                  className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-md cursor-pointer transition-all"
+                                >
+                                  {isEvaluatingMock ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <span>🚀</span>
+                                  )}
+                                  <span>हल जमा करें और चेक करवाएं</span>
+                                </button>
+
+                                {activeMockQIdx + 1 < qList.length && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveMockQIdx((i) => i + 1)}
+                                    className="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
+                                  >
+                                    <span>अगला सवाल</span>
+                                    <ChevronRight className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
 
-                              {/* Teacher's Explanation Note */}
-                              {st.annotation && (
-                                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
-                                  <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
-                                  <span>{st.annotation}</span>
+                              {/* Evaluation Scorecard */}
+                              {evalData && (
+                                <div className="mt-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-black text-emerald-900 text-sm">
+                                      🎯 स्कोर: {evalData.score} / {evalData.totalMarks || 10} अंक
+                                    </span>
+                                    <span className="text-xs font-bold text-emerald-700 bg-white px-2 py-0.5 rounded-full border border-emerald-200">
+                                      {evalData.grade || 'बहुत बढ़िया'}
+                                    </span>
+                                  </div>
+                                  {evalData.feedback && (
+                                    <p className="text-xs text-emerald-950 font-medium">
+                                      {evalData.feedback}
+                                    </p>
+                                  )}
                                 </div>
                               )}
                             </div>
                           </div>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
 
-                  {/* 4. Default State (When nothing uploaded yet: shows Worksheet 3 demo exactly as in screenshot) */}
-                  {!isCheckingHomework && !activeMathAnim && whiteboardSteps.length === 0 && (
-                    <>
-                      {/* Active Question 1 Box */}
-                      <div className="bg-blue-50/50 rounded-xl border border-blue-200/80 p-4 space-y-3.5 shadow-2xs">
-                        {/* Question Stem */}
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
-                          <span className="text-blue-600 font-black mr-1">1.</span>
-                          Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :
-                        </div>
+                  {/* 4. DEFAULT & UPLOADED SOLUTIONS VIEW (MATCHING IMAGE 2 EXACTLY) */}
+                  {!isCheckingHomework && !activeMathAnim && whiteboardDisplayTab !== 'mock' && (
+                    <div className="space-y-6">
+                      {/* --- QUESTION 1 CARD (MATCHING IMAGE 2) --- */}
+                      {(() => {
+                        const rawQ1 =
+                          (whiteboardSteps.length > 0 && (whiteboardSteps[0].question || whiteboardSteps[0].step)) ||
+                          (detectedQuestions.length > 0 && detectedQuestions[0]) ||
+                          '1. Estimate of difference of 423516 and 453729 by rounding to nearest thousands is : (a) 20000 (b) 50000 (c) 30000 (d) 40000';
+                        const mcq1 = parseMCQOptions(rawQ1);
+                        const q1Text = (mcq1 ? mcq1.qStem : rawQ1).replace(/^\d+[\.\)]\s*/, '');
+                        const st1 = whiteboardSteps[0];
 
-                        {/* MCQ Options Grid */}
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-600">(a)</span>
-                            <span>20000</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-600">(b)</span>
-                            <span>50000</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-blue-700 font-black">
-                            <span className="font-bold text-blue-600">(c)</span>
-                            <span>30000</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-600">(d)</span>
-                            <span>40000</span>
-                          </div>
-                        </div>
-
-                        {/* Solution Box */}
-                        <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
-                          {/* Hal Badge */}
-                          <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
-                            हल :
-                          </div>
-
-                          {/* Step 1 Text */}
-                          <p className="text-xs font-medium text-slate-700">
-                            दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
-                          </p>
-
-                          <div className="pl-3 text-xs font-mono font-bold text-slate-800 space-y-0.5">
-                            <div>423516 ≈ 424000</div>
-                            <div>453729 ≈ 454000</div>
-                          </div>
-
-                          {/* Step 2 Text */}
-                          <p className="text-xs font-medium text-slate-700">
-                            अब अंतर निकालते हैं :
-                          </p>
-
-                          {/* Arithmetic Column Subtraction */}
-                          <div className="flex justify-center py-1">
-                            <div className="bg-blue-50/40 rounded-lg p-3 border border-blue-100 font-mono text-sm sm:text-base font-bold text-slate-800 inline-block">
-                              <div className="grid grid-cols-7 gap-2 text-right">
-                                <span />
-                                <span>4</span>
-                                <span>5</span>
-                                <span>3</span>
-                                <span>7</span>
-                                <span>2</span>
-                                <span>9</span>
+                        return (
+                          <div className="space-y-4">
+                            {/* Question 1 Blue Box */}
+                            <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-4 sm:p-5 space-y-3">
+                              <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+                                <span className="text-blue-600 font-black mr-1">1.</span>
+                                <span>{q1Text}</span>
                               </div>
-                              <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
-                                <span>-</span>
-                                <span>4</span>
-                                <span>2</span>
-                                <span>3</span>
-                                <span>5</span>
-                                <span>1</span>
-                                <span>6</span>
+
+                              {/* 2-Column Options (matching Image 2) */}
+                              {mcq1 && mcq1.options.length > 0 && (
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 pt-1 pl-4 text-sm font-medium text-slate-800">
+                                  {mcq1.options.map((opt) => (
+                                    <div
+                                      key={opt.key}
+                                      onClick={() => {
+                                        handleCheckMCQ(opt.key, 'c', st1?.annotation || '');
+                                      }}
+                                      className="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                    >
+                                      <span className="font-bold text-slate-600">{opt.label}</span>
+                                      <span>{opt.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Question 1 Solution Card (matching Image 2) */}
+                            <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-xs space-y-3.5">
+                              {/* Blue Pill 'हल :' */}
+                              <div className="inline-block px-3 py-1 rounded-md bg-blue-600 text-white font-bold text-xs">
+                                हल :
                               </div>
-                              <div className="border-t-2 border-slate-700 my-1" />
-                              <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
-                                <span />
-                                <span>3</span>
-                                <span>0</span>
-                                <span>2</span>
-                                <span>1</span>
-                                <span>3</span>
+
+                              {/* Step text */}
+                              <p className="text-sm font-medium text-slate-700">
+                                दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
+                              </p>
+
+                              <div className="pl-2 text-sm font-mono font-bold text-slate-800 space-y-0.5">
+                                <div>423516 ≈ 424000</div>
+                                <div>453729 ≈ 454000</div>
+                              </div>
+
+                              <p className="text-sm font-medium text-slate-700">
+                                अब अंतर निकालते हैं :
+                              </p>
+
+                              {/* Arithmetic Column Subtraction */}
+                              <div className="flex justify-center py-1">
+                                <div className="bg-blue-50/70 rounded-xl p-3 px-6 border border-blue-100 font-mono text-base font-bold text-slate-800 inline-block min-w-[220px]">
+                                  <div className="grid grid-cols-7 gap-2 text-right">
+                                    <span />
+                                    <span>4</span>
+                                    <span>5</span>
+                                    <span>3</span>
+                                    <span>7</span>
+                                    <span>2</span>
+                                    <span>9</span>
+                                  </div>
+                                  <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
+                                    <span>-</span>
+                                    <span>4</span>
+                                    <span>2</span>
+                                    <span>3</span>
+                                    <span>5</span>
+                                    <span>1</span>
+                                    <span>6</span>
+                                  </div>
+                                  <div className="border-t-2 border-slate-700 my-1" />
+                                  <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
+                                    <span />
+                                    <span>3</span>
+                                    <span>0</span>
+                                    <span>2</span>
+                                    <span>1</span>
+                                    <span>3</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Green Correct Answer Pill */}
+                              <div>
+                                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-600 text-white font-bold text-sm shadow-xs">
+                                  <Check className="w-4 h-4 stroke-[3]" />
+                                  सही उत्तर: (c) 30000
+                                </span>
+                              </div>
+
+                              {/* Light Green Explanation Box */}
+                              <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 text-sm text-emerald-950 leading-relaxed flex items-start gap-2.5">
+                                <span className="text-emerald-700 font-bold shrink-0 text-base">💡</span>
+                                <div>
+                                  <span className="font-bold text-emerald-900">व्याख्या: </span>
+                                  <span className="text-slate-800">
+                                    {st1?.annotation ||
+                                      '423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
+                        );
+                      })()}
 
-                          {/* Green Correct Answer Pill */}
-                          <div>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs shadow-2xs">
-                              <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              सही उत्तर: (c) 30000
-                            </span>
-                          </div>
+                      {/* --- SUBSEQUENT QUESTIONS (QUESTION 2, 3...) (MATCHING IMAGE 2) --- */}
+                      {(() => {
+                        const remainingQList =
+                          detectedQuestions.length > 1
+                            ? detectedQuestions.slice(1)
+                            : [
+                                '2. Largest 6-digit number exceeds largest 5-digit number by : (a) 100000 (b) 90000 (c) 990000 (d) 900000',
+                              ];
 
-                          {/* Green Explanation Box */}
-                          <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
-                            <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
-                            <span>
-                              423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                        return remainingQList.map((rawQ, i) => {
+                          const mcq = parseMCQOptions(rawQ);
+                          const qNumber = i + 2;
+                          const qText = (mcq ? mcq.qStem : rawQ).replace(/^\d+[\.\)]\s*/, '');
 
-                      {/* Question 2 */}
-                      <div className="pt-2 space-y-2">
-                        <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
-                          <span className="text-blue-600 font-black mr-1">2.</span>
-                          Largest 6-digit number exceeds largest 5-digit number by :
-                        </div>
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-slate-700 pl-4">
-                          <div>(a) 100000</div>
-                          <div>(b) 90000</div>
-                          <div>(c) 990000</div>
-                          <div>(d) 900000</div>
-                        </div>
-                      </div>
-                    </>
+                          return (
+                            <div key={i} className="pt-2 space-y-2">
+                              <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+                                <span className="text-blue-600 font-black mr-1">{qNumber}.</span>
+                                <span>{qText}</span>
+                              </div>
+
+                              {/* 2-Column Options */}
+                              {mcq && mcq.options.length > 0 && (
+                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm font-semibold text-slate-700 pl-4">
+                                  {mcq.options.map((opt) => (
+                                    <div
+                                      key={opt.key}
+                                      className="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer select-none"
+                                    >
+                                      <span className="font-bold text-slate-500">{opt.label}</span>
+                                      <span>{opt.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   )}
                 </div>
               </div>

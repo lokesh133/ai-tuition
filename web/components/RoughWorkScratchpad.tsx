@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Edit3, Eraser, Trash2, X, Minimize2, Maximize2, Sparkles } from 'lucide-react';
+import { Edit3, Eraser, Trash2, X, Minimize2, Maximize2, Sparkles, GripVertical, Move } from 'lucide-react';
 
 interface RoughWorkScratchpadProps {
   isOpen: boolean;
@@ -15,11 +15,77 @@ export const RoughWorkScratchpad: React.FC<RoughWorkScratchpadProps> = ({
   isDarkMode = false,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [activeColor, setActiveColor] = useState<string>('#fde047'); // yellow chalk
   const [brushSize, setBrushSize] = useState<number>(3);
   const [isEraser, setIsEraser] = useState<boolean>(false);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
+
+  // Dragging state
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const dragStartRef = useRef<{ startX: number; startY: number; initialLeft: number; initialTop: number }>({
+    startX: 0,
+    startY: 0,
+    initialLeft: 0,
+    initialTop: 0,
+  });
+
+  // Handle Dragging
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    // Only drag from the header bar, avoid dragging if clicking buttons
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+
+    dragStartRef.current = {
+      startX: clientX,
+      startY: clientY,
+      initialLeft: rect.left,
+      initialTop: rect.top,
+    };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
+
+      const deltaX = clientX - dragStartRef.current.startX;
+      const deltaY = clientY - dragStartRef.current.startY;
+
+      const newLeft = Math.max(10, Math.min(window.innerWidth - 320, dragStartRef.current.initialLeft + deltaX));
+      const newTop = Math.max(10, Math.min(window.innerHeight - 100, dragStartRef.current.initialTop + deltaY));
+
+      setPosition({ x: newLeft, y: newTop });
+    };
+
+    const handleEnd = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleMove);
+    window.addEventListener('touchend', handleEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleEnd);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging]);
 
   useEffect(() => {
     if (!isOpen || isMinimized) return;
@@ -108,25 +174,53 @@ export const RoughWorkScratchpad: React.FC<RoughWorkScratchpadProps> = ({
 
   return (
     <div
-      className={`fixed z-40 transition-all shadow-2xl rounded-3xl border overflow-hidden ${
-        isMinimized
+      ref={containerRef}
+      style={
+        position
+          ? {
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              bottom: 'auto',
+              right: 'auto',
+            }
+          : undefined
+      }
+      className={`fixed z-40 shadow-2xl rounded-3xl border overflow-hidden transition-shadow ${
+        position
+          ? ''
+          : isMinimized
           ? 'bottom-20 right-4 w-64'
-          : 'bottom-4 right-4 sm:right-6 w-[92vw] sm:w-[420px] md:w-[480px] h-[340px] sm:h-[380px]'
+          : 'bottom-4 right-4 sm:right-6'
+      } ${
+        isMinimized
+          ? 'w-64'
+          : 'w-[92vw] sm:w-[420px] md:w-[480px] h-[340px] sm:h-[380px]'
       } ${
         isDarkMode
           ? 'bg-slate-900 border-amber-500/40 text-white shadow-amber-500/10'
           : 'bg-slate-900 border-slate-700 text-white shadow-2xl'
-      }`}
+      } ${isDragging ? 'opacity-95 ring-2 ring-amber-400 select-none' : ''}`}
     >
-      {/* Header bar */}
-      <div className="bg-slate-950/90 px-4 py-2.5 border-b border-white/10 flex items-center justify-between">
+      {/* Header bar - DRAGGABLE */}
+      <div
+        onMouseDown={handleDragStart}
+        onTouchStart={handleDragStart}
+        className="bg-slate-950/95 px-3.5 py-2.5 border-b border-white/10 flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+        title="रफ़ कॉपी को खींचकर कहीं भी रखें (Drag anywhere)"
+      >
         <div className="flex items-center gap-2">
+          <GripVertical className="w-4 h-4 text-slate-500 shrink-0" />
           <span className="text-lg">📝</span>
           <div>
-            <h4 className="text-xs sm:text-sm font-black text-amber-300">
-              रफ़ कॉपी (Rough Workpad)
-            </h4>
-            <span className="text-[10px] text-slate-400 block -mt-0.5">
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-xs sm:text-sm font-black text-amber-300 leading-none">
+                रफ़ कॉपी (Rough Workpad)
+              </h4>
+              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                ड्रैग करें ✥
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 block mt-0.5">
               अपनी गणना व गुणा-भाग यहाँ करके देखें
             </span>
           </div>
@@ -136,7 +230,7 @@ export const RoughWorkScratchpad: React.FC<RoughWorkScratchpadProps> = ({
           <button
             type="button"
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             title={isMinimized ? 'बड़ा करें' : 'छोटा करें'}
           >
             {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
@@ -144,7 +238,7 @@ export const RoughWorkScratchpad: React.FC<RoughWorkScratchpadProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
             title="रफ़ कॉपी बंद करें"
           >
             <X className="w-4 h-4" />
