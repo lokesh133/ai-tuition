@@ -30,7 +30,21 @@ interface ParsedColumnArithmetic {
 }
 
 interface ParsedGeometryShape {
-  type: 'triangle' | 'rectangle' | 'square' | 'circle' | 'cuboid' | 'cylinder' | 'pyramid' | 'table';
+  type:
+    | 'triangle'
+    | 'rectangle'
+    | 'square'
+    | 'circle'
+    | 'cuboid'
+    | 'cylinder'
+    | 'pyramid'
+    | 'table'
+    | 'pentagon'
+    | 'hexagon'
+    | 'cube'
+    | 'cone'
+    | 'angle'
+    | 'fraction';
   title: string;
   label1?: string;
   label2?: string;
@@ -39,6 +53,7 @@ interface ParsedGeometryShape {
   calculation: string;
   tableData?: { headers: string[]; rows: string[][] };
   pyramidData?: { tiers: number[][] };
+  fractionData?: { numerator: number; denominator: number };
 }
 
 /**
@@ -435,6 +450,103 @@ function tryExtractGeometry(question: string, answer: string): ParsedGeometrySha
     };
   }
 
+  // 8. Pentagon (पंचभुज - 5 sides)
+  if (combined.includes('pentagon') || combined.includes('पंचभुज') || (combined.includes('5 भुजा') || combined.includes('5 sides'))) {
+    return {
+      type: 'pentagon',
+      title: 'पंचभुज रेखाचित्र (Regular Pentagon Shape)',
+      label1: '5 समान भुजाएँ (5 Equal Sides)',
+      label2: '5 शीर्ष (5 Vertices) व 5 आंतरिक कोण',
+      formula: 'आंतरिक कोणों का योग = (5 - 2) × 180° = 540° | प्रत्येक कोण = 108°',
+      calculation: 'भुजाओं की संख्या = 5 | परिमाप = 5 × भुजा (Side)',
+    };
+  }
+
+  // 9. Hexagon (षट्भुज - 6 sides)
+  if (combined.includes('hexagon') || combined.includes('षट्भुज') || combined.includes('6 भुजा') || combined.includes('6 sides')) {
+    return {
+      type: 'hexagon',
+      title: 'षट्भुज रेखाचित्र (Regular Hexagon Shape)',
+      label1: '6 समान भुजाएँ (6 Equal Sides)',
+      label2: '6 शीर्ष (6 Vertices)',
+      formula: 'आंतरिक कोणों का योग = (6 - 2) × 180° = 720° | प्रत्येक कोण = 120°',
+      calculation: 'भुजाओं की संख्या = 6 | परिमाप = 6 × भुजा (Side)',
+    };
+  }
+
+  // 10. Cube (घन - 3D Cube)
+  if (combined.includes('cube') || combined.includes('घन') || combined.includes('पासा') || combined.includes('dice')) {
+    const numbers = (question.match(/\d+(?:\.\d+)?/g) || answer.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    const side = numbers[0] || 5;
+    const unitMatch = question.match(/cm|सेमी|m|मीटर/i);
+    const unit = unitMatch ? unitMatch[0] : 'cm';
+    const volume = side * side * side;
+    const tsa = 6 * side * side;
+
+    return {
+      type: 'cube',
+      title: '3D घन रेखाचित्र (Cube Geometry)',
+      label1: `भुजा (Side a) = ${side} ${unit}`,
+      label2: `6 वर्गाकार फलक (Faces), 12 किनारे (Edges)`,
+      formula: 'आयतन = a³ | कुल पृष्ठीय क्षेत्रफल = 6a²',
+      calculation: `आयतन = ${side}³ = ${volume} ${unit}³ | पृष्ठीय क्षेत्रफल = 6 × ${side}² = ${tsa} ${unit}²`,
+    };
+  }
+
+  // 11. Cone (शंकु)
+  if (combined.includes('cone') || combined.includes('शंकु') || combined.includes('जोकर की टोपी') || combined.includes('आइसक्रीम')) {
+    const numbers = (question.match(/\d+(?:\.\d+)?/g) || answer.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+    const radius = numbers[0] || 3;
+    const height = numbers[1] || 4;
+    const unitMatch = question.match(/cm|सेमी|m|मीटर/i);
+    const unit = unitMatch ? unitMatch[0] : 'cm';
+    const slant = Math.round(Math.sqrt(radius * radius + height * height));
+    const volume = Math.round((1 / 3) * (22 / 7) * radius * radius * height);
+
+    return {
+      type: 'cone',
+      title: 'शंकु रेखाचित्र (Cone Geometry)',
+      label1: `त्रिज्या (r) = ${radius} ${unit}`,
+      label2: `ऊँचाई (h) = ${height} ${unit}`,
+      label3: `तिर्यक ऊँचाई (l) = ${slant} ${unit}`,
+      formula: 'आयतन = 1/3 πr²h | तिर्यक ऊँचाई l = √(r² + h²)',
+      calculation: `आयतन ≈ ${volume} ${unit}³ | तिर्यक ऊँचाई = ${slant} ${unit}`,
+    };
+  }
+
+  // 12. Angle (कोण)
+  if (combined.includes('angle') || combined.includes('कोण') || combined.includes('न्यूनकोण') || combined.includes('अधिककोण') || combined.includes('समकोण') || combined.includes('डिग्री') || combined.includes('°')) {
+    const numbers = (question.match(/\d+/g) || answer.match(/\d+/g) || []).map(Number);
+    const deg = numbers[0] || 90;
+    const angleType = deg === 90 ? 'समकोण (Right Angle)' : deg < 90 ? 'न्यूनकोण (Acute Angle)' : 'अधिककोण (Obtuse Angle)';
+
+    return {
+      type: 'angle',
+      title: `कोण रेखाचित्र (${angleType})`,
+      label1: `माप = ${deg}°`,
+      label2: angleType,
+      formula: 'न्यूनकोण < 90° | समकोण = 90° | अधिककोण > 90° व < 180°',
+      calculation: `दिया गया कोण = ${deg}° ➔ यह एक ${angleType} है ✅`,
+    };
+  }
+
+  // 13. Fraction (भिन्न)
+  if (combined.includes('fraction') || combined.includes('भिन्न') || combined.includes('अंश') || combined.includes('हर') || /\b\d+\/\d+\b/.test(combined)) {
+    const fMatch = combined.match(/(\d+)\s*\/\s*(\d+)/);
+    const num = fMatch ? parseInt(fMatch[1], 10) : 1;
+    const den = fMatch ? parseInt(fMatch[2], 10) : 4;
+
+    return {
+      type: 'fraction',
+      title: 'भिन्न रेखाचित्र (Visual Fraction Diagram)',
+      label1: `अंश (Numerator) = ${num}`,
+      label2: `हर (Denominator) = ${den}`,
+      formula: 'भिन्न = छायांकित भाग (Shaded) / कुल बराबर भाग (Total Parts)',
+      calculation: `${den} बराबर भागों में से ${num} भाग रंगे हुए ➔ भिन्न = ${num}/${den} ✅`,
+      fractionData: { numerator: num, denominator: den },
+    };
+  }
+
   return null;
 }
 
@@ -773,6 +885,104 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Pentagon (पंचभुज - 5 sides) */}
+              {geometry.type === 'pentagon' && (
+                <svg viewBox="0 0 180 160" className="w-44 h-36">
+                  <polygon
+                    points="90,20 160,70 135,145 45,145 20,70"
+                    fill="rgba(99, 102, 241, 0.2)"
+                    stroke="#4f46e5"
+                    strokeWidth="3"
+                  />
+                  {[[90, 20], [160, 70], [135, 145], [45, 145], [20, 70]].map(([x, y], i) => (
+                    <circle key={i} cx={x} cy={y} r="4" fill="#ef4444" />
+                  ))}
+                  <text x="90" y="95" textAnchor="middle" className="text-xs font-black fill-indigo-800 dark:fill-indigo-300 font-mono">
+                    पंचभुज (5 Sides)
+                  </text>
+                </svg>
+              )}
+
+              {/* Hexagon (षट्भुज - 6 sides) */}
+              {geometry.type === 'hexagon' && (
+                <svg viewBox="0 0 180 160" className="w-44 h-36">
+                  <polygon
+                    points="90,15 155,52 155,122 90,155 25,122 25,52"
+                    fill="rgba(16, 185, 129, 0.2)"
+                    stroke="#10b981"
+                    strokeWidth="3"
+                  />
+                  {[[90, 15], [155, 52], [155, 122], [90, 155], [25, 122], [25, 52]].map(([x, y], i) => (
+                    <circle key={i} cx={x} cy={y} r="3.5" fill="#ef4444" />
+                  ))}
+                  <text x="90" y="95" textAnchor="middle" className="text-xs font-black fill-emerald-800 dark:fill-emerald-300 font-mono">
+                    षट्भुज (6 Sides)
+                  </text>
+                </svg>
+              )}
+
+              {/* 3D Cube (घन) */}
+              {geometry.type === 'cube' && (
+                <svg viewBox="0 0 180 160" className="w-44 h-36">
+                  <polygon points="35,60 75,25 145,25 105,60" fill="rgba(245, 158, 11, 0.3)" stroke="#d97706" strokeWidth="2.5" />
+                  <polygon points="35,60 105,60 105,130 35,130" fill="rgba(245, 158, 11, 0.15)" stroke="#d97706" strokeWidth="2.5" />
+                  <polygon points="105,60 145,25 145,95 105,130" fill="rgba(245, 158, 11, 0.4)" stroke="#d97706" strokeWidth="2.5" />
+                  <text x="70" y="145" textAnchor="middle" className="text-[10px] font-black fill-amber-700 dark:fill-amber-300 font-mono">
+                    {geometry.label1 || 'भुजा (a)'}
+                  </text>
+                </svg>
+              )}
+
+              {/* 3D Cone (शंकु) */}
+              {geometry.type === 'cone' && (
+                <svg viewBox="0 0 180 160" className="w-44 h-36">
+                  <path d="M 40 120 L 90 25 L 140 120 Z" fill="rgba(236, 72, 153, 0.15)" stroke="#ec4899" strokeWidth="2.5" />
+                  <ellipse cx="90" cy="120" rx="50" ry="16" fill="rgba(236, 72, 153, 0.25)" stroke="#ec4899" strokeWidth="2.5" />
+                  <line x1="90" y1="25" x2="90" y2="120" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="3,3" />
+                  <line x1="90" y1="120" x2="140" y2="120" stroke="#f59e0b" strokeWidth="2" strokeDasharray="2,2" />
+                  <text x="115" y="115" className="text-[10px] font-black fill-amber-600 font-mono">r</text>
+                  <text x="75" y="75" className="text-[10px] font-black fill-slate-600 font-mono">h</text>
+                  <text x="125" y="70" className="text-[10px] font-black fill-pink-600 font-mono">l</text>
+                </svg>
+              )}
+
+              {/* Angle (कोण) */}
+              {geometry.type === 'angle' && (
+                <svg viewBox="0 0 180 150" className="w-44 h-36">
+                  <line x1="30" y1="120" x2="150" y2="120" stroke="#3b82f6" strokeWidth="3" />
+                  <line x1="30" y1="120" x2="115" y2="35" stroke="#3b82f6" strokeWidth="3" />
+                  <path d="M 65 120 A 35 35 0 0 0 55 95" fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+                  <circle cx="30" cy="120" r="4" fill="#ef4444" />
+                  <text x="20" y="135" className="text-xs font-bold fill-slate-700">O</text>
+                  <text x="70" y="105" className="text-xs font-black fill-amber-600 font-mono">
+                    {geometry.label1 || 'θ'}
+                  </text>
+                </svg>
+              )}
+
+              {/* Fraction (भिन्न) */}
+              {geometry.type === 'fraction' && (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center border-2 border-indigo-500 rounded-xl overflow-hidden shadow-xs">
+                    {Array.from({ length: geometry.fractionData?.denominator || 4 }).map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={`w-9 h-14 border-r last:border-r-0 border-indigo-400 flex items-center justify-center font-bold text-xs ${
+                          idx < (geometry.fractionData?.numerator || 1)
+                            ? 'bg-indigo-500 text-white font-black'
+                            : 'bg-white text-slate-400'
+                        }`}
+                      >
+                        {idx < (geometry.fractionData?.numerator || 1) ? '✓' : ''}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs font-black text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                    {geometry.fractionData?.numerator || 1} / {geometry.fractionData?.denominator || 4} छायांकित (Shaded)
+                  </span>
                 </div>
               )}
             </div>

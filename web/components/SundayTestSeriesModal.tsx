@@ -1004,6 +1004,37 @@ export default function SundayTestSeriesModal({
   const [currentResult, setCurrentResult] = useState<TestResultRecord | null>(null);
   const [testHistory, setTestHistory] = useState<TestResultRecord[]>([]);
 
+  // 40-Minute Countdown Timer for Test Series (40 minutes = 2400 seconds)
+  const EXAM_DURATION_SECONDS = 40 * 60; // 40 minutes (2400 seconds)
+  const [examTimeLeft, setExamTimeLeft] = useState<number>(EXAM_DURATION_SECONDS);
+
+  // Auto-countdown timer when student is taking the exam in 'exam' tab
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'exam') return;
+
+    const timerId = setInterval(() => {
+      setExamTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerId);
+          // Automatic submission after 40 minutes!
+          setTimeout(() => {
+            handleSubmitTest(true);
+          }, 100);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [isOpen, activeTab]);
+
+  const formatExamTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
   // Load Test History from localStorage + Backend Server Sync based on student login
   useEffect(() => {
     let studentUser: any = null;
@@ -1417,6 +1448,7 @@ export default function SundayTestSeriesModal({
     setTypedAnswers({});
     setActiveQuestionIndex(0);
     setUploadedImages([]);
+    setExamTimeLeft(EXAM_DURATION_SECONDS);
     setActiveTab('exam');
   };
 
@@ -1521,18 +1553,20 @@ export default function SundayTestSeriesModal({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  // 2. SUBMIT TEST & GET AI RESULT
-  const handleSubmitTest = async () => {
-    if (examMode === 'upload' && uploadedImages.length === 0) {
-      alert('कृपया अपनी लिखी हुई उत्तर-पुस्तिका (कॉपी) का फोटो अपलोड करें।');
-      return;
-    }
-
-    if (examMode === 'typing') {
-      const answeredCount = Object.values(typedAnswers).filter((a) => a.trim().length > 0).length;
-      if (answeredCount === 0) {
-        alert('कृपया कम से कम एक प्रश्न का उत्तर टाइप करें।');
+  // 2. SUBMIT TEST & GET AI RESULT (Supports Auto-Submit when 40-minute timer expires)
+  const handleSubmitTest = async (isAutoSubmit: boolean = false) => {
+    if (!isAutoSubmit) {
+      if (examMode === 'upload' && uploadedImages.length === 0) {
+        alert('कृपया अपनी लिखी हुई उत्तर-पुस्तिका (कॉपी) का फोटो अपलोड करें।');
         return;
+      }
+
+      if (examMode === 'typing') {
+        const answeredCount = Object.values(typedAnswers).filter((a) => a.trim().length > 0).length;
+        if (answeredCount === 0) {
+          alert('कृपया कम से कम एक प्रश्न का उत्तर टाइप करें।');
+          return;
+        }
       }
     }
 
@@ -3007,7 +3041,25 @@ export default function SundayTestSeriesModal({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* ⏱️ 40-Minute Countdown Timer Badge */}
+                  <div
+                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-black shadow-xs transition-all ${
+                      examTimeLeft <= 300
+                        ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                        : examTimeLeft <= 600
+                        ? 'bg-amber-50 border-amber-300 text-amber-800'
+                        : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                    }`}
+                    title="40 मिनट पूरे होते ही परीक्षा अपने-आप सबमिट हो जाएगी"
+                  >
+                    <Clock className={`w-4 h-4 ${examTimeLeft <= 300 ? 'text-rose-600 animate-spin' : 'text-emerald-600'}`} />
+                    <span className="tabular-nums font-mono text-sm">
+                      ⏱️ {formatExamTimer(examTimeLeft)}
+                    </span>
+                    <span className="text-[10px] font-bold opacity-80">(40 मिनट ऑटो-सबमिट)</span>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handlePrintTestPaper}
@@ -3319,14 +3371,24 @@ export default function SundayTestSeriesModal({
                         : `${uploadedImages.length} कॉपी पृष्ठ अपलोड किए गए`}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 mt-0.5">
-                    सबमिट करते ही AI शिक्षक द्वारा अंकों की जांच व रिज़ल्ट तैयार होगा।
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold ${
+                      examTimeLeft <= 300
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                        : examTimeLeft <= 600
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}>
+                      <Clock className="w-3.5 h-3.5" />
+                      ⏱️ {formatExamTimer(examTimeLeft)} शेष (40 मिनट बाद स्वतः सबमिट)
+                    </span>
+                    <span className="text-[11px] text-slate-400">सबमिट करते ही AI शिक्षक द्वारा अंकों की जांच व रिज़ल्ट तैयार होगा।</span>
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={handleSubmitTest}
+                  onClick={() => handleSubmitTest(false)}
                   disabled={isSubmitting}
                   className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98]"
                 >

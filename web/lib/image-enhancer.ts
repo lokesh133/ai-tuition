@@ -88,3 +88,54 @@ export async function compressImageForThumbnail(
     img.src = dataUrl;
   });
 }
+
+export async function optimizeImageForStorage(
+  dataUrl: string,
+  maxDim: number = 1400,
+  quality: number = 0.88
+): Promise<string> {
+  if (typeof window === 'undefined' || !dataUrl.startsWith('data:image')) {
+    return dataUrl;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        let width = img.width;
+        let height = img.height;
+
+        // If already within maxDim, preserve natural dimensions for crisp text
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+        const optimized = canvas.toDataURL('image/jpeg', quality);
+        resolve(optimized);
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
