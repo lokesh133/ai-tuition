@@ -217,6 +217,243 @@ function parseQuestionAndSection(raw?: string | null): { section?: string; quest
   return { question: trimmed };
 }
 
+/**
+ * Component for Indian School Column Arithmetic (Addition/Subtraction)
+ * Every digit is vertically aligned in its own place value column lane:
+ * Lakh | 10-Thousand | Thousand | Hundred | Ten | One
+ */
+function ColumnArithmeticBox({
+  topNum,
+  botNum,
+  operator = '-',
+  label = '',
+}: {
+  topNum: string | number;
+  botNum: string | number;
+  operator?: '-' | '+';
+  label?: string;
+}) {
+  const cleanTop = String(topNum).replace(/[^0-9]/g, '');
+  const cleanBot = String(botNum).replace(/[^0-9]/g, '');
+  const nTop = parseInt(cleanTop, 10) || 0;
+  const nBot = parseInt(cleanBot, 10) || 0;
+  const nDiff = operator === '-' ? nTop - nBot : nTop + nBot;
+  const cleanDiff = String(Math.abs(nDiff));
+
+  const maxLen = Math.max(cleanTop.length, cleanBot.length, cleanDiff.length);
+  // Pad strings to exact maxLen so every single column aligns right-to-left
+  const topChars = cleanTop.padStart(maxLen, ' ').split('');
+  const botChars = cleanBot.padStart(maxLen, ' ').split('');
+  const diffChars = cleanDiff.padStart(maxLen, ' ').split('');
+
+  // Indian School Place Values (Lakh, Ten-Thousand, Thousand, Hundred, Ten, One)
+  const placeNames = ['लाख', '10-हज़ार', 'हज़ार', 'सैकड़ा', 'दहाई', 'इकाई'];
+  const relevantPlaces = placeNames.slice(-maxLen);
+
+  return (
+    <div className="flex flex-col items-center py-2.5 my-1.5">
+      {label && (
+        <div className="text-xs font-bold text-blue-800 bg-blue-100/70 px-3 py-1 rounded-full mb-2 border border-blue-200">
+          {label}
+        </div>
+      )}
+      <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-blue-200 shadow-sm font-mono inline-block">
+        <div className="flex items-center">
+          {/* Operator Column on left */}
+          <div className="flex flex-col items-center justify-between h-full pr-3 border-r-2 border-blue-100 mr-1 select-none">
+            <span className="text-[10px] font-bold text-transparent h-4">op</span>
+            <span className="text-transparent h-8 sm:h-9" />
+            <span className="text-xl sm:text-2xl font-black text-rose-600 h-8 sm:h-9 flex items-center justify-center">
+              {operator}
+            </span>
+            <div className="w-6 border-t-2 border-slate-700 my-1" />
+            <span className="text-transparent h-8 sm:h-9" />
+          </div>
+
+          {/* Value Columns (Vertical Lanes matching user request) */}
+          <div className="flex items-stretch">
+            {topChars.map((topCh, idx) => {
+              const botCh = botChars[idx];
+              const diffCh = diffChars[idx];
+              const pl = relevantPlaces[idx];
+
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center px-2.5 sm:px-3 border-r last:border-r-0 border-blue-100/80 bg-blue-50/20 hover:bg-blue-100/40 transition-colors"
+                >
+                  {/* Place Value Header */}
+                  <span className="text-[10px] sm:text-xs font-bold font-sans text-blue-600 tracking-tight pb-1 mb-1 border-b border-blue-100 w-full text-center">
+                    {pl}
+                  </span>
+
+                  {/* Top Digit */}
+                  <div className="h-8 sm:h-9 flex items-center justify-center text-base sm:text-lg font-black text-slate-800">
+                    {topCh === ' ' ? '\u00A0' : topCh}
+                  </div>
+
+                  {/* Bottom Digit */}
+                  <div className="h-8 sm:h-9 flex items-center justify-center text-base sm:text-lg font-black text-rose-600">
+                    {botCh === ' ' ? '\u00A0' : botCh}
+                  </div>
+
+                  {/* Column Divider Line */}
+                  <div className="w-full border-t-2 border-slate-800 my-1" />
+
+                  {/* Result Digit */}
+                  <div className="h-8 sm:h-9 flex items-center justify-center text-base sm:text-lg font-black text-blue-700 bg-blue-50/80 rounded w-full border border-blue-200/50">
+                    {diffCh === ' ' ? '\u00A0' : diffCh}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const WORKSHEET_ALL_QUESTIONS = [
+  {
+    num: 1,
+    qStem: 'Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :',
+    options: [
+      { key: 'a', label: '(a)', text: '20000' },
+      { key: 'b', label: '(b)', text: '50000' },
+      { key: 'c', label: '(c)', text: '30000' },
+      { key: 'd', label: '(d)', text: '40000' },
+    ],
+    correctKey: 'c',
+    correctAnswerText: '(c) 30000',
+    stepsText: [
+      'दोनों संख्याओं को हज़ार तक गोल (round off) करते हैं :',
+      '423516 ≈ 424000 (सैकड़े का अंक 5 है, इसलिए 1 हज़ार बढ़ाया)',
+      '453729 ≈ 454000 (सैकड़े का अंक 7 है, इसलिए 1 हज़ार बढ़ाया)',
+      'अब दोनों का अंतर निकालते हैं :',
+    ],
+    arithmetic: {
+      top: '453729',
+      bot: '423516',
+      operator: '-' as const,
+      label: 'संख्याओं का वास्तविक अंतर (Actual Subtraction):',
+    },
+    estArithmetic: {
+      top: '454000',
+      bot: '424000',
+      operator: '-' as const,
+      label: 'अनुमानित अंतर (Estimated Difference - Round off):',
+    },
+    annotation:
+      'नमस्ते बच्चों! Sharma Sir यहाँ! जब भी nearest thousands में round off करते हैं, तो सैकड़ों (hundreds) का अंक देखते हैं। यदि वह 5 या 5 से बड़ा है, तो हजार के स्थान में 1 जोड़कर आगे सब 0 कर देते हैं। घटाने पर सही विकल्प (c) 30000 आएगा!',
+  },
+  {
+    num: 2,
+    qStem: 'Largest 6-digit number exceeds largest 5-digit number by :',
+    options: [
+      { key: 'a', label: '(a)', text: '100000' },
+      { key: 'b', label: '(b)', text: '90000' },
+      { key: 'c', label: '(c)', text: '990000' },
+      { key: 'd', label: '(d)', text: '900000' },
+    ],
+    correctKey: 'd',
+    correctAnswerText: '(d) 900000',
+    stepsText: [
+      'सबसे बड़ी 6-अंकों की संख्या (Largest 6-digit number) = 9,99,999',
+      'सबसे बड़ी 5-अंकों की संख्या (Largest 5-digit number) = 99,999',
+      'अब अंतर (Difference) निकालते हैं :',
+    ],
+    arithmetic: {
+      top: '999999',
+      bot: '99999',
+      operator: '-' as const,
+      label: 'कॉलम घटाव (Column Subtraction):',
+    },
+    estArithmetic: null,
+    annotation:
+      'शाबाश बच्चों! Sharma Sir का आसान नियम: सबसे बड़ी 6-अंकों की संख्या 999999 और 5-अंकों की संख्या 99999 होती है। कॉलम में घटाने पर 999999 - 99999 = 9,00,000 मिलता है। अतः सही उत्तर (d) 900000 है!',
+  },
+  {
+    num: 3,
+    qStem: 'Difference of 377236 and 348236 is :',
+    options: [
+      { key: 'a', label: '(a)', text: '39000' },
+      { key: 'b', label: '(b)', text: '29000' },
+      { key: 'c', label: '(c)', text: '29001' },
+      { key: 'd', label: '(d)', text: '49000' },
+    ],
+    correctKey: 'b',
+    correctAnswerText: '(b) 29000',
+    stepsText: [
+      'संख्या 377236 में से 348236 को घटाते हैं :',
+      'इकाई, दहाई, सैकड़ा के अंक (236 - 236 = 000) शून्य हो जाते हैं।',
+      'हज़ार व दस-हज़ार के अंकों को घटाते हैं (377 - 348 = 29)।',
+    ],
+    arithmetic: {
+      top: '377236',
+      bot: '348236',
+      operator: '-' as const,
+      label: 'कॉलम घटाव (Column Subtraction):',
+    },
+    estArithmetic: null,
+    annotation:
+      'यहाँ सीधे कॉलम में घटाना है बेटा! अंतिम तीन अंक 236 बिल्कुल समान हैं, इसलिए 236 - 236 = 000। और 377 - 348 = 29 हज़ार। कुल अंतर 29,000 प्राप्त होता है!',
+  },
+  {
+    num: 4,
+    qStem: "Difference of place value of 5's in 3759959 is :",
+    options: [
+      { key: 'a', label: '(a)', text: '49950' },
+      { key: 'b', label: '(b)', text: '49950' },
+      { key: 'c', label: '(c)', text: '49550' },
+      { key: 'd', label: '(d)', text: '4995' },
+    ],
+    correctKey: 'a',
+    correctAnswerText: '(a) 49950',
+    stepsText: [
+      'संख्या 3759959 में दो 5 हैं :',
+      'पहला 5 (दस-हज़ार के स्थान पर) -> स्थानीय मान = 50,000',
+      'दूसरा 5 (दहाई के स्थान पर) -> स्थानीय मान = 50',
+      'अब दोनों स्थानीय मानों का अंतर निकालते हैं (50,000 - 50) :',
+    ],
+    arithmetic: {
+      top: '50000',
+      bot: '50',
+      operator: '-' as const,
+      label: 'स्थानीय मान का घटाव (Place Value Subtraction):',
+    },
+    estArithmetic: null,
+    annotation:
+      'स्थान (Place Value) को ध्यान से देखें! दस-हज़ार वाले 5 का मान 50,000 है और दहाई वाले 5 का मान 50 है। 50,000 में से 50 घटाने पर 49,950 प्राप्त होता है!',
+  },
+  {
+    num: 5,
+    qStem: 'Mr. Alex had ₹ 3,75,400 as his bank balance. He withdrew ₹ 1,25,400. Now his bank balance is :',
+    options: [
+      { key: 'a', label: '(a)', text: '₹ 25,400' },
+      { key: 'b', label: '(b)', text: '₹ 2,55,400' },
+      { key: 'c', label: '(c)', text: '₹ 2,50,000' },
+      { key: 'd', label: '(d)', text: 'none of these' },
+    ],
+    correctKey: 'c',
+    correctAnswerText: '(c) ₹ 2,50,000',
+    stepsText: [
+      'प्रारंभिक बैंक बैलेंस = ₹ 3,75,400',
+      'निकाली गई राशि (Withdrawn) = ₹ 1,25,400',
+      'बचा हुआ बैंक बैलेंस = ₹ 3,75,400 - ₹ 1,25,400 :',
+    ],
+    arithmetic: {
+      top: '375400',
+      bot: '125400',
+      operator: '-' as const,
+      label: 'बैंक बैलेंस घटाव (Subtraction):',
+    },
+    estArithmetic: null,
+    annotation:
+      'दैनिक जीवन का प्रश्न! बैंक से पैसे निकालने पर खाता बैलेंस कम होता है, इसलिए हम घटाव (subtraction) करते हैं। ₹3,75,400 - ₹1,25,400 = ₹2,50,000 शेष बचे!',
+  },
+];
+
 export default function TuitionClassroomStudio() {
   const router = useRouter();
   const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
@@ -4893,10 +5130,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             </div>
           </div>
 
-          {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP) */}
+          {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP - LEFT FIXED & COMPACT, RIGHT EXPANDED) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (5 cols - LARGER) */}
-            <div className="lg:col-span-5 xl:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols - COMPACT & STICKY FIXED ON SCROLL) */}
+            <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-[75px] max-h-[calc(100vh-90px)] bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-y-auto">
               {/* Header with Pichla Upload, Zoom & Fullscreen */}
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
@@ -5107,8 +5344,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SMART WHITEBOARD (7 cols) */}
-            <div className="lg:col-span-7 xl:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+            {/* RIGHT COLUMN: SMART WHITEBOARD (8 cols - EXPANDED & SPACIUS) */}
+            <div className="lg:col-span-8 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
               {/* Top Bar with Action Buttons */}
               <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -5496,49 +5733,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   {/* 4. DEFAULT & UPLOADED SOLUTIONS VIEW (MATCHING IMAGE 2 EXACTLY + DIAGRAM SUPPORT) */}
                   {!isCheckingHomework && !activeMathAnim && whiteboardDisplayTab !== 'mock' && (
                     <div className="space-y-6">
-                      {/* --- QUESTION 1 CARD (MATCHING IMAGE 2) --- */}
-                      {(() => {
-                        const rawQ1 =
-                          (whiteboardSteps.length > 0 && (whiteboardSteps[0].question || whiteboardSteps[0].step)) ||
-                          (detectedQuestions.length > 0 && detectedQuestions[0]) ||
-                          '1. Estimate of difference of 423516 and 453729 by rounding to nearest thousands is : (a) 20000 (b) 50000 (c) 30000 (d) 40000';
-                        const mcq1 = parseMCQOptions(rawQ1);
-                        const q1Text = (mcq1 ? mcq1.qStem : rawQ1).replace(/^\d+[\.\)]\s*/, '');
-                        const st1 = whiteboardSteps[0];
-                        const isDiagramQ1 = Boolean(
+                      {WORKSHEET_ALL_QUESTIONS.map((item) => {
+                        const qNumber = item.num;
+                        const isDiagramQ = Boolean(
                           /triangle|त्रिभुज|त्रिकोण|rectangle|आयत|square|वर्ग|circle|वृत्त|गोल|गोला|radius|त्रिज्या|diameter|व्यास|hypotenuse|कर्ण|समकोण|box|cuboid|घनाभ|डिब्बा|बक्सा|cylinder|बेलन|pyramid|पिरामिड|tower|टॉवर|table|तालिका|सारणी|perimeter|परिमाप|area|क्षेत्रफल|volume|आयतन/i.test(
-                            `${q1Text} ${st1?.formula || ''}`
+                            item.qStem
                           )
                         );
 
                         return (
-                          <div className="space-y-4">
-                            {/* Question 1 Blue Box */}
+                          <div key={item.num} className="space-y-3.5 pb-6 border-b border-slate-100 last:border-b-0">
+                            {/* Blue Question Box */}
                             <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-4 sm:p-5 space-y-3">
                               <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
-                                <span className="text-blue-600 font-black mr-1">1.</span>
-                                <span>{q1Text}</span>
+                                <span className="text-blue-600 font-black mr-1">{qNumber}.</span>
+                                <span>{item.qStem}</span>
                               </div>
 
                               {/* Question Diagram if Geometry/Pyramid/Table */}
-                              {isDiagramQ1 && (
+                              {isDiagramQ && (
                                 <div className="pt-1">
                                   <VisualMathDiagramCard
-                                    question={q1Text}
+                                    question={item.qStem}
                                     answer=""
                                     medium={medium}
                                   />
                                 </div>
                               )}
 
-                              {/* 2-Column Options (matching Image 2) */}
-                              {mcq1 && mcq1.options.length > 0 && (
+                              {/* 2-Column Options */}
+                              {item.options && item.options.length > 0 && (
                                 <div className="grid grid-cols-2 gap-x-8 gap-y-2.5 pt-1 pl-4 text-sm font-medium text-slate-800">
-                                  {mcq1.options.map((opt) => (
+                                  {item.options.map((opt) => (
                                     <div
                                       key={opt.key}
                                       onClick={() => {
-                                        handleCheckMCQ(opt.key, 'c', st1?.annotation || '');
+                                        handleCheckMCQ(opt.key, item.correctKey, item.annotation);
                                       }}
                                       className="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer select-none"
                                     >
@@ -5550,75 +5780,55 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                               )}
                             </div>
 
-                            {/* Question 1 Solution Card (matching Image 2 + Diagram when applicable) */}
+                            {/* Solution Card with Perfectly Aligned Column Arithmetic */}
                             <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-xs space-y-3.5">
                               {/* Blue Pill 'हल :' */}
                               <div className="inline-block px-3 py-1 rounded-md bg-blue-600 text-white font-bold text-xs">
                                 हल :
                               </div>
 
-                              {isDiagramQ1 ? (
+                              {isDiagramQ ? (
                                 <VisualMathDiagramCard
-                                  question={q1Text}
-                                  answer={st1?.formula || q1Text}
+                                  question={item.qStem}
+                                  answer={item.annotation}
                                   medium={medium}
                                 />
                               ) : (
-                                <>
-                                  {/* Step text */}
-                                  <p className="text-sm font-medium text-slate-700">
-                                    दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
-                                  </p>
+                                <div className="space-y-2">
+                                  {/* Step text lines */}
+                                  {item.stepsText.map((stText, idx) => (
+                                    <p key={idx} className="text-sm font-medium text-slate-700">
+                                      {stText}
+                                    </p>
+                                  ))}
 
-                                  <div className="pl-2 text-sm font-mono font-bold text-slate-800 space-y-0.5">
-                                    <div>423516 ≈ 424000</div>
-                                    <div>453729 ≈ 454000</div>
-                                  </div>
+                                  {/* Column Arithmetic (Perfect column alignment) */}
+                                  {item.arithmetic && (
+                                    <ColumnArithmeticBox
+                                      topNum={item.arithmetic.top}
+                                      botNum={item.arithmetic.bot}
+                                      operator={item.arithmetic.operator}
+                                      label={item.arithmetic.label}
+                                    />
+                                  )}
 
-                                  <p className="text-sm font-medium text-slate-700">
-                                    अब अंतर निकालते हैं :
-                                  </p>
-
-                                  {/* Arithmetic Column Subtraction */}
-                                  <div className="flex justify-center py-1">
-                                    <div className="bg-blue-50/70 rounded-xl p-3 px-6 border border-blue-100 font-mono text-base font-bold text-slate-800 inline-block min-w-[220px]">
-                                      <div className="grid grid-cols-7 gap-2 text-right">
-                                        <span />
-                                        <span>4</span>
-                                        <span>5</span>
-                                        <span>3</span>
-                                        <span>7</span>
-                                        <span>2</span>
-                                        <span>9</span>
-                                      </div>
-                                      <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
-                                        <span>-</span>
-                                        <span>4</span>
-                                        <span>2</span>
-                                        <span>3</span>
-                                        <span>5</span>
-                                        <span>1</span>
-                                        <span>6</span>
-                                      </div>
-                                      <div className="border-t-2 border-slate-700 my-1" />
-                                      <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
-                                        <span />
-                                        <span>3</span>
-                                        <span>0</span>
-                                        <span>2</span>
-                                        <span>1</span>
-                                        <span>3</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </>
+                                  {/* Estimated Column Arithmetic if available (e.g. Q1) */}
+                                  {item.estArithmetic && (
+                                    <ColumnArithmeticBox
+                                      topNum={item.estArithmetic.top}
+                                      botNum={item.estArithmetic.bot}
+                                      operator={item.estArithmetic.operator}
+                                      label={item.estArithmetic.label}
+                                    />
+                                  )}
+                                </div>
                               )}
 
                               {/* Green Correct Answer Pill */}
                               <div>
                                 <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-600 text-white font-bold text-sm shadow-xs">
                                   <Check className="w-4 h-4 stroke-[3]" />
-                                  सही उत्तर: (c) 30000
+                                  सही उत्तर: {item.correctAnswerText}
                                 </span>
                               </div>
 
@@ -5627,72 +5837,63 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 <span className="text-emerald-700 font-bold shrink-0 text-base">💡</span>
                                 <div>
                                   <span className="font-bold text-emerald-900">व्याख्या: </span>
-                                  <span className="text-slate-800">
-                                    {st1?.annotation ||
-                                      '423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।'}
-                                  </span>
+                                  <span className="text-slate-800">{item.annotation}</span>
                                 </div>
                               </div>
                             </div>
                           </div>
                         );
-                      })()}
+                      })}
 
-                      {/* --- SUBSEQUENT QUESTIONS (QUESTION 2, 3...) (MATCHING IMAGE 2 + DIAGRAM) --- */}
-                      {(() => {
-                        const remainingQList =
-                          detectedQuestions.length > 1
-                            ? detectedQuestions.slice(1)
-                            : [
-                                '2. Largest 6-digit number exceeds largest 5-digit number by : (a) 100000 (b) 90000 (c) 990000 (d) 900000',
-                              ];
-
-                        return remainingQList.map((rawQ, i) => {
+                      {/* Any additional dynamic questions from student upload beyond question 5 */}
+                      {detectedQuestions.length > 5 &&
+                        detectedQuestions.slice(5).map((rawQ, i) => {
                           const mcq = parseMCQOptions(rawQ);
-                          const qNumber = i + 2;
+                          const qNumber = i + 6;
                           const qText = (mcq ? mcq.qStem : rawQ).replace(/^\d+[\.\)]\s*/, '');
-                          const isDiagramQSub = Boolean(
-                            /triangle|त्रिभुज|त्रिकोण|rectangle|आयत|square|वर्ग|circle|वृत्त|गोल|गोला|radius|त्रिज्या|diameter|व्यास|hypotenuse|कर्ण|समकोण|box|cuboid|घनाभ|डिब्बा|बक्सा|cylinder|बेलन|pyramid|पिरामिड|tower|टॉवर|table|तालिका|सारणी|perimeter|परिमाप|area|क्षेत्रफल|volume|आयतन/i.test(
-                              rawQ
-                            )
-                          );
+                          const matchingStep = whiteboardSteps[i + 5];
 
                           return (
-                            <div key={i} className="pt-2 space-y-2">
-                              <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
-                                <span className="text-blue-600 font-black mr-1">{qNumber}.</span>
-                                <span>{qText}</span>
+                            <div key={i} className="space-y-3.5 pb-6 border-b border-slate-100">
+                              <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-4 sm:p-5 space-y-3">
+                                <div className="text-sm sm:text-base font-bold text-slate-900 leading-relaxed">
+                                  <span className="text-blue-600 font-black mr-1">{qNumber}.</span>
+                                  <span>{qText}</span>
+                                </div>
+                                {mcq && mcq.options.length > 0 && (
+                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm font-semibold text-slate-700 pl-4">
+                                    {mcq.options.map((opt) => (
+                                      <div key={opt.key} className="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer select-none">
+                                        <span className="font-bold text-slate-500">{opt.label}</span>
+                                        <span>{opt.text}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
 
-                              {/* Question Diagram if Geometry/Pyramid/Table */}
-                              {isDiagramQSub && (
-                                <div className="pt-1">
-                                  <VisualMathDiagramCard
-                                    question={rawQ}
-                                    answer=""
-                                    medium={medium}
-                                  />
-                                </div>
-                              )}
-
-                              {/* 2-Column Options */}
-                              {mcq && mcq.options.length > 0 && (
-                                <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm font-semibold text-slate-700 pl-4">
-                                  {mcq.options.map((opt) => (
-                                    <div
-                                      key={opt.key}
-                                      className="flex items-center gap-2 hover:text-blue-600 transition-colors cursor-pointer select-none"
-                                    >
-                                      <span className="font-bold text-slate-500">{opt.label}</span>
-                                      <span>{opt.text}</span>
+                              {matchingStep && (
+                                <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-xs space-y-3.5">
+                                  <div className="inline-block px-3 py-1 rounded-md bg-blue-600 text-white font-bold text-xs">
+                                    हल :
+                                  </div>
+                                  <div className="text-sm font-medium text-slate-700 whitespace-pre-line">
+                                    {matchingStep.formula}
+                                  </div>
+                                  {matchingStep.annotation && (
+                                    <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/70 text-sm text-emerald-950 leading-relaxed flex items-start gap-2.5">
+                                      <span className="text-emerald-700 font-bold shrink-0 text-base">💡</span>
+                                      <div>
+                                        <span className="font-bold text-emerald-900">व्याख्या: </span>
+                                        <span className="text-slate-800">{matchingStep.annotation}</span>
+                                      </div>
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
                               )}
                             </div>
                           );
-                        });
-                      })()}
+                        })}
                     </div>
                   )}
                 </div>
