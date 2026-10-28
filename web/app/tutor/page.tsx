@@ -4580,6 +4580,29 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <button
               type="button"
               onClick={() => {
+                setActiveSidebarItem('history');
+                setIsHistoryModalOpen(true);
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSidebarItem === 'history'
+                  ? 'bg-amber-50 text-amber-800 shadow-2xs font-black'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span>पिछला अपलोड</span>
+              </div>
+              {worksheetHistory.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-black bg-amber-100 text-amber-800 border border-amber-200">
+                  {worksheetHistory.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
                 setActiveSidebarItem('tests');
                 setIsSundayExamModalOpen(true);
               }}
@@ -4820,19 +4843,37 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
             {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols) */}
             <div className="lg:col-span-5 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
-              {/* Header */}
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                <span className="text-sm font-black text-slate-800">
-                  अपलोड की गई वर्कशीट
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsFullscreenMode((prev) => !prev)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                  title="Fullscreen"
-                >
-                  <Maximize2 className="w-4 h-4" />
-                </button>
+              {/* Header with Pichla Upload / History button */}
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black text-slate-800">
+                    अपलोड की गई वर्कशीट
+                  </span>
+                  {worksheetHistory.length > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
+                      {worksheetHistory.length} सेव्ड
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="पिछला अपलोड और पुराना रिकॉर्ड देखें"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>पिछला अपलोड</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreenMode((prev) => !prev)}
+                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    title="Fullscreen"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Scanned Worksheet View Area */}
@@ -4842,11 +4883,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 title="क्लिक करके नई वर्कशीट अपलोड करें"
               >
                 {uploadedImage ? (
-                  <img
-                    src={uploadedImage}
-                    alt="Uploaded Worksheet"
-                    className="max-h-[520px] w-auto object-contain rounded-lg shadow-2xs border border-slate-200"
-                  />
+                  <div className="relative w-full h-full flex flex-col items-center justify-center">
+                    <img
+                      src={uploadedImage}
+                      alt="Uploaded Worksheet"
+                      className="max-h-[520px] w-auto object-contain rounded-lg shadow-2xs border border-slate-200"
+                    />
+                    <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-2xs rounded-lg">
+                      <div className="bg-white/95 px-3.5 py-2 rounded-xl shadow-lg border border-blue-200 text-xs font-bold text-blue-600 flex items-center gap-2">
+                        <Upload className="w-4 h-4" />
+                        <span>नई वर्कशीट या पेज बदलें</span>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="relative w-full max-h-[520px] bg-[#f9f5f0] border border-amber-200/60 rounded-lg p-4 font-serif text-[11px] leading-relaxed text-slate-800 shadow-2xs overflow-hidden select-none">
                     <div className="text-center font-bold text-rose-700 text-xs mb-3 tracking-wide">
@@ -4901,40 +4950,67 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* Footer: Pagination + File Chip with Red Trash */}
               <div className="p-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                  <button
-                    type="button"
-                    onClick={handlePrevQuestion}
-                    className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                    title="Previous"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="text-[11px] px-1">Page 1 / 1</span>
-                  <button
-                    type="button"
-                    onClick={handleNextQuestion}
-                    className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                    title="Next"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {(() => {
+                  const currentIdx = uploadedFiles.findIndex((f) => f.id === activeFileId);
+                  const safeIdx = currentIdx !== -1 ? currentIdx : 0;
+                  const totalFiles = Math.max(1, uploadedFiles.length);
+                  const currentPageNum = safeIdx + 1;
+
+                  return (
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (uploadedFiles.length > 1 && safeIdx > 0) {
+                            handleSwitchPage(uploadedFiles[safeIdx - 1].id);
+                          } else {
+                            handlePrevQuestion();
+                          }
+                        }}
+                        disabled={uploadedFiles.length <= 1 && detectedQuestions.length <= 1}
+                        className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-30 cursor-pointer"
+                        title="पिछला पेज / सवाल"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[11px] px-1 font-black">
+                        Page {currentPageNum} / {totalFiles}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (uploadedFiles.length > 1 && safeIdx < uploadedFiles.length - 1) {
+                            handleSwitchPage(uploadedFiles[safeIdx + 1].id);
+                          } else {
+                            handleNextQuestion();
+                          }
+                        }}
+                        disabled={uploadedFiles.length <= 1 && detectedQuestions.length <= 1}
+                        className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-30 cursor-pointer"
+                        title="अगला पेज / सवाल"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* File Chip */}
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium">
                   <FileText className="w-3.5 h-3.5 text-slate-500" />
                   <span className="truncate max-w-[120px]">
-                    {uploadedFileName || 'Worksheet_3_Class4.jpg'}
+                    {uploadedFileName || (uploadedFiles[0]?.name) || 'Worksheet_3_Class4.jpg'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setUploadedImage(null)}
-                    className="text-red-500 hover:text-red-700 transition-colors cursor-pointer ml-1"
-                    title="वर्कशीट हटाएं"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {uploadedFiles.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setUploadedImage(null)}
+                      className="text-red-500 hover:text-red-700 transition-colors cursor-pointer ml-1"
+                      title="वर्कशीट हटाएं"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -5036,150 +5112,265 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   {/* Worksheet Title Header */}
                   <div className="text-center">
                     <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
-                      WORKSHEET  3
+                      {uploadedFiles.length > 0 || whiteboardSteps.length > 0
+                        ? getDisplayWhiteboardHeading(whiteboardHeading || uploadedFileName || 'WORKSHEET')
+                        : 'WORKSHEET  3'}
                     </h2>
                   </div>
 
                   {/* Section Title */}
                   <div>
                     <h3 className="text-sm font-black text-blue-900 tracking-tight">
-                      Multiple Choice Questions
+                      {detectedChapter
+                        ? `पाठ: ${detectedChapter.title}`
+                        : uploadedFiles.length > 0 || whiteboardSteps.length > 0
+                        ? 'अभ्यास प्रश्न व संपूर्ण हल (Step-by-Step Solutions)'
+                        : 'Multiple Choice Questions'}
                     </h3>
                   </div>
 
-                  {/* Active Question 1 Box */}
-                  <div className="bg-blue-50/50 rounded-xl border border-blue-200/80 p-4 space-y-3.5 shadow-2xs">
-                    {/* Question Stem */}
-                    <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
-                      <span className="text-blue-600 font-black mr-1">1.</span>
-                      {detectedQuestions[0] ||
-                        'Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :'}
-                    </div>
-
-                    {/* MCQ Options Grid */}
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-600">(a)</span>
-                        <span>20000</span>
+                  {/* 1. If currently analyzing/scanning uploaded worksheet */}
+                  {isCheckingHomework && (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-blue-50/40 rounded-2xl border border-blue-200/80 p-6">
+                      <div className="w-16 h-16 rounded-2xl bg-blue-100 border border-blue-200 flex items-center justify-center text-3xl animate-bounce shadow-md">
+                        {currentTeacher.emoji}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-600">(b)</span>
-                        <span>50000</span>
+                      <div className="flex items-center gap-2 text-blue-700 font-black text-xs bg-white px-3.5 py-1 rounded-full border border-blue-200 shadow-2xs">
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        <span>वर्कशीट स्कैन व हल तैयार हो रहा है...</span>
                       </div>
-                      <div className="flex items-center gap-2 text-blue-700 font-black">
-                        <span className="font-bold text-blue-600">(c)</span>
-                        <span>30000</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-600">(d)</span>
-                        <span>40000</span>
-                      </div>
-                    </div>
-
-                    {/* Solution Box */}
-                    <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
-                      {/* Hal Badge */}
-                      <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
-                        हल :
-                      </div>
-
-                      {/* Step 1 Text */}
-                      <p className="text-xs font-medium text-slate-700">
-                        दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
+                      <h4 className="text-sm font-black text-slate-800">
+                        {uploadedFileName
+                          ? `"${uploadedFileName}" के सभी सवाल पढ़े जा रहे हैं... ✍️`
+                          : `${currentTeacher.name} कॉपी में स्टेप-बाय-स्टेप हल लिख रहे हैं... ✍️`}
+                      </h4>
+                      <p className="text-xs text-slate-500 max-w-sm">
+                        बस कुछ सेकंड प्रतीक्षा करें बेटा, सारे सवाल और हल स्कूल कॉपी विधि से तैयार हो रहे हैं!
                       </p>
+                    </div>
+                  )}
 
-                      <div className="pl-3 text-xs font-mono font-bold text-slate-800 space-y-0.5">
-                        <div>423516 ≈ 424000</div>
-                        <div>453729 ≈ 454000</div>
-                      </div>
+                  {/* 2. Math Animation Blackboard if active */}
+                  {activeMathAnim && !isCheckingHomework && (
+                    <div className="mb-4">
+                      <TeacherWhiteboardAnimation
+                        key={`${activeMathAnim.num1}-${activeMathAnim.op}-${activeMathAnim.num2}`}
+                        num1={activeMathAnim.num1}
+                        op={activeMathAnim.op}
+                        num2={activeMathAnim.num2}
+                        result={activeMathAnim.result}
+                        teacherName={currentTeacher.name}
+                        theme="slate"
+                        onAudioPlay={(t) => speakText(t)}
+                        isAudioMuted={isAudioMuted}
+                        onScoreUpdate={(pts) => setTotalScore((prev) => prev + pts)}
+                        medium={medium}
+                      />
+                    </div>
+                  )}
 
-                      {/* Step 2 Text */}
-                      <p className="text-xs font-medium text-slate-700">
-                        अब अंतर निकालते हैं :
-                      </p>
+                  {/* 3. Dynamic Whiteboard Steps (when upload or doubt or chapter is active) */}
+                  {!isCheckingHomework && !activeMathAnim && whiteboardSteps.length > 0 && (
+                    <div className="space-y-6">
+                      {whiteboardSteps.map((st, idx) => {
+                        const displayQ = st.question || st.step;
+                        const mcqData = parseMCQOptions(displayQ);
 
-                      {/* Arithmetic Column Subtraction */}
-                      <div className="flex justify-center py-1">
-                        <div className="bg-blue-50/40 rounded-lg p-3 border border-blue-100 font-mono text-sm sm:text-base font-bold text-slate-800 inline-block">
-                          <div className="grid grid-cols-7 gap-2 text-right">
-                            <span />
-                            <span>4</span>
-                            <span>5</span>
-                            <span>3</span>
-                            <span>7</span>
-                            <span>2</span>
-                            <span>9</span>
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-xl border p-4 space-y-3.5 shadow-2xs transition-all ${
+                              idx === 0
+                                ? 'bg-blue-50/50 border-blue-200/80 ring-1 ring-blue-200/40'
+                                : 'bg-white border-slate-200'
+                            }`}
+                          >
+                            {/* Question Stem */}
+                            <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
+                              <span className="text-blue-600 font-black mr-1">{idx + 1}.</span>
+                              {mcqData ? mcqData.qStem : displayQ}
+                            </div>
+
+                            {/* MCQ Options Grid (if MCQ) */}
+                            {mcqData && mcqData.options.length > 0 && (
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
+                                {mcqData.options.map((opt) => {
+                                  const isSelected = selectedMCQ === opt.key;
+                                  return (
+                                    <button
+                                      key={opt.key}
+                                      type="button"
+                                      onClick={() => {
+                                        const cleanFormula = (st.formula || '').toLowerCase();
+                                        const isCorrectOpt =
+                                          cleanFormula.includes(`(${opt.key})`) ||
+                                          cleanFormula.includes(`उत्तर: (${opt.key})`) ||
+                                          cleanFormula.includes(`option ${opt.key}`) ||
+                                          cleanFormula.includes(opt.text.toLowerCase());
+                                        handleCheckMCQ(
+                                          opt.key,
+                                          isCorrectOpt ? opt.key : 'correct',
+                                          st.annotation || ''
+                                        );
+                                      }}
+                                      className={`flex items-center gap-2 p-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-blue-100 border-blue-400 font-bold text-blue-900 shadow-2xs'
+                                          : 'bg-white border-slate-200/70 hover:bg-blue-50/50 text-slate-700'
+                                      }`}
+                                    >
+                                      <span className="font-bold text-blue-600">{opt.label}</span>
+                                      <span>{opt.text}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Solution Box (हल) */}
+                            <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
+                              {/* Badge */}
+                              <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
+                                {st.step || 'हल :'}
+                              </div>
+
+                              {/* Formatted Calculation / Column Math / Formula */}
+                              <div className="space-y-2">
+                                {renderFormulaBlocks(st.formula, displayQ)}
+                              </div>
+
+                              {/* Teacher's Explanation Note */}
+                              {st.annotation && (
+                                <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
+                                  <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
+                                  <span>{st.annotation}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
-                            <span>-</span>
-                            <span>4</span>
-                            <span>2</span>
-                            <span>3</span>
-                            <span>5</span>
-                            <span>1</span>
-                            <span>6</span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* 4. Default State (When nothing uploaded yet: shows Worksheet 3 demo exactly as in screenshot) */}
+                  {!isCheckingHomework && !activeMathAnim && whiteboardSteps.length === 0 && (
+                    <>
+                      {/* Active Question 1 Box */}
+                      <div className="bg-blue-50/50 rounded-xl border border-blue-200/80 p-4 space-y-3.5 shadow-2xs">
+                        {/* Question Stem */}
+                        <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
+                          <span className="text-blue-600 font-black mr-1">1.</span>
+                          Estimate of difference of 423516 and 453729 by rounding to nearest thousands is :
+                        </div>
+
+                        {/* MCQ Options Grid */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-semibold text-slate-800 pl-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-600">(a)</span>
+                            <span>20000</span>
                           </div>
-                          <div className="border-t-2 border-slate-700 my-1" />
-                          <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
-                            <span />
-                            <span>3</span>
-                            <span>0</span>
-                            <span>2</span>
-                            <span>1</span>
-                            <span>3</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-600">(b)</span>
+                            <span>50000</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-blue-700 font-black">
+                            <span className="font-bold text-blue-600">(c)</span>
+                            <span>30000</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-600">(d)</span>
+                            <span>40000</span>
+                          </div>
+                        </div>
+
+                        {/* Solution Box */}
+                        <div className="bg-white rounded-xl p-3.5 border border-blue-100 shadow-2xs space-y-3">
+                          {/* Hal Badge */}
+                          <div className="inline-block px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-black text-xs">
+                            हल :
+                          </div>
+
+                          {/* Step 1 Text */}
+                          <p className="text-xs font-medium text-slate-700">
+                            दोनों संख्याओं को हज़ार तक गोल (round) करते हैं :
+                          </p>
+
+                          <div className="pl-3 text-xs font-mono font-bold text-slate-800 space-y-0.5">
+                            <div>423516 ≈ 424000</div>
+                            <div>453729 ≈ 454000</div>
+                          </div>
+
+                          {/* Step 2 Text */}
+                          <p className="text-xs font-medium text-slate-700">
+                            अब अंतर निकालते हैं :
+                          </p>
+
+                          {/* Arithmetic Column Subtraction */}
+                          <div className="flex justify-center py-1">
+                            <div className="bg-blue-50/40 rounded-lg p-3 border border-blue-100 font-mono text-sm sm:text-base font-bold text-slate-800 inline-block">
+                              <div className="grid grid-cols-7 gap-2 text-right">
+                                <span />
+                                <span>4</span>
+                                <span>5</span>
+                                <span>3</span>
+                                <span>7</span>
+                                <span>2</span>
+                                <span>9</span>
+                              </div>
+                              <div className="grid grid-cols-7 gap-2 text-right text-rose-600">
+                                <span>-</span>
+                                <span>4</span>
+                                <span>2</span>
+                                <span>3</span>
+                                <span>5</span>
+                                <span>1</span>
+                                <span>6</span>
+                              </div>
+                              <div className="border-t-2 border-slate-700 my-1" />
+                              <div className="grid grid-cols-7 gap-2 text-right text-blue-700 font-black">
+                                <span />
+                                <span>3</span>
+                                <span>0</span>
+                                <span>2</span>
+                                <span>1</span>
+                                <span>3</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Green Correct Answer Pill */}
+                          <div>
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs shadow-2xs">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              सही उत्तर: (c) 30000
+                            </span>
+                          </div>
+
+                          {/* Green Explanation Box */}
+                          <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
+                            <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
+                            <span>
+                              423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।
+                            </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Green Correct Answer Pill */}
-                      <div>
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs shadow-2xs">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                          सही उत्तर: (c) 30000
-                        </span>
-                      </div>
-
-                      {/* Green Explanation Box */}
-                      <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 leading-relaxed flex items-start gap-2">
-                        <span className="text-emerald-600 font-bold shrink-0">💡 व्याख्या:</span>
-                        <span>
-                          423516 को हज़ार तक गोल करने पर 424000 और 453729 को गोल करने पर 454000 मिलता है। इन दोनों का अंतर 454000 - 424000 = 30000 होता है।
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Question 2 */}
-                  <div className="pt-2 space-y-2">
-                    <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
-                      <span className="text-blue-600 font-black mr-1">2.</span>
-                      {detectedQuestions[1] ||
-                        'Largest 6-digit number exceeds largest 5-digit number by :'}
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-slate-700 pl-4">
-                      <div>(a) 100000</div>
-                      <div>(b) 90000</div>
-                      <div>(c) 990000</div>
-                      <div>(d) 900000</div>
-                    </div>
-                  </div>
-
-                  {/* Additional Dynamic Steps if student uploaded their worksheet */}
-                  {whiteboardSteps.length > 0 && (
-                    <div className="pt-4 border-t border-slate-200 space-y-3">
-                      <div className="text-xs font-black text-blue-700 uppercase tracking-wider">
-                        आपकी अपलोड की गई वर्कशीट के हल:
-                      </div>
-                      {whiteboardSteps.map((st, idx) => (
-                        <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
-                          <div className="font-bold text-slate-900">{st.step}</div>
-                          <div className="text-slate-600">{st.question}</div>
-                          {st.annotation && (
-                            <div className="text-blue-600 font-medium">{st.annotation}</div>
-                          )}
+                      {/* Question 2 */}
+                      <div className="pt-2 space-y-2">
+                        <div className="text-xs sm:text-sm font-bold text-slate-900 leading-relaxed">
+                          <span className="text-blue-600 font-black mr-1">2.</span>
+                          Largest 6-digit number exceeds largest 5-digit number by :
                         </div>
-                      ))}
-                    </div>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-semibold text-slate-700 pl-4">
+                          <div>(a) 100000</div>
+                          <div>(b) 90000</div>
+                          <div>(c) 990000</div>
+                          <div>(d) 900000</div>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
