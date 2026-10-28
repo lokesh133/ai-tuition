@@ -2,10 +2,10 @@
   "studentId": "9610328630",
   "studentPhone": "9610328630",
   "studentName": "keshav sharma",
-  "classGrade": "कक्षा 4",
+  "classGrade": "Class 4th",
   "board": "RBSE",
   "medium": "HINDI",
-  "updatedAt": 1793112153537,
+  "updatedAt": 1793187382554,
   "createdAt": 1793069677050,
   "conceptMastery": {
     "math_c2_subtraction_borrow": {
@@ -41,14 +41,27 @@
       "chapterNumber": 1,
       "boxLevel": 1,
       "nextDueDate": "2026-10-28",
-      "isOverdue": false,
+      "isOverdue": true,
       "priority": "HIGH",
       "recommendedAction": "Spaced Revision: Subtraction with Borrowing (घटाव और हासिल)"
     }
   ],
   "todayStudyPlan": [
     {
-      "id": "act-scan-2026-10-27",
+      "id": "act-rev-math_c2_subtraction_borrow",
+      "type": "REVISION",
+      "title": "Revision: Subtraction with Borrowing (घटाव और हासिल)",
+      "description": "Spaced repetition time! Is topic ko 5 minute me revise karein taaki hamesha yaad rahe.",
+      "subjectId": "math",
+      "teacherId": "sharma_sir",
+      "teacherName": "Sharma Sir",
+      "estimatedMinutes": 8,
+      "priority": "URGENT",
+      "conceptKey": "math_c2_subtraction_borrow",
+      "completed": false
+    },
+    {
+      "id": "act-scan-2026-10-28",
       "type": "PRACTICE_WEAK",
       "title": "Scan Homework & Instant Mistake Check",
       "description": "School copy ya textbook ki photo kheenche aur turant check karwayein.",

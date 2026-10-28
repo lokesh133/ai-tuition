@@ -3,6 +3,60 @@
   "testHistory": [],
   "uploads": [
     {
+      "id": "upload-1793190351838-dvksf",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793190351838,
+      "isoDate": "2026-10-28T12:25:51.838Z",
+      "fileName": "images.jfif",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-28T12-25-51-838Z_images.jfif.jpg",
+      "fileSizeKb": 9,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "teach",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793187108160-y5rjg",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793187108160,
+      "isoDate": "2026-10-28T11:31:48.160Z",
+      "fileName": "images.jfif",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-28T11-31-48-160Z_images.jfif.jpg",
+      "fileSizeKb": 74,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "teach",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793179502667-6basl",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793179502667,
+      "isoDate": "2026-10-28T09:25:02.667Z",
+      "fileName": "WhatsApp Image 2026-10-26 at 4.01.50 PM.jpeg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-28T09-25-02-667Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM.jpeg.jpg",
+      "fileSizeKb": 191,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
       "id": "upload-1793112253227-phv9s",
       "studentId": "general",
       "studentPhone": "",
@@ -57,8 +111,8 @@
       "teacherReplySummary": ""
     }
   ],
-  "updatedAt": 1793112253227,
+  "updatedAt": 1793190351838,
   "studentName": "Student",
-  "classGrade": "कक्षा 4",
+  "classGrade": "Class 4th",
   "board": "RBSE"
 }
