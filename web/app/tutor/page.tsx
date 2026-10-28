@@ -1700,7 +1700,187 @@ export default function TuitionClassroomStudio() {
       }
     }
 
-    if (rawParts.length > 1) {
+    // Helper to render student-friendly notebook-style clean math solution (school copy format)
+    const renderNotebookSolutionContent = (parts: string[], answerText: string | null) => {
+      // Helper to format individual math/explanation line
+      const formatLine = (rawLine: string, lineKey: string | number) => {
+        let line = rawLine.trim();
+        if (!line) return null;
+
+        // Clean computer/raw terminal symbols for students
+        line = line
+          .replace(/Working Column:\s*/gi, '')
+          .replace(/Notebook Column Working:\s*/gi, '')
+          .replace(/Difference Working:\s*/gi, '')
+          .replace(/<=\s*/g, '≤ ')
+          .replace(/>=\s*/g, '≥ ')
+          .replace(/->\s*/g, ' → ');
+
+        // Check if section label like "Given:" or "दिया है:"
+        if (/^(?:Given(?:\s+Numbers?)?|दिया\s*है)\s*:?/i.test(line)) {
+          const rest = line.replace(/^(?:Given(?:\s+Numbers?)?|दिया\s*है)\s*:?\s*/i, '').trim();
+          return (
+            <div key={lineKey} className="pt-0.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                📌 {medium === 'english' ? 'Given:' : 'दिया है:'}
+              </span>
+              {rest && <span className="ml-2 font-bold text-slate-900 dark:text-white">{rest}</span>}
+            </div>
+          );
+        }
+
+        // Check if step label like "Step 1: Round 7,14,123..."
+        const stepMatch = line.match(/^(?:Step|चरण)\s*([0-9]+)\s*[:.]\s*(.*)/i);
+        if (stepMatch) {
+          return (
+            <div key={lineKey} className="font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-2 pt-1 border-t border-slate-100 dark:border-white/5 first:mt-0 first:border-none first:pt-0">
+              <span className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[10px] font-black shrink-0">
+                चरण {stepMatch[1]}
+              </span>
+              <span className="text-xs sm:text-sm">{stepMatch[2]}</span>
+            </div>
+          );
+        }
+
+        // Check if bullet point
+        if (line.startsWith('- ') || line.startsWith('• ') || line.startsWith('* ')) {
+          const bulletText = line.replace(/^[-•*]\s*/, '').trim();
+          return (
+            <div key={lineKey} className="flex items-start gap-2 pl-2 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
+              <span className="text-indigo-500 font-bold leading-tight">•</span>
+              <span className="leading-snug">{bulletText}</span>
+            </div>
+          );
+        }
+
+        // Normal text line
+        return (
+          <div key={lineKey} className="text-xs sm:text-sm text-slate-800 dark:text-slate-200 leading-snug">
+            {line}
+          </div>
+        );
+      };
+
+      // Helper to check and render clean vertical notebook subtraction/addition
+      const renderArithmeticColumn = (colBlock: string, colKey: string | number) => {
+        const cLines = colBlock.split('\n').map((l) => l.trim()).filter(Boolean);
+        if (cLines.length >= 3 && (cLines[1]?.includes('-') || cLines[1]?.includes('+') || cLines[2]?.includes('---') || cLines[3]?.includes('---'))) {
+          const topNum = cLines[0].replace(/^[^\d₹$]+/, '').trim();
+          const secondLine = cLines[1];
+          const op = secondLine.includes('+') ? '+' : '−';
+          const bottomNum = secondLine.replace(/^[-+–\s₹$]+/, '').trim();
+          const ansLine = cLines.find((l, idx) => idx >= 2 && !l.includes('---')) || cLines[cLines.length - 1];
+          const ansNum = ansLine ? ansLine.replace(/^[^\d₹$]+/, '').trim() : '';
+
+          return (
+            <div key={colKey} className="my-2 flex flex-col items-start">
+              <div className="inline-flex flex-col items-end px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 font-mono text-xs sm:text-sm shadow-2xs">
+                <span className="text-slate-900 dark:text-slate-100 font-bold tracking-wider">{topNum}</span>
+                <div className="w-full flex items-center justify-between gap-4 border-b-2 border-slate-700 dark:border-slate-300 pb-0.5 my-0.5">
+                  <span className="text-indigo-600 dark:text-indigo-400 font-black text-sm">{op}</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold tracking-wider">{bottomNum}</span>
+                </div>
+                <span className="text-emerald-700 dark:text-emerald-400 font-black tracking-wider pt-0.5">{ansNum}</span>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={colKey} className="font-mono text-xs sm:text-sm p-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200/60 dark:border-white/10 whitespace-pre overflow-x-auto my-1">
+            {colBlock}
+          </div>
+        );
+      };
+
+      return (
+        <div className={`rounded-2xl border transition-all overflow-hidden ${
+          isDarkMode || chalkboardTheme === 'green'
+            ? 'bg-slate-950/80 border-slate-800 text-slate-100 shadow-sm'
+            : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
+        }`}>
+          {/* Notebook Card Header */}
+          <div className={`px-3.5 py-2 border-b flex items-center justify-between text-xs font-bold ${
+            isDarkMode || chalkboardTheme === 'green'
+              ? 'bg-slate-900/90 border-slate-800 text-indigo-300'
+              : 'bg-gradient-to-r from-indigo-50/90 via-sky-50/50 to-white border-indigo-100/80 text-indigo-900'
+          }`}>
+            <span className="flex items-center gap-1.5 text-xs font-black">
+              <span>📝</span>
+              <span>{medium === 'english' ? 'Notebook Solution:' : 'कॉपी में ऐसे हल करें (Solution):'}</span>
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+              {medium === 'english' ? 'Class 4 Math' : 'स्कूल विधि'}
+            </span>
+          </div>
+
+          {/* Unified Notebook Body: Clean, readable text with zero nested gray boxes */}
+          <div className="p-3.5 space-y-2 leading-relaxed font-sans">
+            {parts.map((p, pIdx) => {
+              if (p.includes('---') || p.includes('-------')) {
+                const lines = p.split('\n');
+                const textBefore: string[] = [];
+                const colLines: string[] = [];
+                let seenDash = false;
+
+                for (let li = 0; li < lines.length; li++) {
+                  const l = lines[li];
+                  if (l.includes('---')) {
+                    seenDash = true;
+                    const opLine = textBefore.pop();
+                    const numLine = textBefore.pop();
+                    if (numLine) colLines.push(numLine);
+                    if (opLine) colLines.push(opLine);
+                    colLines.push(l);
+                    if (li + 1 < lines.length) {
+                      colLines.push(lines[li + 1]);
+                      li++;
+                    }
+                  } else if (!seenDash) {
+                    textBefore.push(l);
+                  } else {
+                    textBefore.push(l);
+                  }
+                }
+
+                return (
+                  <div key={pIdx} className="space-y-1.5">
+                    {textBefore.map((tb, tbIdx) => formatLine(tb, `tb-${pIdx}-${tbIdx}`))}
+                    {colLines.length > 0 && renderArithmeticColumn(colLines.join('\n'), `col-${pIdx}`)}
+                  </div>
+                );
+              }
+
+              const lines = p.split('\n').map((l) => l.trim()).filter(Boolean);
+              return (
+                <div key={pIdx} className="space-y-1">
+                  {lines.map((l, lIdx) => formatLine(l, `${pIdx}-${lIdx}`))}
+                </div>
+              );
+            })}
+
+            {/* Clean Final Answer Line at the bottom */}
+            {answerText && (
+              <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs sm:text-sm font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/40 -mx-3.5 -mb-3.5 px-3.5 py-2.5">
+                <span className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs">
+                    ✓
+                  </span>
+                  <span>
+                    {medium === 'english' ? 'Correct Answer:' : 'सही उत्तर:'}{' '}
+                    <span className="text-emerald-700 dark:text-emerald-300 underline decoration-2 underline-offset-2">
+                      {answerText.replace(/^(?:Correct\s+Option|सही\s*विकल्प|Answer|उत्तर|Correct\s+Answer)\s*[:=]\s*/i, '').replace(/✅/g, '').trim()}
+                    </span>
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    if (rawParts.length > 1 || clean.includes('\n') || clean.includes('---')) {
       // Separate solution steps from final answer line so everything stays in 1 compact unified container
       let answerPart: string | null = null;
       const stepParts: string[] = [];
@@ -1722,61 +1902,8 @@ export default function TuitionClassroomStudio() {
         }
       }
 
-      return (
-        <div className={`rounded-xl border transition-all overflow-hidden ${
-          isDarkMode || chalkboardTheme === 'green'
-            ? 'bg-slate-950/80 border-slate-800 text-slate-100 shadow-sm'
-            : 'bg-white border-slate-200/90 text-slate-900 shadow-2xs'
-        }`}>
-          {/* Header */}
-          <div className={`px-3 py-1.5 border-b flex items-center justify-between text-xs font-bold ${
-            isDarkMode || chalkboardTheme === 'green'
-              ? 'bg-slate-900/90 border-slate-800 text-indigo-300'
-              : 'bg-indigo-50/70 border-indigo-100 text-indigo-800'
-          }`}>
-            <span className="flex items-center gap-1.5 text-[11px] tracking-wide font-black">
-              <span>📋</span>
-              <span>{medium === 'english' ? 'Step-by-Step Solution:' : 'चरण-दर-चरण हल (Solution):'}</span>
-            </span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100/80 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-              {stepParts.length} {medium === 'english' ? 'Steps' : 'चरण'}
-            </span>
-          </div>
-
-          {/* Unified Solution Body */}
-          <div className="p-3 text-xs sm:text-sm space-y-2 leading-relaxed font-sans">
-            {stepParts.map((part, pIdx) => {
-              const isCol = part.includes('---') || part.includes('-------') || /^[\s\d\+\-\*\/]+$/.test(part);
-              if (isCol) {
-                return (
-                  <pre key={pIdx} className="font-mono text-xs sm:text-sm bg-slate-50 dark:bg-black/30 p-2.5 rounded-lg border border-slate-200/60 dark:border-white/10 whitespace-pre overflow-x-auto leading-tight my-1">
-                    {part}
-                  </pre>
-                );
-              }
-              return (
-                <div key={pIdx} className="text-slate-800 dark:text-slate-200 font-medium">
-                  {renderFormulaAnswer(part)}
-                </div>
-              );
-            })}
-
-            {/* Compact Final Answer at the bottom */}
-            {answerPart && (
-              <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-white/10 flex items-center justify-between flex-wrap gap-2 text-xs sm:text-sm font-black text-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/30 -mx-3 -mb-3 px-3 py-2">
-                <span className="flex items-center gap-1.5">
-                  <span>🎯</span>
-                  <span>{answerPart.replace(/✅/g, '').trim()}</span>
-                </span>
-                <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-md shadow-2xs shrink-0 flex items-center gap-1">
-                  <span>✓</span>
-                  <span>{medium === 'english' ? 'Correct' : 'सही उत्तर'}</span>
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      );
+      const partsToRender = stepParts.length > 0 ? stepParts : [clean];
+      return renderNotebookSolutionContent(partsToRender, answerPart);
     }
 
     // Single formula block (e.g. single word answer or equation)
