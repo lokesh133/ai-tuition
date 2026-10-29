@@ -42,6 +42,8 @@ import {
   Bell,
   Crown,
   Maximize2,
+  Minimize2,
+  RotateCw,
   Home,
   MessageSquare,
   BarChart2,
@@ -571,6 +573,81 @@ export default function TuitionClassroomStudio() {
   const [imageZoom, setImageZoom] = useState<number>(1);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreenMode, setIsFullscreenMode] = useState<boolean>(false);
+  const [isFitToHeight, setIsFitToHeight] = useState<boolean>(true);
+  const [imageRotation, setImageRotation] = useState<number>(0);
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'both' | 'worksheet' | 'whiteboard'>('both');
+
+  // Live Camera / Webcam Capture States
+  const [isWebcamModalOpen, setIsWebcamModalOpen] = useState<boolean>(false);
+  const videoStreamRef = useRef<MediaStream | null>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const startWebcamCapture = async () => {
+    // Mobile devices have native high-res camera with auto-focus
+    const isMobile =
+      typeof navigator !== 'undefined' &&
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    try {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        });
+        videoStreamRef.current = stream;
+        setIsWebcamModalOpen(true);
+        setTimeout(() => {
+          if (webcamVideoRef.current) {
+            webcamVideoRef.current.srcObject = stream;
+            webcamVideoRef.current.play().catch(() => {});
+          }
+        }, 150);
+      } else {
+        cameraInputRef.current?.click();
+      }
+    } catch {
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const stopWebcamStream = () => {
+    if (videoStreamRef.current) {
+      videoStreamRef.current.getTracks().forEach((track) => track.stop());
+      videoStreamRef.current = null;
+    }
+    setIsWebcamModalOpen(false);
+  };
+
+  const capturePhotoFromWebcam = () => {
+    if (!webcamVideoRef.current) return;
+    const video = webcamVideoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      stopWebcamStream();
+
+      fetch(dataUrl)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const file = new File([blob], `camera_capture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          const fakeEvent = {
+            target: {
+              files: [file],
+              value: '',
+            },
+          } as unknown as React.ChangeEvent<HTMLInputElement>;
+          handlePhotoUpload(fakeEvent);
+        });
+    }
+  };
 
   // Whiteboard Steps (empty initially until chapter is selected or doubt asked)
   const [whiteboardSteps, setWhiteboardSteps] = useState<WhiteboardStepItem[]>([]);
@@ -664,6 +741,9 @@ export default function TuitionClassroomStudio() {
   const [mockAnswers, setMockAnswers] = useState<Record<number, string>>({});
   const [mockEvaluations, setMockEvaluations] = useState<Record<number, any>>({});
   const [activeMockQIdx, setActiveMockQIdx] = useState<number>(0);
+  const [mockQuestionMarks, setMockQuestionMarks] = useState<Record<number, number>>({});
+  const [mockManualScore, setMockManualScore] = useState<Record<number, string>>({});
+  const [isManualGradingOpen, setIsManualGradingOpen] = useState<boolean>(false);
   const [showMcqSteps, setShowMcqSteps] = useState<Record<number, boolean>>({});
   const [isPageFlipping, setIsPageFlipping] = useState<boolean>(false);
 
@@ -742,6 +822,110 @@ export default function TuitionClassroomStudio() {
           setIsCheckingHomework(false);
         });
     }
+  };
+
+  const cleanWorksheetDisplayName = (name?: string | null): string => {
+    if (!name) return 'कॉपी / वर्कशीट';
+    let clean = name
+      .replace(/^\d{4}-\d{2}-\d{2}T[^-]+-/, '')
+      .replace(/^[a-zA-Z0-9_-]+_WhatsApp_Image_/, 'WhatsApp Image ')
+      .replace(/^[_\s]+/, '')
+      .replace(/\.jpeg\.jpg$/i, '')
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[-_]/g, ' ')
+      .trim();
+    if (/^\d+$/.test(clean)) {
+      return `कॉपी (पेज ${clean})`;
+    }
+    return clean || 'कॉपी / वर्कशीट';
+  };
+
+  // Live Vision Analysis: reads active uploaded worksheet with AI and populates whiteboard steps
+  const handleAnalyzeActiveWorksheet = (targetFileParam?: { id?: string; name: string; url: string }) => {
+    const fileToScan = targetFileParam || uploadedFiles.find((f) => f.id === activeFileId) || uploadedFiles[0];
+    if (!fileToScan || !fileToScan.url) return;
+
+    setIsCheckingHomework(true);
+    setWhiteboardSteps([]);
+    const cleanName = cleanWorksheetDisplayName(fileToScan.name);
+    const heading = `वर्कशीट स्कैन: ${cleanName}`;
+    setWhiteboardHeading(heading);
+    const scanMsg = `बेटा, मैं आपकी कॉपी को ध्यान से पढ़कर इसके सभी सवाल और स्टेप-बाय-स्टेप हल व्हाइटबोर्ड पर ला रहा हूँ!`;
+    setSpeechText(scanMsg);
+    speakText(scanMsg);
+
+    fetch('/api/tutor/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'worksheet',
+        learning_language: medium === 'english' ? 'en' : 'hi',
+        teacher_id: currentTeacher.id,
+        question:
+          'कृपया इस पेज को ध्यान से पूरा पढ़ें। इसमें दिए गए सभी प्रश्न (अभ्यास, खाली स्थान, सवाल) पहचानें और बिना किसी फालतू इंट्रो के, सीधे हर सवाल (Q1, Q2, Q3...) का सटीक, पूरा और स्टेप-बाय-स्टेप हल व उत्तर व्हाइटबोर्ड पर समझाएं।',
+        image_url: fileToScan.url,
+        file_name: fileToScan.name,
+        board,
+        className,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
+          const cleaned = filterFillerWhiteboardSteps(data.whiteboard_steps);
+          setWhiteboardSteps(cleaned);
+          setRevealedSteps(cleaned.length);
+          setDetectedQuestions(data.detected_questions || []);
+          setDetectedChapter(data.detected_chapter || null);
+          const finalHeading = `वर्कशीट हल: ${data.detected_chapter?.title || cleanName}`;
+          setWhiteboardHeading(finalHeading);
+
+          if (data.detected_subject) {
+            const matchedSub = allSubjects.find((s) =>
+              s.id.toLowerCase().includes(data.detected_subject.toLowerCase())
+            );
+            if (matchedSub) setSelectedSubject(matchedSub);
+          }
+          if (data.teacher_id) {
+            const matchedT = TEACHER_LIST_DATA.find(
+              (t) => t.id === data.teacher_id || t.id.includes(data.teacher_id)
+            );
+            if (matchedT) {
+              setCurrentTeacher({
+                id: matchedT.id,
+                name: matchedT.name,
+                role: matchedT.role,
+                emoji: matchedT.id === 'sharma' ? '👨‍🏫' : matchedT.id === 'riya' ? '👩‍🏫' : '👩‍🔬',
+              });
+            }
+          }
+
+          if (fileToScan.id) {
+            setPageDataMap((prev) => ({
+              ...prev,
+              [fileToScan.id!]: {
+                whiteboardSteps: cleaned,
+                detectedQuestions: data.detected_questions || [],
+                detectedChapter: data.detected_chapter || null,
+                heading: finalHeading,
+              },
+            }));
+          }
+
+          const readyMsg = `बेटा, आपकी कॉपी के सारे सवाल और पूरे हल व्हाइटबोर्ड पर तैयार हैं!`;
+          setSpeechText(readyMsg);
+          speakText(readyMsg);
+        } else {
+          fallbackUploadResponse(fileToScan.name);
+        }
+      })
+      .catch((err) => {
+        console.error('Worksheet live scan error:', err);
+        fallbackUploadResponse(fileToScan.name);
+      })
+      .finally(() => {
+        setIsCheckingHomework(false);
+      });
   };
 
   const handleRemoveFile = (idToRemove?: string) => {
@@ -976,15 +1160,20 @@ export default function TuitionClassroomStudio() {
         .then((data) => {
           if (data.success && data.currentSession) {
             const s = data.currentSession;
-            if (s.uploadedFiles && s.uploadedFiles.length > 0 && uploadedFiles.length === 0) {
-              setUploadedFiles(s.uploadedFiles);
+            if (s.uploadedFiles && s.uploadedFiles.length > 0) {
+              setUploadedFiles((prev) => (prev.length === 0 ? s.uploadedFiles : prev));
               setActiveFileId(s.activeFileId || s.uploadedFiles[0].id);
             }
             if (s.pageDataMap && Object.keys(s.pageDataMap).length > 0) {
               setPageDataMap(s.pageDataMap);
             }
-            if (s.whiteboardSteps && s.whiteboardSteps.length > 0 && whiteboardSteps.length === 0) {
-              setWhiteboardSteps(s.whiteboardSteps);
+            const hasRealSteps =
+              s.whiteboardSteps &&
+              s.whiteboardSteps.length > 0 &&
+              !s.whiteboardSteps.every((st: any) => st.formula === 'वर्कशीट सुरक्षित है' || st.step === 'सुरक्षित रिकॉर्ड');
+
+            if (hasRealSteps) {
+              setWhiteboardSteps((prev) => (prev.length === 0 ? s.whiteboardSteps : prev));
               setRevealedSteps(s.whiteboardSteps.length);
             }
             if (s.whiteboardHeading) setWhiteboardHeading(s.whiteboardHeading);
@@ -997,6 +1186,30 @@ export default function TuitionClassroomStudio() {
             try {
               localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(data.worksheetHistory));
             } catch {}
+            // If still no uploadedFiles loaded from session, load the most recent worksheet from history
+            setUploadedFiles((prev) => {
+              if (prev.length === 0 && data.worksheetHistory[0]?.files?.length > 0) {
+                setActiveFileId(data.worksheetHistory[0].files[0].id);
+                return data.worksheetHistory[0].files;
+              }
+              return prev;
+            });
+          }
+
+          // If active file exists but has no real whiteboard steps, auto-scan with AI
+          const sessionFiles = data.currentSession?.uploadedFiles;
+          const historyFiles = data.worksheetHistory?.[0]?.files;
+          const candidateFiles = sessionFiles?.length > 0 ? sessionFiles : historyFiles?.length > 0 ? historyFiles : [];
+          const sessionSteps = data.currentSession?.whiteboardSteps;
+          const hasRealSteps =
+            sessionSteps &&
+            sessionSteps.length > 0 &&
+            !sessionSteps.every((st: any) => st.formula === 'वर्कशीट सुरक्षित है' || st.step === 'सुरक्षित रिकॉर्ड');
+
+          if (candidateFiles.length > 0 && !hasRealSteps) {
+            setTimeout(() => {
+              handleAnalyzeActiveWorksheet(candidateFiles[0]);
+            }, 500);
           }
         })
         .catch(() => {})
@@ -2601,25 +2814,13 @@ export default function TuitionClassroomStudio() {
             try {
               localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(data.worksheetHistory));
             } catch {}
-          } else if (data.success && (!data.worksheetHistory || data.worksheetHistory.length === 0)) {
-            // Push existing local records up to server so they are saved to their account
-            const stored = localStorage.getItem('ai_tuition_worksheet_records');
-            if (stored) {
-              try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  fetch('/api/student/records', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      phone: studentUser.phone,
-                      studentId: studentUser.id,
-                      worksheetHistory: parsed,
-                    }),
-                  }).catch(() => {});
-                }
-              } catch {}
-            }
+            setUploadedFiles((prev) => {
+              if (prev.length === 0 && data.worksheetHistory[0]?.files?.length > 0) {
+                setActiveFileId(data.worksheetHistory[0].files[0].id);
+                return data.worksheetHistory[0].files;
+              }
+              return prev;
+            });
           }
         })
         .catch((err) => console.warn('Could not sync worksheets from server:', err));
@@ -3410,29 +3611,37 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     } else if (record.detectedQuestions && record.detectedQuestions.length > 0) {
       setActiveTargetQuestion(record.detectedQuestions[0]);
     }
-    const finalSteps: WhiteboardStepItem[] =
-      record.whiteboardSteps && record.whiteboardSteps.length > 0
-        ? record.whiteboardSteps
-        : record.detectedQuestions && record.detectedQuestions.length > 0
-          ? record.detectedQuestions.map((q, idx) => ({
-              step: `प्रश्न ${idx + 1} का हल`,
-              question: q,
-              formula: q,
-              annotation: `${record.teacherName || 'शिक्षक'}: "यह प्रश्न आपकी पूर्व सुरक्षित वर्कशीट से हल किया गया है।"`,
-            }))
-          : [
-              {
-                step: 'सुरक्षित रिकॉर्ड',
-                question: record.title,
-                formula: 'वर्कशीट सुरक्षित है',
-                annotation: 'शिक्षक: "इस रिकॉर्ड का कार्य व्हाइटबोर्ड पर लोड हो गया है।"',
-              },
-            ];
+    const hasRealSteps =
+      record.whiteboardSteps &&
+      record.whiteboardSteps.length > 0 &&
+      !record.whiteboardSteps.every(
+        (s) => s.formula === 'वर्कशीट सुरक्षित है' || s.step === 'सुरक्षित रिकॉर्ड'
+      );
 
-    setWhiteboardSteps(finalSteps);
-    setRevealedSteps(finalSteps.length);
-    const heading = record.whiteboardHeading || record.title || 'सुरक्षित वर्कशीट हल';
-    setWhiteboardHeading(heading);
+    if (hasRealSteps) {
+      setWhiteboardSteps(record.whiteboardSteps!);
+      setRevealedSteps(record.whiteboardSteps!.length);
+      const heading = record.whiteboardHeading || record.title || 'सुरक्षित वर्कशीट हल';
+      setWhiteboardHeading(heading);
+    } else if (upgradedFiles.length > 0) {
+      // Trigger live AI Vision to scan and solve this worksheet copy!
+      handleAnalyzeActiveWorksheet(upgradedFiles[0]);
+    } else if (record.detectedQuestions && record.detectedQuestions.length > 0) {
+      const qSteps: WhiteboardStepItem[] = record.detectedQuestions.map((q, idx) => ({
+        step: `प्रश्न ${idx + 1} का हल`,
+        question: q,
+        formula: q,
+        annotation: `${record.teacherName || 'शिक्षक'}: "यह प्रश्न आपकी पूर्व सुरक्षित वर्कशीट से हल किया गया है।"`,
+      }));
+      setWhiteboardSteps(qSteps);
+      setRevealedSteps(qSteps.length);
+      const heading = record.whiteboardHeading || record.title || 'सुरक्षित वर्कशीट हल';
+      setWhiteboardHeading(heading);
+    } else {
+      setWhiteboardSteps([]);
+      setRevealedSteps(0);
+      setWhiteboardHeading(record.title || 'वर्कशीट हल');
+    }
 
     if (record.subjectId) {
       const matched = allSubjects.find((s) => s.id.toLowerCase().includes(record.subjectId.toLowerCase()));
@@ -3442,7 +3651,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     setActiveMathAnim(null);
     setIsHistoryModalOpen(false);
 
-    const restoreMsg = `बेटा, आपका पिछला रिकॉर्ड "${record.title}" लोड हो गया है! अब आप इसके सभी सवाल आगे-पीछे करके हल कर सकते हैं।`;
+    const restoreMsg = `बेटा, आपका पिछला रिकॉर्ड "${record.title}" लोड हो गया है!`;
     setSpeechText(restoreMsg);
     speakText(restoreMsg);
   };
@@ -4297,6 +4506,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     stopAudio();
     setIsEvaluatingMock(true);
 
+    const maxMarks = mockQuestionMarks[qIdx] || 10;
     try {
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
@@ -4308,17 +4518,25 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           question: activeQ.question,
           student_answer: studentAns,
           ideal_answer: activeQ.idealAnswer || '',
+          max_marks: maxMarks,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data.evaluation) {
+          const scaledScore = Math.min(maxMarks, Math.round(((data.evaluation.score || 8) / 10) * maxMarks));
+          const adjustedEval = {
+            ...data.evaluation,
+            score: scaledScore,
+            totalMarks: maxMarks,
+            percentage: Math.round((scaledScore / maxMarks) * 100),
+          };
           setMockEvaluations((prev) => ({
             ...prev,
-            [qIdx]: data.evaluation,
+            [qIdx]: adjustedEval,
           }));
-          const praise = data.evaluation.teacherPraise || `शाबाश बेटा! आपका स्कोर ${data.evaluation.score}/10 है।`;
+          const praise = data.evaluation.teacherPraise || `शाबाश बेटा! आपका स्कोर ${scaledScore}/${maxMarks} है।`;
           setSpeechText(praise);
           speakText(praise);
         }
@@ -4328,6 +4546,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     } finally {
       setIsEvaluatingMock(false);
     }
+  };
+
+  // Manual Marks Awarding: Allows teacher/student to give custom numbers/marks directly
+  const handleSaveManualMarks = (qIdx: number) => {
+    const raw = mockManualScore[qIdx];
+    const scoreVal = parseFloat(raw);
+    const maxMarks = mockQuestionMarks[qIdx] || 10;
+    if (isNaN(scoreVal)) return;
+
+    const finalScore = Math.max(0, Math.min(maxMarks, scoreVal));
+    const percentage = Math.round((finalScore / maxMarks) * 100);
+    const grade =
+      percentage >= 90
+        ? '🌟 उत्कृष्ट (100% सटीक)'
+        : percentage >= 70
+        ? '⭐ बहुत अच्छा'
+        : percentage >= 40
+        ? '👍 ठीक प्रयास'
+        : '💡 और अभ्यास करें';
+
+    setMockEvaluations((prev) => ({
+      ...prev,
+      [qIdx]: {
+        score: finalScore,
+        totalMarks: maxMarks,
+        percentage,
+        grade,
+        badge: percentage >= 75 ? '⭐ शानदार स्कोर!' : '📝 अच्छा अभ्यास!',
+        feedback: `शिक्षक द्वारा दिए गए अंक: ${finalScore}/${maxMarks} (${grade})`,
+        teacherPraise: `शाबाश बेटा! शिक्षक द्वारा सवाल ${qIdx + 1} में ${finalScore}/${maxMarks} अंक दर्ज किए गए।`,
+      },
+    }));
+    setIsManualGradingOpen(false);
+    const msg = `शाबाश बेटा! सवाल ${qIdx + 1} के लिए ${finalScore}/${maxMarks} नंबर दर्ज कर दिए गए हैं।`;
+    setSpeechText(msg);
+    speakText(msg);
   };
 
   // =========================================================================
@@ -4647,7 +4901,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+    <div className={`h-screen max-h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
       isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f4f7fb] text-slate-900'
     }`}>
       {/* Hidden file inputs for upload and camera */}
@@ -4670,7 +4924,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       />
 
       {/* 1. TOP NAVBAR (MATCHING MOCKUP) */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 px-4 py-2.5 shadow-2xs">
+      <header className="shrink-0 z-40 bg-white border-b border-slate-200/90 px-4 py-2 shadow-2xs">
         <div className="w-full flex items-center justify-between gap-3">
           {/* Left: Brand Logo + Academic Selectors + Language Pill */}
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
@@ -4796,9 +5050,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       </header>
 
       {/* 2. MAIN CONTAINER WITH SIDEBAR + WORKSPACE */}
-      <div className="flex-1 flex min-h-[calc(100vh-65px)] relative">
+      <div className="flex-1 min-h-0 flex relative overflow-hidden">
         {/* LEFT SIDEBAR - FIXED ON DESKTOP */}
-        <aside className="w-48 lg:w-52 bg-white border-r border-slate-200 flex flex-col justify-between py-4 px-2.5 shrink-0 select-none sticky top-[65px] h-[calc(100vh-65px)] overflow-y-auto z-20">
+        <aside className="w-48 lg:w-52 bg-white border-r border-slate-200 flex flex-col justify-between py-3 px-2.5 shrink-0 select-none h-full overflow-y-auto z-20">
           {/* Navigation Items */}
           <div className="space-y-1">
             <button
@@ -4985,22 +5239,22 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
         </aside>
 
-        {/* MAIN WORKSPACE CONTENT */}
-        <main className="flex-1 p-3 sm:p-5 pb-28 max-w-[1550px] mx-auto w-full flex flex-col gap-4">
-          {/* 3. TEACHER HERO BANNER CARD (MATCHING MOCKUP) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-4">
+        {/* MAIN WORKSPACE CONTENT - PERFECT FIT WITH ZERO PAGE SCROLL */}
+        <main className="flex-1 min-h-0 p-2 sm:p-2.5 lg:p-3 pb-1 max-w-[1550px] mx-auto w-full flex flex-col gap-2 overflow-hidden">
+          {/* 3. TEACHER HERO BANNER CARD (COMPACT FOR SINGLE SCREEN VIEW) */}
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-2 sm:p-2.5 lg:p-3 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
             {/* Left: Chalkboard graphic with 3D Teacher Avatar */}
-            <div className="flex items-center gap-4 w-full lg:w-auto">
-              <div className="relative w-44 sm:w-56 h-28 rounded-xl bg-[#1c4731] border-4 border-[#7d512d] shadow-md flex items-center justify-center overflow-hidden shrink-0">
+            <div className="flex items-center gap-3 sm:gap-3.5 w-full lg:w-auto">
+              <div className="relative w-32 sm:w-40 lg:w-44 h-18 sm:h-20 rounded-xl bg-[#1c4731] border-3 sm:border-4 border-[#7d512d] shadow-md flex items-center justify-center overflow-hidden shrink-0">
                 {/* Chalk doodles background */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none select-none text-white font-mono text-xs p-2 flex flex-col justify-between">
+                <div className="absolute inset-0 opacity-20 pointer-events-none select-none text-white font-mono text-[10px] p-1.5 flex flex-col justify-between">
                   <div className="flex justify-between"><span>1 2 3</span><span>+-×÷</span></div>
-                  <div className="text-center text-sm">📐 3D</div>
+                  <div className="text-center text-xs">📐 3D</div>
                   <div className="flex justify-between"><span>√x</span><span>a²+b²</span></div>
                 </div>
                 {/* Teacher Avatar */}
                 <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-20 h-20 rounded-full border-2 border-amber-300 shadow-lg overflow-hidden bg-amber-50 flex items-center justify-center">
+                  <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-full border-2 border-amber-300 shadow-md overflow-hidden bg-amber-50 flex items-center justify-center">
                     <img
                       src={
                         currentTeacher.id === 'sharma'
@@ -5017,23 +5271,23 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
-                    <span className="text-3xl font-black">{currentTeacher.emoji}</span>
+                    <span className="text-2xl font-black">{currentTeacher.emoji}</span>
                   </div>
                 </div>
               </div>
 
               {/* Center Teacher Info & Prompt */}
-              <div className="space-y-1.5 min-w-0">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                  <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
                     {currentTeacher.name} • {currentTeacher.role}
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                <p className="text-xs text-slate-500 font-medium truncate max-w-sm sm:max-w-md">
                   {currentTeacher.id === 'sharma'
                     ? 'आओ, गणित को आसान और मज़ेदार बनाएं !'
                     : currentTeacher.id === 'riya'
@@ -5042,15 +5296,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     ? 'विज्ञान के मजेदार प्रयोग और सीख!'
                     : 'हिंदी को समझें और सुंदर लिखें!'}
                 </p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-700 text-xs font-bold">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200/80 text-blue-700 text-[11px] font-bold">
                   <span>⏱️</span>
-                  <span>{currentTeacher.id === 'sharma' ? 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।' : 'कोई भी सवाल पूछें, तुरंत हल मिलेगा!'}</span>
+                  <span className="truncate max-w-xs sm:max-w-none">{currentTeacher.id === 'sharma' ? 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।' : 'कोई भी सवाल पूछें, तुरंत हल मिलेगा!'}</span>
                 </div>
               </div>
             </div>
 
             {/* Right: 4 Teacher Cards for 1-Click Switch */}
-            <div className="grid grid-cols-4 gap-2 w-full lg:w-auto shrink-0">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0">
               {TEACHER_LIST_DATA.map((t) => {
                 const isSelected = currentTeacher.id === t.id;
                 return (
@@ -5075,13 +5329,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       }
                       speakText(t.greeting);
                     }}
-                    className={`flex flex-col items-center p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`flex flex-col items-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-blue-50/80 border-blue-500 shadow-2xs ring-1 ring-blue-500/20'
                         : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center mb-1">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center mb-0.5">
                       <img
                         src={t.image}
                         alt={t.name}
@@ -5090,12 +5344,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           (e.target as HTMLElement).style.display = 'none';
                         }}
                       />
-                      <span className="text-lg">{t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫'}</span>
+                      <span className="text-base sm:text-lg">{t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫'}</span>
                     </div>
-                    <span className="text-[11px] font-black text-slate-800 leading-tight truncate w-full">
+                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight truncate w-full">
                       {t.name}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
                       {t.subject}
                     </span>
                   </button>
@@ -5104,139 +5358,256 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             </div>
           </div>
 
-          {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP - LEFT FIXED & COMPACT, RIGHT EXPANDED) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols - COMPACT & STICKY FIXED ON SCROLL) */}
-            <div className="lg:col-span-4 xl:col-span-4 lg:sticky lg:top-[75px] max-h-[calc(100vh-90px)] bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-y-auto">
-              {/* Header with Pichla Upload, Zoom & Fullscreen */}
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-slate-800">
+          {/* Mobile / Tablet View Switcher */}
+          <div className="lg:hidden flex items-center justify-center p-1 bg-slate-100 rounded-xl mb-2 gap-1 border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab('both')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mobileWorkspaceTab === 'both' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              दोनों (Split)
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab('worksheet')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mobileWorkspaceTab === 'worksheet' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              📄 कॉपी फोटो
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab('whiteboard')}
+              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                mobileWorkspaceTab === 'whiteboard' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              📋 व्हाइटबोर्ड
+            </button>
+          </div>
+
+          {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP - SINGLE VIEW ON EVERY SCREEN) */}
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
+            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols - FITS SINGLE SCREEN VIEW) */}
+            <div
+              className={`lg:col-span-4 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden transition-all duration-200 h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
+                mobileWorkspaceTab === 'whiteboard' ? 'hidden lg:flex' : 'flex'
+              }`}
+            >
+              {/* Header with Pichla Upload, Zoom, Fit & Fullscreen */}
+              <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-black text-slate-800">
                     अपलोड की गई वर्कशीट
                   </span>
                   <span
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black border border-blue-200"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black border border-blue-200"
                     title="1 दिन में अधिकतम 20 वर्कशीट अपलोड कर सकते हैं"
                   >
-                    दैनिक: {dailyUploadCount}/20 पेज
+                    {dailyUploadCount}/20
                   </span>
-                  {worksheetHistory.length > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
-                      {worksheetHistory.length} सेव्ड
-                    </span>
-                  )}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {/* Camera Quick Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startWebcamCapture();
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    title="कैमरा से फोटो खींचें (Camera Capture)"
+                  >
+                    <Camera className="w-3 h-3 text-emerald-600" />
+                    <span className="hidden sm:inline">कैमरा</span>
+                  </button>
+
+                  {/* Upload Quick Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    title="गैलरी या फाइल से फोटो / PDF अपलोड करें (Upload)"
+                  >
+                    <Upload className="w-3 h-3 text-blue-600" />
+                    <span className="hidden sm:inline">अपलोड</span>
+                  </button>
+
+                  {/* Fit Height Toggle */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsFitToHeight((prev) => !prev);
+                      setImageZoom(1);
+                    }}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                      isFitToHeight
+                        ? 'bg-blue-50 text-blue-700 border-blue-300 shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                    }`}
+                    title={isFitToHeight ? 'पूरी चौड़ाई देखें' : 'पूरी स्क्रीन में फ़िट करें'}
+                  >
+                    {isFitToHeight ? 'स्क्रीन फ़िट ✓' : 'फ़िट'}
+                  </button>
+
+                  {/* Rotate */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setImageRotation((r) => (r + 90) % 360);
+                    }}
+                    className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+                    title="फोटो घुमाएं (Rotate 90°)"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+
                   {/* Zoom Controls */}
                   <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
                     <button
                       type="button"
-                      onClick={() => setImageZoom((z) => Math.max(0.75, +(z - 0.25).toFixed(2)))}
-                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
-                      title="छोटा करें (Zoom Out)"
+                      onClick={() => setImageZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                      className="px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      title="छोटा करें"
                     >
                       −
                     </button>
-                    <span className="px-1.5 text-[10px] font-mono font-bold text-slate-700">
+                    <span className="px-1 text-[10px] font-mono font-bold text-slate-700">
                       {Math.round(imageZoom * 100)}%
                     </span>
                     <button
                       type="button"
                       onClick={() => setImageZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
-                      className="px-2 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
-                      title="बड़ा करें (Zoom In)"
+                      className="px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      title="बड़ा करें"
                     >
                       +
                     </button>
-                    {imageZoom !== 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setImageZoom(1)}
-                        className="px-1.5 py-0.5 text-[10px] font-bold text-blue-600 hover:bg-white rounded cursor-pointer"
-                        title="रीसेट"
-                      >
-                        Reset
-                      </button>
-                    )}
                   </div>
 
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                     title="पिछला अपलोड और पुराना रिकॉर्ड देखें"
                   >
-                    <Clock className="w-3.5 h-3.5 text-amber-600" />
-                    <span>पिछला अपलोड</span>
+                    <Clock className="w-3 h-3 text-amber-600" />
+                    <span className="hidden sm:inline">पिछला</span>
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => setIsFullscreenMode((prev) => !prev)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors p-1 cursor-pointer"
-                    title="Fullscreen"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsFullscreenMode(true);
+                    }}
+                    className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1 rounded-lg cursor-pointer border border-transparent hover:border-blue-200"
+                    title="पूरी स्क्रीन पर बड़ा देखें (Fullscreen)"
                   >
-                    <Maximize2 className="w-4 h-4" />
+                    <Maximize2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
 
-              {/* Scanned Worksheet View Area */}
+              {/* Scanned Worksheet View Area (FITS ENTIRE PAGE IN SINGLE VIEW) */}
               <div
-                className="relative bg-slate-100/60 p-2 sm:p-3 min-h-[500px] max-h-[820px] overflow-y-auto flex flex-col items-center justify-start cursor-pointer group"
-                onClick={() => fileInputRef.current?.click()}
-                title="क्लिक करके नई वर्कशीट अपलोड करें"
+                className="relative bg-slate-100/70 p-1.5 sm:p-2 flex-1 min-h-0 w-full overflow-hidden flex flex-col items-center justify-center cursor-default group select-none"
               >
                 {uploadedImage ? (
-                  <div className="relative w-full flex flex-col items-center justify-start">
+                  <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
                     <img
                       src={uploadedImage}
                       alt="Uploaded Worksheet"
                       style={{
-                        transform: `scale(${imageZoom})`,
-                        transformOrigin: 'top center',
+                        transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
+                        transformOrigin: 'center center',
                         transition: 'transform 0.15s ease',
                         imageRendering: 'crisp-edges',
                       }}
-                      className="w-full h-auto object-contain rounded-xl shadow-md border border-slate-200 bg-white block select-none"
+                      className={`rounded-xl shadow-xs border border-slate-200 bg-white block select-none transition-all duration-200 ${
+                        isFitToHeight
+                          ? 'max-h-full max-w-full w-auto h-auto object-contain'
+                          : 'w-full h-auto object-contain'
+                      }`}
                     />
-                    <div className="absolute inset-0 bg-blue-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center backdrop-blur-2xs rounded-lg pointer-events-none">
-                      <div className="bg-white/95 px-3.5 py-2 rounded-xl shadow-lg border border-blue-200 text-xs font-bold text-blue-600 flex items-center gap-2">
+                    <div className="absolute inset-0 bg-blue-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-2xs rounded-lg pointer-events-none">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startWebcamCapture();
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl shadow-lg border border-emerald-400 text-xs font-bold flex items-center gap-1.5 cursor-pointer pointer-events-auto transition-transform hover:scale-105"
+                      >
+                        <Camera className="w-4 h-4" />
+                        <span>कैमरा से खींचें</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-xl shadow-lg border border-blue-400 text-xs font-bold flex items-center gap-1.5 cursor-pointer pointer-events-auto transition-transform hover:scale-105"
+                      >
                         <Upload className="w-4 h-4" />
-                        <span>नई वर्कशीट या पेज बदलें</span>
-                      </div>
+                        <span>फाइल अपलोड करें</span>
+                      </button>
                     </div>
                   </div>
                 ) : (
                   <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="relative w-full min-h-[500px] bg-gradient-to-b from-blue-50/50 via-white to-indigo-50/40 border-2 border-dashed border-blue-200 hover:border-blue-400 rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 transition-all cursor-pointer select-none group"
+                    className="relative w-full h-full min-h-[220px] bg-gradient-to-b from-blue-50/50 via-white to-indigo-50/40 border-2 border-dashed border-blue-200 hover:border-blue-400 rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center text-center space-y-3 transition-all select-none group"
                   >
-                    <div className="w-16 h-16 rounded-3xl bg-blue-100/80 border border-blue-200 flex items-center justify-center text-3xl shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-100/80 border border-blue-200 flex items-center justify-center text-2xl sm:text-3xl shadow-sm group-hover:scale-105 transition-transform">
                       📸
                     </div>
-                    <div className="space-y-1.5 max-w-xs">
-                      <h3 className="text-base font-black text-slate-800 group-hover:text-blue-700 transition-colors">
-                        कॉपी या किताब का पेज अपलोड करें
+                    <div className="space-y-1 max-w-xs">
+                      <h3 className="text-sm sm:text-base font-black text-slate-800 group-hover:text-blue-700 transition-colors">
+                        कॉपी या किताब का पेज जोड़ें
                       </h3>
-                      <p className="text-xs text-slate-500 leading-relaxed">
-                        अपनी होमवर्क कॉपी, वर्कशीट या किताब के पन्ने की फोटो खींचकर भेजें। AI शिक्षक तुरंत लाइव व्हाइटबोर्ड पर हल समझाएंगे!
+                      <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed">
+                        अपनी होमवर्क कॉपी या किताब के पन्ने की फोटो खींचकर या अपलोड करके भेजें। AI शिक्षक तुरंत लाइव व्हाइटबोर्ड पर हल समझाएंगे!
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 pt-2">
-                      <span className="px-4 py-2 rounded-xl bg-blue-600 group-hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
+                    <div className="flex items-center gap-2 pt-1 flex-wrap justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startWebcamCapture();
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>कैमरा से फोटो खींचें</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
                         <span>फोटो या PDF अपलोड करें</span>
-                      </span>
+                      </button>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Footer: Pagination + File Chip with Red Trash */}
-              <div className="p-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="p-2 sm:p-2.5 border-t border-slate-100 flex items-center justify-between gap-1.5 shrink-0">
                 {(() => {
                   const currentIdx = uploadedFiles.findIndex((f) => f.id === activeFileId);
                   const safeIdx = currentIdx !== -1 ? currentIdx : 0;
@@ -5244,7 +5615,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   const currentPageNum = safeIdx + 1;
 
                   return (
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                    <div className="flex items-center gap-1 text-xs font-bold text-slate-600">
                       <button
                         type="button"
                         onClick={() => {
@@ -5260,8 +5631,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
-                      <span className="text-[11px] px-1 font-black">
-                        Page {currentPageNum} / {totalFiles}
+                      <span className="text-[10px] sm:text-[11px] px-1 font-black">
+                        Page {currentPageNum}/{totalFiles}
                       </span>
                       <button
                         type="button"
@@ -5284,16 +5655,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
                 {/* File Chip & Reset */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700 font-medium">
                     <FileText className="w-3.5 h-3.5 text-slate-500" />
-                    <span className="truncate max-w-[110px]">
+                    <span className="truncate max-w-[90px] sm:max-w-[110px] text-[11px]">
                       {uploadedFileName || (uploadedFiles[0]?.name) || 'कोई फाइल नहीं'}
                     </span>
                     {uploadedFiles.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setUploadedImage(null)}
-                        className="text-red-500 hover:text-red-700 transition-colors cursor-pointer ml-1"
+                        className="text-red-500 hover:text-red-700 transition-colors cursor-pointer ml-0.5"
                         title="वर्कशीट हटाएं"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -5304,20 +5675,24 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     type="button"
                     onClick={handleFullPageReset}
-                    className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
                     title="पूरे पेज और अपलोड्स को रीसेट करें"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>रीसेट</span>
+                    <span className="text-[11px]">रीसेट</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SMART WHITEBOARD (8 cols - EXPANDED & SPACIUS) */}
-            <div className="lg:col-span-8 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden">
+            {/* RIGHT COLUMN: SMART WHITEBOARD (8 cols - MATCHING SINGLE VIEW HEIGHT) */}
+            <div
+              className={`lg:col-span-8 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
+                mobileWorkspaceTab === 'worksheet' ? 'hidden lg:flex' : 'flex'
+              }`}
+            >
               {/* Top Bar with Action Buttons */}
-              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="px-3.5 py-2 sm:py-2.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-1.5 shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
                     📋
@@ -5389,7 +5764,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         speakText(speech);
                       }
                     }}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
                       isSpeaking && !speakingQuestionId
                         ? 'bg-rose-50 text-rose-700 border border-rose-300 animate-pulse'
                         : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200'
@@ -5399,6 +5774,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <Volume2 className={`w-3.5 h-3.5 ${isSpeaking && !speakingQuestionId ? 'text-rose-600' : 'text-indigo-600'}`} />
                     <span>{isSpeaking && !speakingQuestionId ? 'रुकें (Stop)' : '👨‍🏫 टीचर से समझें'}</span>
                   </button>
+
+                  {uploadedFiles.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAnalyzeActiveWorksheet()}
+                      disabled={isCheckingHomework}
+                      className="px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      title="AI से इस कॉपी को स्कैन करें और सभी सवाल-उत्तर निकालें"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{isCheckingHomework ? 'स्कैन...' : '🔍 AI से हल निकालें'}</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -5421,9 +5809,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </div>
               </div>
 
-              {/* RULED SCHOOL NOTEBOOK PAPER AREA */}
+              {/* RULED SCHOOL NOTEBOOK PAPER AREA (INTERNAL SMOOTH SCROLL) */}
               <div
-                className="p-5 sm:p-6 min-h-[550px] relative font-sans"
+                className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto relative font-sans"
                 style={{
                   background:
                     'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 28px)',
@@ -5436,11 +5824,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <div className="text-center">
                     <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
                       {isCheckingHomework
-                        ? 'WORKSHEET'
+                        ? 'दस्तावेज़ स्कैनिंग...'
                         : detectedChapter
                         ? `WORKSHEET: ${detectedChapter.title}`
+                        : whiteboardHeading && !whiteboardHeading.includes('.jpeg') && !whiteboardHeading.includes('.jpg') && !whiteboardHeading.includes('सुरक्षित')
+                        ? whiteboardHeading
                         : uploadedFiles.length > 0
-                        ? `WORKSHEET: ${uploadedFileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')}`
+                        ? `WORKSHEET: ${cleanWorksheetDisplayName(uploadedFileName || uploadedFiles[0]?.name)}`
                         : selectedChapter
                         ? `अध्याय: ${selectedChapter.titleHindi || selectedChapter.titleEnglish}`
                         : 'आज की ट्यूशन क्लास (Live Whiteboard)'}
@@ -5576,10 +5966,72 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
                         return (
                           <div className="space-y-4">
+                            {/* Question Numbers Tab Bar */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+                              <span className="text-xs font-black text-amber-900 shrink-0">सवाल सूची:</span>
+                              {qList.map((q, idx) => {
+                                const isCurrent = idx === activeMockQIdx;
+                                const isAnswered = Boolean(mockAnswers[idx]?.trim());
+                                const hasEval = Boolean(mockEvaluations[idx]);
+                                const evalScore = mockEvaluations[idx]?.score;
+                                const qMax = mockQuestionMarks[idx] || 10;
+                                return (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => setActiveMockQIdx(idx)}
+                                    className={`px-3 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border ${
+                                      isCurrent
+                                        ? 'bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-400/40'
+                                        : hasEval
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                                        : isAnswered
+                                        ? 'bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100'
+                                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    <span>सवाल {idx + 1}</span>
+                                    {hasEval ? (
+                                      <span className="text-[10px] bg-emerald-700 text-white px-1.5 py-0.2 rounded-full font-black">
+                                        {evalScore}/{qMax}
+                                      </span>
+                                    ) : isAnswered ? (
+                                      <span className="text-[10px] text-blue-600 font-bold">✍️</span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
                             <div className="bg-blue-50/40 rounded-2xl border border-blue-200/80 p-5 space-y-3">
-                              <div className="text-sm sm:text-base font-bold text-slate-900 flex items-start gap-1.5">
-                                <span className="text-blue-600 font-black shrink-0">{activeMockQIdx + 1}.</span>
-                                <span className="leading-snug">{cleanStem}</span>
+                              {/* Question Header: Number + Stem + Marks Pill */}
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="text-sm sm:text-base font-bold text-slate-900 flex items-start gap-1.5">
+                                  <span className="text-blue-600 font-black shrink-0">{activeMockQIdx + 1}.</span>
+                                  <span className="leading-snug">{cleanStem}</span>
+                                </div>
+                                <div className="shrink-0 flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-2xs">
+                                  <span className="text-[10px] font-bold text-slate-500 pl-1">पूर्णांक:</span>
+                                  {[2, 5, 10].map((mk) => (
+                                    <button
+                                      key={mk}
+                                      type="button"
+                                      onClick={() =>
+                                        setMockQuestionMarks((prev) => ({
+                                          ...prev,
+                                          [activeMockQIdx]: mk,
+                                        }))
+                                      }
+                                      className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer transition-all ${
+                                        (mockQuestionMarks[activeMockQIdx] || 10) === mk
+                                          ? 'bg-blue-600 text-white'
+                                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                      }`}
+                                    >
+                                      {mk}M
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
 
                               {/* Question Diagram if Geometry/Pyramid/Table */}
@@ -5800,33 +6252,133 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 </div>
                               )}
 
-                              {/* Submit & Check Button */}
-                              <div className="flex items-center justify-between pt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
-                                  disabled={!studentAns.trim() || isEvaluatingMock}
-                                  className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all active:scale-95"
-                                >
-                                  {isEvaluatingMock ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                                  ) : (
-                                    <span>🚀</span>
-                                  )}
-                                  <span>हल जमा करें और नंबर देखें</span>
-                                </button>
-
-                                {activeMockQIdx + 1 < qList.length && (
+                              {/* Submit, Manual Marks & Navigation */}
+                              <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
+                                <div className="flex items-center gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => setActiveMockQIdx((i) => i + 1)}
-                                    className="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                                    onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
+                                    disabled={!studentAns.trim() || isEvaluatingMock}
+                                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer transition-all active:scale-95"
                                   >
-                                    <span>अगला सवाल हल करें</span>
-                                    <ChevronRight className="w-4 h-4" />
+                                    {isEvaluatingMock ? (
+                                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                                    ) : (
+                                      <span>🚀</span>
+                                    )}
+                                    <span>हल जमा करें और AI नंबर देखें</span>
                                   </button>
-                                )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsManualGradingOpen((o) => !o)}
+                                    className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer border transition-all ${
+                                      isManualGradingOpen
+                                        ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-300'
+                                        : 'bg-white hover:bg-amber-50 text-amber-800 border-amber-300'
+                                    }`}
+                                    title="खुद या शिक्षक द्वारा सीधे नंबर दें"
+                                  >
+                                    <span>✍️</span>
+                                    <span>खुद / शिक्षक द्वारा नंबर दें</span>
+                                  </button>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {activeMockQIdx > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveMockQIdx((i) => i - 1)}
+                                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 cursor-pointer transition-all"
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                      <span>पिछला</span>
+                                    </button>
+                                  )}
+
+                                  {activeMockQIdx + 1 < qList.length && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setActiveMockQIdx((i) => i + 1)}
+                                      className="px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-black text-xs flex items-center gap-1.5 cursor-pointer transition-all"
+                                    >
+                                      <span>अगला सवाल हल करें</span>
+                                      <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Manual Grading / Score Entry Panel */}
+                              {isManualGradingOpen && (
+                                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in slide-in-from-top-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-black text-amber-950 text-xs sm:text-sm flex items-center gap-1.5">
+                                      <span>✍️</span>
+                                      <span>सवाल {activeMockQIdx + 1} के लिए प्राप्तांक (Marks) दर्ज करें</span>
+                                    </span>
+                                    <span className="text-[11px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded-full border border-amber-200">
+                                      कुल पूर्णांक: {mockQuestionMarks[activeMockQIdx] || 10}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-3 py-1.5 shadow-2xs">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={mockQuestionMarks[activeMockQIdx] || 10}
+                                        step="0.5"
+                                        placeholder="अंक"
+                                        value={mockManualScore[activeMockQIdx] ?? ''}
+                                        onChange={(e) =>
+                                          setMockManualScore((prev) => ({
+                                            ...prev,
+                                            [activeMockQIdx]: e.target.value,
+                                          }))
+                                        }
+                                        className="w-16 text-center font-black text-base text-slate-800 focus:outline-hidden"
+                                      />
+                                      <span className="text-xs font-bold text-slate-500">
+                                        / {mockQuestionMarks[activeMockQIdx] || 10}
+                                      </span>
+                                    </div>
+
+                                    {/* Quick Preset Buttons */}
+                                    <div className="flex items-center gap-1">
+                                      {[
+                                        { label: 'पूरे अंक', val: mockQuestionMarks[activeMockQIdx] || 10 },
+                                        { label: '80%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.8) },
+                                        { label: '50%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.5) },
+                                        { label: '0 अंक', val: 0 },
+                                      ].map((preset) => (
+                                        <button
+                                          key={preset.label}
+                                          type="button"
+                                          onClick={() =>
+                                            setMockManualScore((prev) => ({
+                                              ...prev,
+                                              [activeMockQIdx]: String(preset.val),
+                                            }))
+                                          }
+                                          className="px-2 py-1 text-[11px] font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg cursor-pointer transition-all"
+                                        >
+                                          {preset.label} ({preset.val})
+                                        </button>
+                                      ))}
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveManualMarks(activeMockQIdx)}
+                                      disabled={mockManualScore[activeMockQIdx] === undefined || mockManualScore[activeMockQIdx] === ''}
+                                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white font-black text-xs flex items-center gap-1.5 shadow cursor-pointer transition-all"
+                                    >
+                                      <span>💾</span>
+                                      <span>नंबर सेव करें</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Evaluation Scorecard & Answer Diagram */}
                               {evalData && (
@@ -6051,82 +6603,86 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             </div>
           </div>
-        </main>
-      </div>
 
-      {/* 5. BOTTOM FLOATING DOCK (MATCHING MOCKUP) */}
-      <div className="fixed bottom-4 inset-x-0 z-40 flex items-center justify-center px-4 pointer-events-none">
-        <div className="flex items-center gap-3 w-full max-w-2xl pointer-events-auto">
-          {/* Big Circular Blue Mic Button */}
-          <button
-            type="button"
-            onClick={toggleMic}
-            className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white shadow-xl transition-all shrink-0 cursor-pointer ${
-              isListening
-                ? 'bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-300'
-                : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-blue-500/30'
-            }`}
-            title={isListening ? 'माइक बंद करें' : 'माइक से बोलकर सवाल पूछें'}
-          >
-            {isListening ? (
-              <MicOff className="w-6 h-6 text-white" />
-            ) : (
-              <Mic className="w-6 h-6 text-white" />
-            )}
-          </button>
+          {/* 5. BOTTOM DEDICATED CHAT & MIC DOCK (CLEAN SPACING, ZERO OVERLAPPING) */}
+          <div className="shrink-0 pt-1.5 pb-0.5 flex items-center justify-center w-full">
+            <div className="flex items-center gap-2.5 w-full max-w-2xl">
+              {/* Big Circular Blue Mic Button */}
+              <button
+                type="button"
+                onClick={toggleMic}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white shadow-md transition-all shrink-0 cursor-pointer ${
+                  isListening
+                    ? 'bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-300'
+                    : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-blue-500/30'
+                }`}
+                title={isListening ? 'माइक बंद करें' : 'माइक से बोलकर सवाल पूछें'}
+              >
+                {isListening ? (
+                  <MicOff className="w-5 h-5 text-white" />
+                ) : (
+                  <Mic className="w-5 h-5 text-white" />
+                )}
+              </button>
 
-          {/* Rounded Input Bar with Camera, Gallery & Send Button */}
-          <div className="flex-1 bg-white border border-slate-200/90 rounded-full px-4 py-2 shadow-xl flex items-center gap-2 transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleStudentQuery(inputText);
-                }
-              }}
-              placeholder={`${currentTeacher.name} से सवाल पूछें...`}
-              className="flex-1 bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
-            />
+              {/* Rounded Input Bar with Camera, Gallery & Send Button */}
+              <div className="flex-1 bg-white border border-slate-200/90 rounded-full px-3.5 py-1.5 shadow-md flex items-center gap-2 transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleStudentQuery(inputText);
+                    }
+                  }}
+                  placeholder={`${currentTeacher.name} से सवाल पूछें...`}
+                  className="flex-1 bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
+                />
 
-            {/* Photo button */}
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              className="px-2.5 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors shrink-0 cursor-pointer"
-            >
-              <Camera className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">फोटो भेजें</span>
-            </button>
+                {/* 1. Camera Capture Button */}
+                <button
+                  type="button"
+                  onClick={startWebcamCapture}
+                  className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
+                  title="कैमरा से फोटो खींचें (Capture Photo with Camera)"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline">कैमरा फोटो</span>
+                  <span className="sm:hidden">कैमरा</span>
+                </button>
 
-            {/* Gallery icon */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors shrink-0 cursor-pointer"
-              title="वर्कशीट या फोटो चुनें"
-            >
-              <ImageIcon className="w-4 h-4" />
-            </button>
+                {/* 2. Image / File Upload Button */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
+                  title="गैलरी या स्टोरेज से फोटो / PDF अपलोड करें (Upload Image or PDF)"
+                >
+                  <Upload className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="hidden sm:inline">फोटो अपलोड</span>
+                  <span className="sm:hidden">अपलोड</span>
+                </button>
 
-            {/* Send button */}
-            <button
-              type="button"
-              onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
-              disabled={!inputText.trim()}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
-                inputText.trim()
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30 hover:scale-105 active:scale-95'
-                  : 'bg-blue-400 text-white opacity-60 cursor-not-allowed'
-              }`}
-              title="सवाल भेजें"
-            >
-              <Send className="w-4 h-4 text-white" />
-            </button>
+                {/* Send button */}
+                <button
+                  type="button"
+                  onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
+                  disabled={!inputText.trim()}
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                    inputText.trim()
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30 hover:scale-105 active:scale-95'
+                      : 'bg-blue-400 text-white opacity-60 cursor-not-allowed'
+                  }`}
+                  title="सवाल भेजें"
+                >
+                  <Send className="w-4 h-4 text-white" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
 
       {/* SUNDAY PRINTABLE TEST PAPER & TEST SERIES MODAL */}
@@ -6173,6 +6729,85 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         onClearAllRecords={handleClearAllWorksheetRecords}
         isDarkMode={isDarkMode}
       />
+
+      {/* 📸 LIVE WEBCAM CAPTURE MODAL (LAPTOP & DESKTOP CAMERA VIEW) */}
+      {isWebcamModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative max-w-xl w-full bg-slate-900 border border-slate-700 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col items-center gap-4 text-white">
+            {/* Header */}
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black">
+                    कैमरा से कॉपी की फोटो खींचें
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    किताब या कॉपी को कैमरे के सामने रखें और साफ फोटो खींचें
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={stopWebcamStream}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="बंद करें"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Video Viewfinder Area */}
+            <div className="relative w-full aspect-4/3 max-h-[55vh] bg-black rounded-2xl overflow-hidden border-2 border-dashed border-emerald-500/40 flex items-center justify-center shadow-inner">
+              <video
+                ref={webcamVideoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              {/* Document Framing Guide Overlay */}
+              <div className="absolute inset-4 sm:inset-6 border border-white/30 rounded-xl pointer-events-none flex flex-col justify-between p-2">
+                <div className="flex justify-between text-[10px] font-mono text-emerald-400">
+                  <span>┌ 4K AI SCAN</span>
+                  <span>┐</span>
+                </div>
+                <div className="text-center text-xs font-bold text-white/90 bg-black/50 px-3 py-1 rounded-full self-center backdrop-blur-xs">
+                  कॉपी के पेज को इस फ्रेम के अंदर रखें
+                </div>
+                <div className="flex justify-between text-[10px] font-mono text-emerald-400">
+                  <span>└</span>
+                  <span>┘</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={capturePhotoFromWebcam}
+                className="px-6 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Camera className="w-4 h-4" />
+                <span>📸 फोटो खींचें (Capture)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  stopWebcamStream();
+                  fileInputRef.current?.click();
+                }}
+                className="px-4 py-2.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>गैलरी से चुनें</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
 
 
@@ -6500,6 +7135,96 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             <span className="text-[11px] text-slate-400 mt-2 text-center">
               💡 {medium === 'english' ? 'Zoom and pan to clearly see the question diagram, clock, or object.' : 'सवाल के चित्र (जैसे Crackers बिस्कुट, आरेख या घड़ी) को यहाँ साफ़-साफ़ देख सकते हैं।'}
             </span>
+          </div>
+        </div>
+      )}
+      {/* 🔍 FULLSCREEN WORKSHEET LIGHTBOX MODAL */}
+      {isFullscreenMode && uploadedImage && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col p-3 sm:p-6 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-200 select-none"
+          onClick={() => setIsFullscreenMode(false)}
+        >
+          {/* Top Bar */}
+          <div
+            className="w-full flex items-center justify-between pb-3 border-b border-white/10 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm sm:text-base font-black text-white flex items-center gap-2">
+                <span>📄</span>
+                <span>{cleanWorksheetDisplayName(uploadedFileName || activeFileDoc?.name)}</span>
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                (पेज {uploadedFiles.findIndex((f) => f.id === activeFileId) + 1} / {Math.max(1, uploadedFiles.length)})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Zoom Controls */}
+              <div className="flex items-center bg-slate-800 rounded-xl p-0.5 border border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setImageZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-200 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  −
+                </button>
+                <span className="px-2 text-xs font-mono font-bold text-slate-200">
+                  {Math.round(imageZoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setImageZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)))}
+                  className="px-2.5 py-1 text-xs font-bold text-slate-200 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageZoom(1)}
+                  className="px-2 py-1 text-xs font-bold text-blue-400 hover:bg-slate-700 rounded-lg cursor-pointer"
+                >
+                  रीसेट
+                </button>
+              </div>
+
+              {/* Rotate Button */}
+              <button
+                type="button"
+                onClick={() => setImageRotation((r) => (r + 90) % 360)}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer transition-colors"
+                title="फोटो घुमाएं (Rotate 90°)"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsFullscreenMode(false)}
+                className="p-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition-colors shadow-lg"
+                title="बंद करें (Close)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Fullscreen Centered Image Canvas */}
+          <div
+            className="flex-1 w-full overflow-auto flex items-center justify-center p-2 sm:p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={uploadedImage}
+              alt="Worksheet Fullscreen"
+              style={{
+                transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
+                transformOrigin: 'center center',
+                transition: 'transform 0.15s ease',
+              }}
+              className="max-h-[82vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl border border-white/10 select-none bg-white"
+            />
           </div>
         </div>
       )}

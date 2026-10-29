@@ -1,7 +1,200 @@
 {
-  "worksheetHistory": [],
+  "worksheetHistory": [
+    {
+      "id": "upload-1793275515903-dexxq",
+      "title": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg (Mathematics)",
+      "date": "2026-10-29",
+      "dateLabel": "आज, 05:35 pm",
+      "subjectId": "math",
+      "subjectName": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "files": [
+        {
+          "id": "file-1793275515903-0",
+          "name": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg",
+          "url": "/data/student-uploads/general/2026-10-29T12-05-15-903Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__2_.jpg",
+          "thumbnailUrl": "/data/student-uploads/general/2026-10-29T12-05-15-903Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__2_.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "detectedQuestions": [],
+      "whiteboardSteps": [],
+      "timestamp": 1793275515903
+    },
+    {
+      "id": "upload-1793269834080-xc24i",
+      "title": "_2_.jpeg.jpg (Mathematics)",
+      "date": "2026-10-29",
+      "dateLabel": "आज, 04:00 pm",
+      "subjectId": "math",
+      "subjectName": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "files": [
+        {
+          "id": "file-1793269834080-0",
+          "name": "_2_.jpeg.jpg",
+          "url": "/data/student-uploads/general/2026-10-29T10-30-34-080Z__2_.jpeg.jpg",
+          "thumbnailUrl": "/data/student-uploads/general/2026-10-29T10-30-34-080Z__2_.jpeg.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "detectedQuestions": [],
+      "whiteboardSteps": [],
+      "timestamp": 1793269834080
+    },
+    {
+      "id": "upload-1793268532674-d5ji3",
+      "title": "WhatsApp Image.jpg (Mathematics)",
+      "date": "2026-10-29",
+      "dateLabel": "आज, 03:38 pm",
+      "subjectId": "math",
+      "subjectName": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "files": [
+        {
+          "id": "file-1793268532674-0",
+          "name": "WhatsApp Image.jpg",
+          "url": "/data/student-uploads/general/2026-10-29T10-08-52-674Z_WhatsApp_Image.jpg",
+          "thumbnailUrl": "/data/student-uploads/general/2026-10-29T10-08-52-674Z_WhatsApp_Image.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "detectedQuestions": [],
+      "whiteboardSteps": [],
+      "timestamp": 1793268532674
+    },
+    {
+      "id": "upload-1793267941667-qcsde",
+      "title": "hindi_notebook.jpg (Mathematics)",
+      "date": "2026-10-29",
+      "dateLabel": "आज, 03:29 pm",
+      "subjectId": "math",
+      "subjectName": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "files": [
+        {
+          "id": "file-1793267941667-0",
+          "name": "hindi_notebook.jpg",
+          "url": "/data/student-uploads/general/2026-10-29T09-59-01-667Z_hindi_notebook.jpg",
+          "thumbnailUrl": "/data/student-uploads/general/2026-10-29T09-59-01-667Z_hindi_notebook.jpg",
+          "type": "image/jpeg"
+        }
+      ],
+      "detectedQuestions": [],
+      "whiteboardSteps": [],
+      "timestamp": 1793267941667
+    }
+  ],
   "testHistory": [],
   "uploads": [
+    {
+      "id": "upload-1793275515903-dexxq",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793275515903,
+      "isoDate": "2026-10-29T12:05:15.903Z",
+      "fileName": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T12-05-15-903Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileSizeKb": 149,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793275490208-ww8fb",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793275490208,
+      "isoDate": "2026-10-29T12:04:50.208Z",
+      "fileName": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T12-04-50-208Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileSizeKb": 149,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793275484821-6qbds",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793275484821,
+      "isoDate": "2026-10-29T12:04:44.821Z",
+      "fileName": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T12-04-44-821Z_WhatsApp_Image_2026-10-26_at_4.01.50_PM__2_.jpg",
+      "fileSizeKb": 191,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793269834080-xc24i",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793269834080,
+      "isoDate": "2026-10-29T10:30:34.080Z",
+      "fileName": "_2_.jpeg.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T10-30-34-080Z__2_.jpeg.jpg",
+      "fileSizeKb": 193,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793268532674-d5ji3",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793268532674,
+      "isoDate": "2026-10-29T10:08:52.674Z",
+      "fileName": "WhatsApp Image.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T10-08-52-674Z_WhatsApp_Image.jpg",
+      "fileSizeKb": 149,
+      "classGrade": "Class 5",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793267941667-qcsde",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793267941667,
+      "isoDate": "2026-10-29T09:59:01.667Z",
+      "fileName": "hindi_notebook.jpg",
+      "fileMime": "image/jpeg",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T09-59-01-667Z_hindi_notebook.jpg",
+      "fileSizeKb": 149,
+      "classGrade": "Class 5",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
     {
       "id": "upload-1793190351838-dvksf",
       "studentId": "general",
@@ -111,7 +304,7 @@
       "teacherReplySummary": ""
     }
   ],
-  "updatedAt": 1793190351838,
+  "updatedAt": 1793275515903,
   "studentName": "Student",
   "classGrade": "Class 4th",
   "board": "RBSE"

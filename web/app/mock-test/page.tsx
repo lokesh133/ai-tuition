@@ -100,6 +100,9 @@ export default function WorksheetMockTestPage() {
   const [isEvaluatingMock, setIsEvaluatingMock] = useState<boolean>(false);
   const [isQuestionPinned, setIsQuestionPinned] = useState<boolean>(false);
   const [showMcqSteps, setShowMcqSteps] = useState<Record<number, boolean>>({});
+  const [mockQuestionMarks, setMockQuestionMarks] = useState<Record<number, number>>({});
+  const [mockManualScore, setMockManualScore] = useState<Record<number, string>>({});
+  const [isManualGradingOpen, setIsManualGradingOpen] = useState<boolean>(false);
 
   const mockAnswerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -137,7 +140,9 @@ export default function WorksheetMockTestPage() {
             }
 
             // Read worksheet history
-            const rawHist = localStorage.getItem('vidya_worksheet_history_v1');
+            const rawHist =
+              localStorage.getItem('ai_tuition_worksheet_records') ||
+              localStorage.getItem('vidya_worksheet_history_v1');
             if (rawHist) {
               const hist = JSON.parse(rawHist);
               if (Array.isArray(hist) && hist.length > 0) {
@@ -159,8 +164,8 @@ export default function WorksheetMockTestPage() {
             const res = await fetch(`/api/student/records?phone=${phone}`);
             if (res.ok) {
               const json = await res.json();
-              if (json.success && json.record) {
-                const rec = json.record;
+              if (json.success) {
+                const rec = json.record || json;
                 if (rec.currentSession) {
                   const compiled = extractQuestionsFromSession(rec.currentSession);
                   if (compiled.length > 0) {
@@ -463,6 +468,7 @@ export default function WorksheetMockTestPage() {
     stopAudio();
     setIsEvaluatingMock(true);
 
+    const maxMarks = mockQuestionMarks[qIdx] || 10;
     try {
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
@@ -474,17 +480,25 @@ export default function WorksheetMockTestPage() {
           question: activeQ.question,
           student_answer: studentAns,
           ideal_answer: activeQ.idealAnswer || '',
+          max_marks: maxMarks,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data.evaluation) {
+          const scaledScore = Math.min(maxMarks, Math.round(((data.evaluation.score || 8) / 10) * maxMarks));
+          const adjustedEval = {
+            ...data.evaluation,
+            score: scaledScore,
+            totalMarks: maxMarks,
+            percentage: Math.round((scaledScore / maxMarks) * 100),
+          };
           setMockEvaluations((prev) => ({
             ...prev,
-            [qIdx]: data.evaluation,
+            [qIdx]: adjustedEval,
           }));
-          const praise = data.evaluation.teacherPraise || `शाबाश बेटा! आपका स्कोर ${data.evaluation.score}/10 है।`;
+          const praise = data.evaluation.teacherPraise || `शाबाश बेटा! आपका स्कोर ${scaledScore}/${maxMarks} है।`;
           speakText(praise);
         }
       }
@@ -493,6 +507,39 @@ export default function WorksheetMockTestPage() {
     } finally {
       setIsEvaluatingMock(false);
     }
+  };
+
+  // Manual Marks Awarding: Allows teacher/student to give custom numbers/marks directly
+  const handleSaveManualMarks = (qIdx: number) => {
+    const raw = mockManualScore[qIdx];
+    const scoreVal = parseFloat(raw);
+    const maxMarks = mockQuestionMarks[qIdx] || 10;
+    if (isNaN(scoreVal)) return;
+
+    const finalScore = Math.max(0, Math.min(maxMarks, scoreVal));
+    const percentage = Math.round((finalScore / maxMarks) * 100);
+    const grade =
+      percentage >= 90
+        ? '🌟 उत्कृष्ट'
+        : percentage >= 70
+        ? '⭐ बहुत अच्छा'
+        : percentage >= 40
+        ? '👍 ठीक प्रयास'
+        : '💡 और अभ्यास करें';
+
+    setMockEvaluations((prev) => ({
+      ...prev,
+      [qIdx]: {
+        score: finalScore,
+        totalMarks: maxMarks,
+        percentage,
+        badge: percentage >= 75 ? '⭐ शानदार स्कोर!' : '📝 अच्छा अभ्यास!',
+        teacherPraise: `शाबाश बेटा! शिक्षक द्वारा सवाल ${qIdx + 1} में ${finalScore}/${maxMarks} अंक दर्ज किए गए।`,
+        strengths: [`प्राप्तांक: ${finalScore}/${maxMarks} (${grade})`],
+      },
+    }));
+    setIsManualGradingOpen(false);
+    speakText(`शाबाश बेटा! सवाल ${qIdx + 1} के लिए ${finalScore}/${maxMarks} नंबर दर्ज कर दिए गए हैं।`);
   };
 
   if (isLoading) {
@@ -740,6 +787,34 @@ export default function WorksheetMockTestPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* Marks Pill Selector */}
+                  <div className={`flex items-center gap-1 rounded-lg p-1 text-[10px] font-black border ${
+                    isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+                  }`}>
+                    <span className="text-slate-500 px-1">पूर्णांक:</span>
+                    {[2, 5, 10].map((mk) => (
+                      <button
+                        key={mk}
+                        type="button"
+                        onClick={() =>
+                          setMockQuestionMarks((prev) => ({
+                            ...prev,
+                            [activeMockQIdx]: mk,
+                          }))
+                        }
+                        className={`px-1.5 py-0.5 rounded cursor-pointer transition-all ${
+                          (mockQuestionMarks[activeMockQIdx] || 10) === mk
+                            ? 'bg-amber-500 text-slate-950 font-black'
+                            : isDarkMode
+                            ? 'text-slate-300 hover:bg-slate-700'
+                            : 'text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {mk}M
+                      </button>
+                    ))}
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => setIsQuestionPinned((prev) => !prev)}
@@ -1085,25 +1160,43 @@ export default function WorksheetMockTestPage() {
                 </div>
               )}
 
-              {/* Action Buttons: Check Answer, Clear */}
+              {/* Action Buttons: Check Answer, Manual Marks, Clear */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
-                  disabled={!studentAns.trim() || isEvaluatingMock}
-                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/25 transition-all transform active:scale-95 cursor-pointer"
-                >
-                  {isEvaluatingMock ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
-                  ) : (
-                    <span>🚀</span>
-                  )}
-                  <span>
-                    {evalData
-                      ? (medium === 'english' ? 'Re-check Answer' : 'दोबारा चेक करें')
-                      : (medium === 'english' ? 'Check Answer' : 'उत्तर चेक करें')}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveAndEvaluateMock(activeMockQIdx)}
+                    disabled={!studentAns.trim() || isEvaluatingMock}
+                    className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-600/25 transition-all transform active:scale-95 cursor-pointer"
+                  >
+                    {isEvaluatingMock ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <span>🚀</span>
+                    )}
+                    <span>
+                      {evalData
+                        ? (medium === 'english' ? 'Re-check Answer' : 'दोबारा AI चेक करें')
+                        : (medium === 'english' ? 'Check Answer' : 'उत्तर चेक करें')}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsManualGradingOpen((o) => !o)}
+                    className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer border transition-all ${
+                      isManualGradingOpen
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 ring-2 ring-amber-300'
+                        : isDarkMode
+                        ? 'bg-slate-800 text-amber-300 border-amber-500/40 hover:bg-slate-700'
+                        : 'bg-white hover:bg-amber-50 text-amber-800 border-amber-300 shadow-2xs'
+                    }`}
+                    title="खुद या शिक्षक द्वारा सीधे नंबर दें"
+                  >
+                    <span>✍️</span>
+                    <span>खुद / शिक्षक द्वारा नंबर दें</span>
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-2">
                   {studentAns && (
@@ -1121,6 +1214,22 @@ export default function WorksheetMockTestPage() {
                     </button>
                   )}
 
+                  {/* Previous Question Navigation */}
+                  {activeMockQIdx > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveMockQIdx((prev) => prev - 1)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1 cursor-pointer border ${
+                        isDarkMode
+                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                      }`}
+                    >
+                      <span>⬅</span>
+                      <span>{medium === 'english' ? 'Prev' : 'पिछला'}</span>
+                    </button>
+                  )}
+
                   {/* Next Question Navigation */}
                   {activeMockQIdx < questionsList.length - 1 && (
                     <button
@@ -1132,12 +1241,87 @@ export default function WorksheetMockTestPage() {
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
                       }`}
                     >
-                      <span>{medium === 'english' ? 'Next Question' : 'अगला सवाल'}</span>
+                      <span>{medium === 'english' ? 'Next' : 'अगला सवाल'}</span>
                       <span>➔</span>
                     </button>
                   )}
                 </div>
               </div>
+
+              {/* Manual Grading / Score Entry Panel */}
+              {isManualGradingOpen && (
+                <div className={`mt-3 p-4 rounded-2xl border space-y-3 animate-in fade-in slide-in-from-top-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900 border-amber-500/30'
+                    : 'bg-amber-50/80 border-amber-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs sm:text-sm flex items-center gap-1.5 text-amber-900 dark:text-amber-300">
+                      <span>✍️</span>
+                      <span>सवाल {activeMockQIdx + 1} के लिए प्राप्तांक (Marks) दर्ज करें</span>
+                    </span>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-white dark:bg-slate-800 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-slate-700">
+                      कुल पूर्णांक: {mockQuestionMarks[activeMockQIdx] || 10}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-amber-300 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-2xs">
+                      <input
+                        type="number"
+                        min="0"
+                        max={mockQuestionMarks[activeMockQIdx] || 10}
+                        step="0.5"
+                        placeholder="अंक"
+                        value={mockManualScore[activeMockQIdx] ?? ''}
+                        onChange={(e) =>
+                          setMockManualScore((prev) => ({
+                            ...prev,
+                            [activeMockQIdx]: e.target.value,
+                          }))
+                        }
+                        className="w-16 text-center font-black text-base text-slate-800 dark:text-white bg-transparent focus:outline-hidden"
+                      />
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        / {mockQuestionMarks[activeMockQIdx] || 10}
+                      </span>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex items-center gap-1">
+                      {[
+                        { label: 'पूरे अंक', val: mockQuestionMarks[activeMockQIdx] || 10 },
+                        { label: '80%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.8) },
+                        { label: '50%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.5) },
+                        { label: '0 अंक', val: 0 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() =>
+                            setMockManualScore((prev) => ({
+                              ...prev,
+                              [activeMockQIdx]: String(preset.val),
+                            }))
+                          }
+                          className="px-2 py-1 text-[11px] font-bold bg-white dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-slate-700 text-amber-900 dark:text-amber-300 border border-amber-200 dark:border-slate-700 rounded-lg cursor-pointer transition-all"
+                        >
+                          {preset.label} ({preset.val})
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSaveManualMarks(activeMockQIdx)}
+                      disabled={mockManualScore[activeMockQIdx] === undefined || mockManualScore[activeMockQIdx] === ''}
+                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white font-black text-xs flex items-center gap-1.5 shadow cursor-pointer transition-all"
+                    >
+                      <span>💾</span>
+                      <span>नंबर सेव करें</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 5. EVALUATION SCORECARD */}

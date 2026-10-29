@@ -71,76 +71,44 @@ export default function StudentAllReportPage() {
       })
       .catch((e) => console.warn('Could not fetch parent analytics:', e));
 
-    // Load student's worksheet history from local storage
-    try {
-      const stored = localStorage.getItem('ai_tuition_worksheet_records');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setWorksheetRecords(parsed);
-          return;
+    // Load student's worksheet history from server & localStorage
+    const loadStudentWorksheets = async () => {
+      try {
+        if (phoneOrId && phoneOrId !== 'guest_student') {
+          const recRes = await fetch(`/api/student/records?phone=${encodeURIComponent(phoneOrId)}`);
+          if (recRes.ok) {
+            const data = await recRes.json();
+            if (data.success && Array.isArray(data.worksheetHistory) && data.worksheetHistory.length > 0) {
+              setWorksheetRecords(data.worksheetHistory);
+              try {
+                localStorage.setItem('ai_tuition_worksheet_records', JSON.stringify(data.worksheetHistory));
+              } catch {}
+              return;
+            }
+          }
         }
+      } catch (err) {
+        console.warn('Could not fetch server worksheet records:', err);
       }
-    } catch (e) {
-      console.warn('Could not read worksheet records:', e);
-    }
 
-    // Default sample history if first time
-    const today = new Date().toISOString().split('T')[0];
-    const defaultData: SavedWorksheetRecord[] = [
-      {
-        id: 'ws-101',
-        title: 'English Lit: Chapter 14.3 My Early Home (Passage & Section A Questions)',
-        date: today,
-        dateLabel: 'Today, 04:30 PM',
-        subjectId: 'english',
-        subjectName: 'English Literature',
-        teacherName: 'Riya Didi',
-        files: [{ name: 'Page_139_Black_Beauty.jpg', url: '' }],
-        detectedQuestions: [
-          'A. 1. The first place the speaker remembers was a big, pleasant meadow with a clean pond in the middle.',
-          'A. 2. When the weather was hot, the speaker and his mother stood by the pond under the trees.',
-          'A. 3. As the speaker grew older and could eat grass, his mother went out to work during the day.',
-          'A. 4. The speaker\'s master called him Darkie because his coat was black.'
-        ],
-        score: 10,
-        timestamp: Date.now() - 3600000,
-      },
-      {
-        id: 'ws-102',
-        title: 'Math: Nearest Thousands Rounding Off & Place Value Practice',
-        date: today,
-        dateLabel: 'Today, 11:15 AM',
-        subjectId: 'math',
-        subjectName: 'Mathematics',
-        teacherName: 'Sharma Sir',
-        files: [{ name: 'Math_Worksheet_Ch4.jpg', url: '' }],
-        detectedQuestions: [
-          'Q1: Estimate difference of 423516 and 453729 by rounding to nearest thousands: 30000',
-          'Q2: Difference of place value of 5s in 375059: 49500',
-          'Q3: Subtraction of smaller number from greater number is always positive: True'
-        ],
-        score: 9.5,
-        timestamp: Date.now() - 18000000,
-      },
-      {
-        id: 'ws-103',
-        title: 'EVS / Science: Plant Adaptations & Water Conservation in Desert',
-        date: today,
-        dateLabel: 'Yesterday, 05:20 PM',
-        subjectId: 'evs',
-        subjectName: 'EVS / Science',
-        teacherName: 'Neha Mam',
-        files: [{ name: 'EVS_Chapter7_Plants.jpg', url: '' }],
-        detectedQuestions: [
-          'Q1: How do cactus plants survive with very little water?',
-          'Q2: Why are roots deep in desert plants?'
-        ],
-        score: 9,
-        timestamp: Date.now() - 86400000,
+      // Fallback to localStorage if offline
+      try {
+        const stored = localStorage.getItem('ai_tuition_worksheet_records');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setWorksheetRecords(parsed);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not read worksheet records:', e);
       }
-    ];
-    setWorksheetRecords(defaultData);
+
+      setWorksheetRecords([]);
+    };
+
+    loadStudentWorksheets();
   }, []);
 
   const isEn = lang === 'en';

@@ -158,6 +158,56 @@ export async function saveStudentUpload(params: {
     }
 
     existingRecord.uploads = [record, ...(existingRecord.uploads || [])].slice(0, 100);
+
+    const sub = subject || '';
+    const subLower = sub.toLowerCase();
+    const subjectId = subLower.includes('eng')
+      ? 'english'
+      : subLower.includes('hindi')
+      ? 'hindi'
+      : subLower.includes('evs') || subLower.includes('sc')
+      ? 'evs'
+      : subLower.includes('math') || subLower.includes('गणित')
+      ? 'math'
+      : '';
+    const teacherName =
+      subjectId === 'english'
+        ? 'Riya Didi'
+        : subjectId === 'hindi'
+        ? 'Pooja Mam'
+        : subjectId === 'evs'
+        ? 'Neha Mam'
+        : subjectId === 'math'
+        ? 'Sharma Sir'
+        : 'AI शिक्षक';
+
+    // Also sync directly to worksheetHistory so it immediately appears in all student devices/laptops
+    const wsRecord = {
+      id: record.id,
+      title: sub ? `${fileName} (${sub})` : `वर्कशीट: ${fileName}`,
+      date: new Date(now).toISOString().split('T')[0],
+      dateLabel: `आज, ${new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      subjectId,
+      subjectName: sub || 'वर्कशीट',
+      teacherName,
+      files: [
+        {
+          id: `file-${now}-0`,
+          name: fileName,
+          url: savedRelativePath,
+          thumbnailUrl: savedRelativePath,
+          type: fileMime,
+        },
+      ],
+      detectedQuestions: detectedQuestions || [],
+      whiteboardSteps: [],
+      timestamp: now,
+    };
+
+    if (!Array.isArray(existingRecord.worksheetHistory)) existingRecord.worksheetHistory = [];
+    const filteredWs = existingRecord.worksheetHistory.filter((w: any) => w.id !== wsRecord.id && w.title !== wsRecord.title);
+    existingRecord.worksheetHistory = [wsRecord, ...filteredWs].slice(0, 100);
+
     existingRecord.updatedAt = now;
     existingRecord.studentName = studentName || existingRecord.studentName;
     existingRecord.studentPhone = cleanPhone || existingRecord.studentPhone;
