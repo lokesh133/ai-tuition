@@ -60,6 +60,7 @@ import TeacherWhiteboardAnimation from '@/components/TeacherWhiteboardAnimation'
 import MathNotebookColumnGrid, { tryParseColumnMath } from '@/components/MathNotebookColumnGrid';
 import VisualMathDiagramCard from '@/components/VisualMathDiagramCard';
 import { WorksheetHistoryModal, SavedWorksheetRecord } from '@/components/WorksheetHistoryModal';
+import { PdfWorksheetViewer } from '@/components/PdfWorksheetViewer';
 import { enhanceDocumentImage, compressImageForThumbnail, optimizeImageForStorage } from '@/lib/image-enhancer';
 import { RoughWorkScratchpad } from '@/components/RoughWorkScratchpad';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
@@ -691,6 +692,8 @@ export default function TuitionClassroomStudio() {
 
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ id: string; name: string; url: string; type: string }>>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
+  const [pdfCurrentPage, setPdfCurrentPage] = useState<number>(1);
+  const [pdfTotalPages, setPdfTotalPages] = useState<number>(1);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [activeMathAnim, setActiveMathAnim] = useState<{ num1: number; op: string; num2: number; result: number } | null>(null);
 
@@ -706,12 +709,19 @@ export default function TuitionClassroomStudio() {
   const activeFileDoc = uploadedFiles.find((f) => f.id === activeFileId) || uploadedFiles[0] || null;
   const uploadedImage = activeFileDoc?.url || null;
   const uploadedFileName = activeFileDoc?.name || '';
+  const isPdfWorksheet = Boolean(
+    (activeFileDoc?.type && activeFileDoc.type.includes('pdf')) ||
+    (uploadedImage && (uploadedImage.includes('.pdf') || uploadedImage.startsWith('data:application/pdf'))) ||
+    (uploadedFileName && uploadedFileName.toLowerCase().endsWith('.pdf'))
+  );
 
   const setUploadedImage = (url: string | null) => {
     if (!url) {
       stopAudio();
       setUploadedFiles([]);
       setActiveFileId('');
+      setPdfCurrentPage(1);
+      setPdfTotalPages(1);
       setPageDataMap({});
       setWhiteboardSteps([]);
       setActiveTargetQuestion('');
@@ -753,6 +763,7 @@ export default function TuitionClassroomStudio() {
     setIsPageFlipping(true);
     setTimeout(() => setIsPageFlipping(false), 350);
     setActiveFileId(targetFileId);
+    setPdfCurrentPage(1);
     setActiveTargetQuestion('');
     setActiveMathAnim(null);
 
@@ -5240,21 +5251,21 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         </aside>
 
         {/* MAIN WORKSPACE CONTENT - PERFECT FIT WITH ZERO PAGE SCROLL */}
-        <main className="flex-1 min-h-0 p-2 sm:p-2.5 lg:p-3 pb-1 max-w-[1550px] mx-auto w-full flex flex-col gap-2 overflow-hidden">
+        <main className="flex-1 min-h-0 p-1.5 sm:p-2 lg:px-2.5 lg:py-1.5 pb-1 max-w-[1550px] mx-auto w-full flex flex-col gap-1.5 overflow-hidden">
           {/* 3. TEACHER HERO BANNER CARD (COMPACT FOR SINGLE SCREEN VIEW) */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-2 sm:p-2.5 lg:p-3 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+          <div className="bg-white rounded-xl border border-slate-200/90 py-1 px-2.5 sm:px-3 shadow-2xs flex flex-col lg:flex-row items-center justify-between gap-2 shrink-0">
             {/* Left: Chalkboard graphic with 3D Teacher Avatar */}
-            <div className="flex items-center gap-3 sm:gap-3.5 w-full lg:w-auto">
-              <div className="relative w-32 sm:w-40 lg:w-44 h-18 sm:h-20 rounded-xl bg-[#1c4731] border-3 sm:border-4 border-[#7d512d] shadow-md flex items-center justify-center overflow-hidden shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 w-full lg:w-auto">
+              <div className="relative w-28 sm:w-36 lg:w-38 h-12 sm:h-13 rounded-lg bg-[#1c4731] border-2 sm:border-3 border-[#7d512d] shadow-sm flex items-center justify-center overflow-hidden shrink-0">
                 {/* Chalk doodles background */}
-                <div className="absolute inset-0 opacity-20 pointer-events-none select-none text-white font-mono text-[10px] p-1.5 flex flex-col justify-between">
+                <div className="absolute inset-0 opacity-20 pointer-events-none select-none text-white font-mono text-[9px] p-1 flex flex-col justify-between">
                   <div className="flex justify-between"><span>1 2 3</span><span>+-×÷</span></div>
-                  <div className="text-center text-xs">📐 3D</div>
+                  <div className="text-center text-[10px]">📐 3D</div>
                   <div className="flex justify-between"><span>√x</span><span>a²+b²</span></div>
                 </div>
                 {/* Teacher Avatar */}
                 <div className="relative z-10 flex flex-col items-center">
-                  <div className="w-13 h-13 sm:w-15 sm:h-15 rounded-full border-2 border-amber-300 shadow-md overflow-hidden bg-amber-50 flex items-center justify-center">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 border-amber-300 shadow-sm overflow-hidden bg-amber-50 flex items-center justify-center">
                     <img
                       src={
                         currentTeacher.id === 'sharma'
@@ -5271,40 +5282,42 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         (e.target as HTMLElement).style.display = 'none';
                       }}
                     />
-                    <span className="text-2xl font-black">{currentTeacher.emoji}</span>
+                    <span className="text-xl font-black">{currentTeacher.emoji}</span>
                   </div>
                 </div>
               </div>
 
               {/* Center Teacher Info & Prompt */}
-              <div className="space-y-1 min-w-0">
+              <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-none">
                     {currentTeacher.name} • {currentTeacher.role}
                   </h2>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-medium truncate max-w-sm sm:max-w-md">
-                  {currentTeacher.id === 'sharma'
-                    ? 'आओ, गणित को आसान और मज़ेदार बनाएं !'
-                    : currentTeacher.id === 'riya'
-                    ? "Let's make English easy and fun!"
-                    : currentTeacher.id === 'neha'
-                    ? 'विज्ञान के मजेदार प्रयोग और सीख!'
-                    : 'हिंदी को समझें और सुंदर लिखें!'}
-                </p>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-blue-50/80 border border-blue-200/80 text-blue-700 text-[11px] font-bold">
-                  <span>⏱️</span>
-                  <span className="truncate max-w-xs sm:max-w-none">{currentTeacher.id === 'sharma' ? 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।' : 'कोई भी सवाल पूछें, तुरंत हल मिलेगा!'}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-[11px] text-slate-500 font-medium truncate max-w-xs sm:max-w-sm">
+                    {currentTeacher.id === 'sharma'
+                      ? 'आओ, गणित को आसान और मज़ेदार बनाएं !'
+                      : currentTeacher.id === 'riya'
+                      ? "Let's make English easy and fun!"
+                      : currentTeacher.id === 'neha'
+                      ? 'विज्ञान के मजेदार प्रयोग और सीख!'
+                      : 'हिंदी को समझें और सुंदर लिखें!'}
+                  </p>
+                  <div className="hidden sm:inline-flex items-center gap-1 px-2 py-0.2 rounded-md bg-blue-50/80 border border-blue-200/80 text-blue-700 text-[10px] font-bold">
+                    <span>⏱️</span>
+                    <span className="truncate">{currentTeacher.id === 'sharma' ? 'कोई भी सवाल पूछो, मैं step by step समझाऊँगा ।' : 'कोई भी सवाल पूछें, तुरंत हल मिलेगा!'}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Right: 4 Teacher Cards for 1-Click Switch */}
-            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 w-full lg:w-auto shrink-0">
+            <div className="grid grid-cols-4 gap-1 sm:gap-1.5 w-full lg:w-auto shrink-0">
               {TEACHER_LIST_DATA.map((t) => {
                 const isSelected = currentTeacher.id === t.id;
                 return (
@@ -5329,13 +5342,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       }
                       speakText(t.greeting);
                     }}
-                    className={`flex flex-col items-center p-1.5 sm:p-2 rounded-xl border text-center transition-all cursor-pointer ${
+                    className={`flex flex-col items-center px-1.5 py-1 rounded-lg border text-center transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-blue-50/80 border-blue-500 shadow-2xs ring-1 ring-blue-500/20'
+                        ? 'bg-blue-50/90 border-blue-500 shadow-2xs ring-1 ring-blue-500/20'
                         : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center mb-0.5">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full border border-slate-200 overflow-hidden bg-slate-100 flex items-center justify-center mb-0.5">
                       <img
                         src={t.image}
                         alt={t.name}
@@ -5344,12 +5357,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                           (e.target as HTMLElement).style.display = 'none';
                         }}
                       />
-                      <span className="text-base sm:text-lg">{t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫'}</span>
+                      <span className="text-xs sm:text-sm">{t.id === 'sharma' ? '👨‍🏫' : t.id === 'riya' ? '👩‍🏫' : t.id === 'neha' ? '👩‍🔬' : '👩‍🏫'}</span>
                     </div>
-                    <span className="text-[10px] sm:text-[11px] font-black text-slate-800 leading-tight truncate w-full">
+                    <span className="text-[10px] font-black text-slate-800 leading-none truncate w-full">
                       {t.name}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
+                    <span className="text-[8px] sm:text-[9px] text-slate-500 font-medium leading-none">
                       {t.subject}
                     </span>
                   </button>
@@ -5390,27 +5403,27 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 4. SPLIT 2-COLUMN WORKSPACE (MATCHING MOCKUP - SINGLE VIEW ON EVERY SCREEN) */}
-          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-3 items-stretch">
-            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (4 cols - FITS SINGLE SCREEN VIEW) */}
+          <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-2.5 items-stretch">
+            {/* LEFT COLUMN: UPLOADED WORKSHEET CARD (5 cols - EXPANDED HEIGHT & WIDTH) */}
             <div
-              className={`lg:col-span-4 xl:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden transition-all duration-200 h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
+              className={`lg:col-span-5 xl:col-span-5 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden transition-all duration-200 h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
                 mobileWorkspaceTab === 'whiteboard' ? 'hidden lg:flex' : 'flex'
               }`}
             >
-              {/* Header with Pichla Upload, Zoom, Fit & Fullscreen */}
-              <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between flex-wrap gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs sm:text-sm font-black text-slate-800">
-                    अपलोड की गई वर्कशीट
+              {/* Header with Pichla Upload, Zoom, Fit & Fullscreen - ULTRA COMPACT SINGLE ROW */}
+              <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between gap-1 shrink-0 overflow-x-auto scrollbar-none">
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-xs font-black text-slate-800 whitespace-nowrap">
+                    वर्कशीट
                   </span>
                   <span
-                    className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-black border border-blue-200"
+                    className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-50 text-blue-700 font-black border border-blue-200"
                     title="1 दिन में अधिकतम 20 वर्कशीट अपलोड कर सकते हैं"
                   >
                     {dailyUploadCount}/20
                   </span>
                 </div>
-                <div className="flex items-center gap-1 flex-wrap">
+                <div className="flex items-center gap-1 shrink-0">
                   {/* Camera Quick Button */}
                   <button
                     type="button"
@@ -5418,11 +5431,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       e.stopPropagation();
                       startWebcamCapture();
                     }}
-                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
                     title="कैमरा से फोटो खींचें (Camera Capture)"
                   >
                     <Camera className="w-3 h-3 text-emerald-600" />
-                    <span className="hidden sm:inline">कैमरा</span>
+                    <span className="hidden xl:inline">कैमरा</span>
                   </button>
 
                   {/* Upload Quick Button */}
@@ -5432,11 +5445,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       e.stopPropagation();
                       fileInputRef.current?.click();
                     }}
-                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0"
                     title="गैलरी या फाइल से फोटो / PDF अपलोड करें (Upload)"
                   >
                     <Upload className="w-3 h-3 text-blue-600" />
-                    <span className="hidden sm:inline">अपलोड</span>
+                    <span className="hidden xl:inline">अपलोड</span>
                   </button>
 
                   {/* Fit Height Toggle */}
@@ -5447,14 +5460,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       setIsFitToHeight((prev) => !prev);
                       setImageZoom(1);
                     }}
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer ${
+                    className={`px-1.5 py-0.5 text-[10px] font-bold rounded-md border transition-all cursor-pointer shrink-0 ${
                       isFitToHeight
                         ? 'bg-blue-50 text-blue-700 border-blue-300 shadow-2xs'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                     }`}
                     title={isFitToHeight ? 'पूरी चौड़ाई देखें' : 'पूरी स्क्रीन में फ़िट करें'}
                   >
-                    {isFitToHeight ? 'स्क्रीन फ़िट ✓' : 'फ़िट'}
+                    {isFitToHeight ? 'फ़िट ✓' : 'फ़िट'}
                   </button>
 
                   {/* Rotate */}
@@ -5464,29 +5477,29 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       e.stopPropagation();
                       setImageRotation((r) => (r + 90) % 360);
                     }}
-                    className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+                    className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all cursor-pointer shrink-0"
                     title="फोटो घुमाएं (Rotate 90°)"
                   >
-                    <RotateCw className="w-3.5 h-3.5" />
+                    <RotateCw className="w-3 h-3" />
                   </button>
 
                   {/* Zoom Controls */}
-                  <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+                  <div className="flex items-center bg-slate-100 rounded-md p-0.5 border border-slate-200 shrink-0">
                     <button
                       type="button"
                       onClick={() => setImageZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)))}
-                      className="px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      className="px-1 py-0.2 text-[10px] font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
                       title="छोटा करें"
                     >
                       −
                     </button>
-                    <span className="px-1 text-[10px] font-mono font-bold text-slate-700">
+                    <span className="px-1 text-[9px] font-mono font-bold text-slate-700">
                       {Math.round(imageZoom * 100)}%
                     </span>
                     <button
                       type="button"
                       onClick={() => setImageZoom((z) => Math.min(2.5, +(z + 0.25).toFixed(2)))}
-                      className="px-1.5 py-0.5 text-xs font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
+                      className="px-1 py-0.2 text-[10px] font-bold text-slate-600 hover:bg-white rounded cursor-pointer transition-all"
                       title="बड़ा करें"
                     >
                       +
@@ -5496,11 +5509,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <button
                     type="button"
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                    className="p-1 rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-all cursor-pointer shadow-2xs shrink-0"
                     title="पिछला अपलोड और पुराना रिकॉर्ड देखें"
                   >
                     <Clock className="w-3 h-3 text-amber-600" />
-                    <span className="hidden sm:inline">पिछला</span>
                   </button>
 
                   <button
@@ -5509,10 +5521,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       e.stopPropagation();
                       setIsFullscreenMode(true);
                     }}
-                    className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1 rounded-lg cursor-pointer border border-transparent hover:border-blue-200"
+                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors rounded-md cursor-pointer border border-transparent hover:border-blue-200 shrink-0"
                     title="पूरी स्क्रीन पर बड़ा देखें (Fullscreen)"
                   >
-                    <Maximize2 className="w-3.5 h-3.5" />
+                    <Maximize2 className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -5523,21 +5535,33 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               >
                 {uploadedImage ? (
                   <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                    <img
-                      src={uploadedImage}
-                      alt="Uploaded Worksheet"
-                      style={{
-                        transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
-                        transformOrigin: 'center center',
-                        transition: 'transform 0.15s ease',
-                        imageRendering: 'crisp-edges',
-                      }}
-                      className={`rounded-xl shadow-xs border border-slate-200 bg-white block select-none transition-all duration-200 ${
-                        isFitToHeight
-                          ? 'max-h-full max-w-full w-auto h-auto object-contain'
-                          : 'w-full h-auto object-contain'
-                      }`}
-                    />
+                    {isPdfWorksheet ? (
+                      <PdfWorksheetViewer
+                        url={uploadedImage}
+                        currentPage={pdfCurrentPage}
+                        onTotalPagesChange={(total) => setPdfTotalPages(total)}
+                        zoom={imageZoom}
+                        rotation={imageRotation}
+                        isFitToHeight={isFitToHeight}
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <img
+                        src={uploadedImage}
+                        alt="Uploaded Worksheet"
+                        style={{
+                          transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
+                          transformOrigin: 'center center',
+                          transition: 'transform 0.15s ease',
+                          imageRendering: 'crisp-edges',
+                        }}
+                        className={`rounded-xl shadow-xs border border-slate-200 bg-white block select-none transition-all duration-200 ${
+                          isFitToHeight
+                            ? 'max-h-full max-w-full w-auto h-auto object-contain'
+                            : 'w-full h-auto object-contain'
+                        }`}
+                      />
+                    )}
                     <div className="absolute inset-0 bg-blue-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2.5 backdrop-blur-2xs rounded-lg pointer-events-none">
                       <button
                         type="button"
@@ -5614,36 +5638,52 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   const totalFiles = Math.max(1, uploadedFiles.length);
                   const currentPageNum = safeIdx + 1;
 
+                  const isMultiPagePdf = isPdfWorksheet && pdfTotalPages > 1;
+                  const displayPageNum = isMultiPagePdf ? pdfCurrentPage : currentPageNum;
+                  const displayTotalPages = isMultiPagePdf ? pdfTotalPages : totalFiles;
+
+                  const canGoPrev = isMultiPagePdf
+                    ? pdfCurrentPage > 1
+                    : (uploadedFiles.length > 1 && safeIdx > 0) || detectedQuestions.length > 1;
+
+                  const canGoNext = isMultiPagePdf
+                    ? pdfCurrentPage < pdfTotalPages
+                    : (uploadedFiles.length > 1 && safeIdx < uploadedFiles.length - 1) || detectedQuestions.length > 1;
+
                   return (
                     <div className="flex items-center gap-1 text-xs font-bold text-slate-600">
                       <button
                         type="button"
                         onClick={() => {
-                          if (uploadedFiles.length > 1 && safeIdx > 0) {
+                          if (isMultiPagePdf && pdfCurrentPage > 1) {
+                            setPdfCurrentPage((p) => Math.max(1, p - 1));
+                          } else if (uploadedFiles.length > 1 && safeIdx > 0) {
                             handleSwitchPage(uploadedFiles[safeIdx - 1].id);
                           } else {
                             handlePrevQuestion();
                           }
                         }}
-                        disabled={uploadedFiles.length <= 1 && detectedQuestions.length <= 1}
+                        disabled={!canGoPrev}
                         className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-30 cursor-pointer"
                         title="पिछला पेज / सवाल"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
                       <span className="text-[10px] sm:text-[11px] px-1 font-black">
-                        Page {currentPageNum}/{totalFiles}
+                        Page {displayPageNum}/{displayTotalPages}
                       </span>
                       <button
                         type="button"
                         onClick={() => {
-                          if (uploadedFiles.length > 1 && safeIdx < uploadedFiles.length - 1) {
+                          if (isMultiPagePdf && pdfCurrentPage < pdfTotalPages) {
+                            setPdfCurrentPage((p) => Math.min(pdfTotalPages, p + 1));
+                          } else if (uploadedFiles.length > 1 && safeIdx < uploadedFiles.length - 1) {
                             handleSwitchPage(uploadedFiles[safeIdx + 1].id);
                           } else {
                             handleNextQuestion();
                           }
                         }}
-                        disabled={uploadedFiles.length <= 1 && detectedQuestions.length <= 1}
+                        disabled={!canGoNext}
                         className="p-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-30 cursor-pointer"
                         title="अगला पेज / सवाल"
                       >
@@ -5685,69 +5725,66 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               </div>
             </div>
 
-            {/* RIGHT COLUMN: SMART WHITEBOARD (8 cols - MATCHING SINGLE VIEW HEIGHT) */}
+            {/* RIGHT COLUMN: SMART WHITEBOARD (7 cols - MATCHING SINGLE VIEW HEIGHT) */}
             <div
-              className={`lg:col-span-8 xl:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
+              className={`lg:col-span-7 xl:col-span-7 bg-white rounded-xl border border-slate-200/90 shadow-2xs flex flex-col overflow-hidden h-[52vh] sm:h-[60vh] lg:h-full lg:min-h-0 ${
                 mobileWorkspaceTab === 'worksheet' ? 'hidden lg:flex' : 'flex'
               }`}
             >
-              {/* Top Bar with Action Buttons */}
-              <div className="px-3.5 py-2 sm:py-2.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-1.5 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                    📋
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900 leading-tight">
-                      Smart Whiteboard
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-medium">
-                      AI के साथ पढ़ें, समझें और हर सवाल हल करें
-                    </p>
-                  </div>
+              {/* Top Bar with Action Buttons - ULTRA COMPACT SINGLE ROW */}
+              <div className="px-2.5 py-1.5 border-b border-slate-100 flex items-center justify-between gap-1.5 shrink-0 overflow-x-auto scrollbar-none">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-sm">📋</span>
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 whitespace-nowrap">
+                    Smart Whiteboard
+                  </h3>
                 </div>
 
-                {/* Action Pills (किताब जैसा, कॉपी में हल, मॉक टेस्ट, हिंट लें, सुनें, अगला सवाल) */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setWhiteboardDisplayTab('book')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      whiteboardDisplayTab === 'book'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <BookOpen className="w-3.5 h-3.5" />
-                    <span>किताब जैसा</span>
-                  </button>
+                {/* Action Pills in clean single row */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Segmented Mode Control */}
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setWhiteboardDisplayTab('book')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        whiteboardDisplayTab === 'book'
+                          ? 'bg-white text-blue-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      <span>किताब</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setWhiteboardDisplayTab('notebook')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      whiteboardDisplayTab === 'notebook'
-                        ? 'bg-blue-600 text-white shadow-2xs'
-                        : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    <FileText className="w-3.5 h-3.5" />
-                    <span>कॉपी में हल</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setWhiteboardDisplayTab('notebook')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                        whiteboardDisplayTab === 'notebook'
+                          ? 'bg-white text-blue-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>कॉपी</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setWhiteboardDisplayTab('mock')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                      whiteboardDisplayTab === 'mock'
-                        ? 'bg-amber-600 text-white shadow-2xs font-black'
-                        : 'bg-white border border-amber-300 text-amber-800 hover:bg-amber-50'
-                    }`}
-                  >
-                    <span>🎯</span>
-                    <span>मॉक टेस्ट</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setWhiteboardDisplayTab('mock')}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        whiteboardDisplayTab === 'mock'
+                          ? 'bg-amber-500 text-white shadow-2xs'
+                          : 'text-amber-800 hover:text-amber-950'
+                      }`}
+                    >
+                      <span>🎯</span>
+                      <span>मॉक टेस्ट</span>
+                    </button>
+                  </div>
 
+                  {/* Teacher Speak */}
                   <button
                     type="button"
                     onClick={() => {
@@ -5764,47 +5801,51 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         speakText(speech);
                       }
                     }}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs shrink-0 ${
                       isSpeaking && !speakingQuestionId
                         ? 'bg-rose-50 text-rose-700 border border-rose-300 animate-pulse'
                         : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200'
                     }`}
                     title="टीचर पूरी वर्कशीट और सवाल बोलकर समझाएंगे"
                   >
-                    <Volume2 className={`w-3.5 h-3.5 ${isSpeaking && !speakingQuestionId ? 'text-rose-600' : 'text-indigo-600'}`} />
-                    <span>{isSpeaking && !speakingQuestionId ? 'रुकें (Stop)' : '👨‍🏫 टीचर से समझें'}</span>
+                    <Volume2 className={`w-3 h-3 ${isSpeaking && !speakingQuestionId ? 'text-rose-600' : 'text-indigo-600'}`} />
+                    <span className="hidden sm:inline">{isSpeaking && !speakingQuestionId ? 'रुकें' : 'टीचर से समझें'}</span>
+                    <span className="sm:hidden">बोलें</span>
                   </button>
 
+                  {/* AI Solve Button */}
                   {uploadedFiles.length > 0 && (
                     <button
                       type="button"
                       onClick={() => handleAnalyzeActiveWorksheet()}
                       disabled={isCheckingHomework}
-                      className="px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      className="px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0"
                       title="AI से इस कॉपी को स्कैन करें और सभी सवाल-उत्तर निकालें"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{isCheckingHomework ? 'स्कैन...' : '🔍 AI से हल निकालें'}</span>
+                      <Sparkles className="w-3 h-3 text-emerald-600" />
+                      <span>{isCheckingHomework ? 'स्कैन...' : 'AI हल'}</span>
                     </button>
                   )}
 
+                  {/* Next Question */}
                   <button
                     type="button"
                     onClick={handleNextQuestion}
-                    className="px-3 py-1 rounded-lg text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-0.5 cursor-pointer shrink-0"
+                    title="अगला सवाल"
                   >
-                    <span>अगला सवाल</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
+                    <span>अगला</span>
+                    <ChevronRight className="w-3 h-3" />
                   </button>
 
+                  {/* Compact Reset Icon */}
                   <button
                     type="button"
                     onClick={handleFullPageReset}
-                    className="px-3 py-1 rounded-lg text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                    title="पूरे पेज और व्हाइटबोर्ड को रीसेट करें"
+                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer shrink-0"
+                    title="व्हाइटबोर्ड रीसेट करें"
                   >
-                    <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
-                    <span>पेज रीसेट</span>
+                    <RotateCcw className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -7215,16 +7256,27 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             className="flex-1 w-full overflow-auto flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={uploadedImage}
-              alt="Worksheet Fullscreen"
-              style={{
-                transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
-                transformOrigin: 'center center',
-                transition: 'transform 0.15s ease',
-              }}
-              className="max-h-[82vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl border border-white/10 select-none bg-white"
-            />
+            {isPdfWorksheet ? (
+              <PdfWorksheetViewer
+                url={uploadedImage}
+                currentPage={pdfCurrentPage}
+                zoom={imageZoom}
+                rotation={imageRotation}
+                isFitToHeight={isFitToHeight}
+                className="max-h-[82vh] max-w-[92vw]"
+              />
+            ) : (
+              <img
+                src={uploadedImage}
+                alt="Worksheet Fullscreen"
+                style={{
+                  transform: `scale(${imageZoom}) rotate(${imageRotation}deg)`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.15s ease',
+                }}
+                className="max-h-[82vh] max-w-[92vw] object-contain rounded-2xl shadow-2xl border border-white/10 select-none bg-white"
+              />
+            )}
           </div>
         </div>
       )}

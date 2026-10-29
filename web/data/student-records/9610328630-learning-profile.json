@@ -5,7 +5,7 @@
   "classGrade": "कक्षा 4",
   "board": "RBSE",
   "medium": "HINDI",
-  "updatedAt": 1793201101313,
+  "updatedAt": 1793281074939,
   "createdAt": 1793069677050,
   "conceptMastery": {
     "math_c2_subtraction_borrow": {
@@ -61,7 +61,7 @@
       "completed": false
     },
     {
-      "id": "act-scan-2026-10-28",
+      "id": "act-scan-2026-10-29",
       "type": "PRACTICE_WEAK",
       "title": "Scan Homework & Instant Mistake Check",
       "description": "School copy ya textbook ki photo kheenche aur turant check karwayein.",

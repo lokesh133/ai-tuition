@@ -1,6 +1,27 @@
 {
   "worksheetHistory": [
     {
+      "id": "upload-1793286156132-r0li5",
+      "title": "PWclass-4 ch-8.pdf (Mathematics)",
+      "date": "2026-10-29",
+      "dateLabel": "आज, 08:32 PM",
+      "subjectId": "math",
+      "subjectName": "Mathematics",
+      "teacherName": "Sharma Sir",
+      "files": [
+        {
+          "id": "file-1793286156132-0",
+          "name": "PWclass-4 ch-8.pdf",
+          "url": "/data/student-uploads/general/2026-10-29T15-02-36-132Z_PWclass-4_ch-8.pdf",
+          "thumbnailUrl": "/data/student-uploads/general/2026-10-29T15-02-36-132Z_PWclass-4_ch-8.pdf",
+          "type": "application/pdf"
+        }
+      ],
+      "detectedQuestions": [],
+      "whiteboardSteps": [],
+      "timestamp": 1793286156132
+    },
+    {
       "id": "upload-1793275515903-dexxq",
       "title": "WhatsApp Image 2026-10-26_at_4.01.50_PM__2_.jpg (Mathematics)",
       "date": "2026-10-29",
@@ -87,6 +108,42 @@
   ],
   "testHistory": [],
   "uploads": [
+    {
+      "id": "upload-1793286156132-r0li5",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793286156132,
+      "isoDate": "2026-10-29T15:02:36.132Z",
+      "fileName": "PWclass-4 ch-8.pdf",
+      "fileMime": "application/pdf",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T15-02-36-132Z_PWclass-4_ch-8.pdf",
+      "fileSizeKb": 619,
+      "classGrade": "Class 4th",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
+    {
+      "id": "upload-1793285983186-rhjxr",
+      "studentId": "general",
+      "studentPhone": "",
+      "studentName": "Student",
+      "timestamp": 1793285983186,
+      "isoDate": "2026-10-29T14:59:43.186Z",
+      "fileName": "PWclass-4 ch-8.pdf",
+      "fileMime": "application/pdf",
+      "savedRelativePath": "/data/student-uploads/general/2026-10-29T14-59-43-186Z_PWclass-4_ch-8.pdf",
+      "fileSizeKb": 619,
+      "classGrade": "कक्षा 4",
+      "board": "RBSE",
+      "subject": "Mathematics",
+      "mode": "worksheet",
+      "detectedQuestions": [],
+      "teacherReplySummary": ""
+    },
     {
       "id": "upload-1793275515903-dexxq",
       "studentId": "general",
@@ -304,7 +361,7 @@
       "teacherReplySummary": ""
     }
   ],
-  "updatedAt": 1793275515903,
+  "updatedAt": 1793286156132,
   "studentName": "Student",
   "classGrade": "Class 4th",
   "board": "RBSE"
