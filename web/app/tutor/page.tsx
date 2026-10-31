@@ -859,19 +859,22 @@ export default function TuitionClassroomStudio() {
   };
 
   const cleanWorksheetDisplayName = (name?: string | null): string => {
-    if (!name) return 'कॉपी / वर्कशीट';
+    if (!name) return "??????? ???????";
     let clean = name
-      .replace(/^\d{4}-\d{2}-\d{2}T[^-]+-/, '')
-      .replace(/^[a-zA-Z0-9_-]+_WhatsApp_Image_/, 'WhatsApp Image ')
-      .replace(/^[_\s]+/, '')
-      .replace(/\.jpeg\.jpg$/i, '')
-      .replace(/\.[^/.]+$/, '')
-      .replace(/[-_]/g, ' ')
+      .replace(/^\d{4}-\d{2}-\d{2}T[^-]+-/, "")
+      .replace(/^[a-zA-Z0-9_-]+_WhatsApp_Image_/i, "WhatsApp Image ")
+      .replace(/^[_\s]+/, "")
+      .replace(/\.jpeg\.jpg$/i, "")
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[-_]/g, " ")
       .trim();
-    if (/^\d+$/.test(clean)) {
-      return `कॉपी (पेज ${clean})`;
+    if (/whatsapp\s*image/i.test(clean) || /^img[\s_0-9]+/i.test(clean) || /^pxl[\s_0-9]+/i.test(clean)) {
+      return "??????? ??????? (??????)";
     }
-    return clean || 'कॉपी / वर्कशीट';
+    if (/^\d+$/.test(clean)) {
+      return `??????? ??? ${clean}`;
+    }
+    return clean || "??????? ???????";
   };
 
   // Live Vision Analysis: reads active uploaded worksheet with AI and populates whiteboard steps
@@ -5733,38 +5736,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
         {/* MAIN WORKSPACE CONTENT - PERFECT FIT WITH ZERO PAGE SCROLL */}
         <main className="flex-1 min-h-0 p-1.5 sm:p-2 lg:px-2.5 lg:py-1.5 pb-1 max-w-[1550px] mx-auto w-full flex flex-col gap-1.5 overflow-hidden">
-          {/* Mobile / Tablet View Switcher */}
-          <div className="lg:hidden flex items-center justify-center p-1 bg-slate-100 rounded-xl mb-1 gap-1 border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setMobileWorkspaceTab('both')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                mobileWorkspaceTab === 'both' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              दोनों (Split)
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileWorkspaceTab('worksheet')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                mobileWorkspaceTab === 'worksheet' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              📄 कॉपी फोटो
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileWorkspaceTab('whiteboard')}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                mobileWorkspaceTab === 'whiteboard' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
-              }`}
-            >
-              📋 व्हाइटबोर्ड
-            </button>
-          </div>
-
-                    {/* 4. FULL-WIDTH SMART WHITEBOARD WORKSPACE */}
+          {/* 4. FULL-WIDTH SMART WHITEBOARD WORKSPACE */}
           <div className="flex-1 min-h-0 w-full flex flex-col items-stretch">
             {/* FULL WIDTH SMART WHITEBOARD */}
             <div
@@ -5971,7 +5943,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* RULED SCHOOL NOTEBOOK PAPER AREA (INTERNAL SMOOTH SCROLL) */}
               <div
-                className="p-4 sm:p-5 flex-1 min-h-0 overflow-y-auto relative font-sans"
+                className="p-2.5 sm:p-5 pb-16 sm:pb-8 flex-1 min-h-0 overflow-y-auto relative font-sans"
                 style={{
                   background:
                     'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 28px)',
@@ -5979,7 +5951,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 }}
               >
                 {/* Red vertical notebook margin line */}
-                <div className="border-l-2 border-rose-300 pl-4 sm:pl-6 space-y-6">
+                <div className="border-l-2 border-rose-300 pl-2.5 sm:pl-6 space-y-4 sm:space-y-6">
                   {/* Worksheet Title Header - NEVER RENDERS RAW QUESTION */}
                   <div className="text-center">
                     <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
@@ -6903,8 +6875,38 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 5. BOTTOM DEDICATED CHAT & MIC DOCK */}
-          <div className="shrink-0 pt-1.5 pb-1 flex items-center justify-center w-full relative">
-            <div className="relative flex items-center gap-2.5 w-full max-w-2xl">
+          <div className="shrink-0 pt-1.5 pb-1 flex flex-col items-center justify-center w-full relative">
+            {/* ?? Mobile Question Navigator (Docked Above Input - No Overlap!) */}
+            {uploadedFiles.length > 0 && detectedQuestions.length > 1 && (
+              <div className="w-full max-w-2xl px-2 mb-1.5 sm:hidden">
+                <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 text-white rounded-xl py-1 px-3 flex items-center justify-between shadow-lg">
+                  <button
+                    type="button"
+                    onClick={handlePrevQuestion}
+                    disabled={isCheckingHomework}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold flex items-center gap-1 transition-all disabled:opacity-30 cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>?????</span>
+                  </button>
+
+                  <span className="text-xs font-black text-amber-300">
+                    ???? {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={handleNextQuestion}
+                    disabled={isCheckingHomework}
+                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-xs font-black flex items-center gap-1 shadow-md transition-all disabled:opacity-30 cursor-pointer"
+                  >
+                    <span>????</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className="relative flex items-center gap-2 sm:gap-2.5 w-full max-w-2xl px-1 sm:px-0">
               {/* 👨‍🏫 Live Teacher Doubt Explanation Card (FLOATING POPUP ABOVE DOCK) */}
               {teacherDoubtPopup && teacherDoubtPopup.isOpen && (
                 <div className="absolute bottom-full mb-3 left-0 right-0 z-50 bg-white/98 backdrop-blur-xl rounded-2xl border-2 border-indigo-300 shadow-2xl p-4 sm:p-5 flex flex-col max-h-[60vh] animate-in slide-in-from-bottom-3 duration-200">
@@ -7937,3 +7939,5 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     </div>
   );
 }
+
+

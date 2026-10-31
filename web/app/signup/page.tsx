@@ -19,6 +19,10 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  GraduationCap,
+  LocateFixed,
+  Check,
+  Building2,
 } from 'lucide-react';
 import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { firebaseAuth } from '@/lib/firebase';
@@ -34,6 +38,50 @@ const CLASSES = [
   'Class 8',
 ];
 
+const POPULAR_LOCATIONS = [
+  'Jaipur, Rajasthan',
+  'Jodhpur, Rajasthan',
+  'Kota, Rajasthan',
+  'Alwar, Rajasthan',
+  'Ajmer, Rajasthan',
+  'Bikaner, Rajasthan',
+  'Udaipur, Rajasthan',
+  'Bhilwara, Rajasthan',
+  'Sikar, Rajasthan',
+  'Bharatpur, Rajasthan',
+  'Pali, Rajasthan',
+  'Sri Ganganagar, Rajasthan',
+  'Hanumangarh, Rajasthan',
+  'Jhunjhunu, Rajasthan',
+  'Churu, Rajasthan',
+  'Nagaur, Rajasthan',
+  'Tonk, Rajasthan',
+  'Sawai Madhopur, Rajasthan',
+  'Dausa, Rajasthan',
+  'Chittorgarh, Rajasthan',
+  'Bundi, Rajasthan',
+  'Baran, Rajasthan',
+  'Jhalawar, Rajasthan',
+  'Banswara, Rajasthan',
+  'Dungarpur, Rajasthan',
+  'Pratapgarh, Rajasthan',
+  'Rajsamand, Rajasthan',
+  'Sirohi, Rajasthan',
+  'Jalore, Rajasthan',
+  'Barmer, Rajasthan',
+  'Jaisalmer, Rajasthan',
+  'Delhi (NCR)',
+  'Gurugram, Haryana',
+  'Noida, UP',
+  'Mumbai, Maharashtra',
+  'Pune, Maharashtra',
+  'Ahmedabad, Gujarat',
+  'Indore, MP',
+  'Bhopal, MP',
+  'Lucknow, UP',
+  'Patna, Bihar',
+];
+
 export default function StudentSignupPage() {
   const router = useRouter();
 
@@ -45,7 +93,13 @@ export default function StudentSignupPage() {
   const [selectedClass, setSelectedClass] = useState('Class 5');
   const [board, setBoard] = useState('RBSE (Rajasthan Board)');
   const [medium, setMedium] = useState('HINDI');
-  const [city, setCity] = useState('Alwar');
+  const [city, setCity] = useState('Jaipur');
+  const [schoolName, setSchoolName] = useState('');
+
+  // Location suggestions & GPS state
+  const [citySearchOpen, setCitySearchOpen] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
 
   // OTP Verification Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -62,6 +116,17 @@ export default function StudentSignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Close city dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setCitySearchOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Clean up recaptcha on unmount
   useEffect(() => {
     return () => {
@@ -74,12 +139,54 @@ export default function StudentSignupPage() {
     };
   }, []);
 
+  // Auto-Detect Current Location using GPS + Reverse Geocoding
+  const handleDetectCurrentLocation = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            const detected =
+              data.address?.city ||
+              data.address?.state_district ||
+              data.address?.town ||
+              data.address?.county ||
+              data.address?.state;
+            if (detected) {
+              setCity(detected);
+              setCitySearchOpen(false);
+            }
+          }
+        } catch (err) {
+          console.warn('Geolocation reverse geocoding note:', err);
+        } finally {
+          setIsDetectingLocation(false);
+        }
+      },
+      (geoErr) => {
+        console.warn('Geolocation error:', geoErr);
+        setIsDetectingLocation(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
   // Validation function
   const validateForm = (): boolean => {
     setError(null);
     const cleanName = name.trim();
     if (!cleanName || cleanName.length < 2) {
-      setError('Please enter a valid student name (at least 2 letters).');
+      setError('Please enter the student\'s full name (at least 2 letters).');
       return false;
     }
 
@@ -94,30 +201,40 @@ export default function StudentSignupPage() {
       return false;
     }
 
-    if (password.length < 4) {
-      setError('Password / 4-Digit PIN must be at least 4 characters or digits.');
+    if (!password || password.trim().length < 4) {
+      setError('Please set an easy password or 4-digit PIN for the student.');
       return false;
     }
 
     return true;
   };
 
+  // Setup Firebase invisible reCAPTCHA
   const setupRecaptcha = () => {
+    if (typeof window === 'undefined') return null;
     try {
       if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(firebaseAuth, 'recaptcha-container', {
-          size: 'invisible',
-          callback: () => {},
-        });
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(
+          firebaseAuth,
+          'recaptcha-container',
+          {
+            size: 'invisible',
+            callback: () => {},
+            'expired-callback': () => {
+              (window as any).recaptchaVerifier?.clear();
+              (window as any).recaptchaVerifier = null;
+            },
+          }
+        );
       }
       return (window as any).recaptchaVerifier;
     } catch (e) {
-      console.warn('Recaptcha setup warning:', e);
+      console.warn('reCAPTCHA init note:', e);
       return null;
     }
   };
 
-  // Step 1: Validate, send Firebase SMS or fallback OTP
+  // Step 1: Request OTP on Student Mobile
   const handleInitiateSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -136,7 +253,7 @@ export default function StudentSignupPage() {
 
       const checkData = await checkRes.json();
       if (!checkRes.ok || !checkData.success) {
-        setError(checkData.message || 'Mobile number already registered or invalid.');
+        setError(checkData.message || 'This mobile number is already registered or invalid.');
         setLoading(false);
         return;
       }
@@ -154,16 +271,13 @@ export default function StudentSignupPage() {
           );
           setConfirmationResult(confirmation);
           setIsFirebaseOtp(true);
-          console.log('✅ Real SMS sent via Google Firebase to +91', cleanPhone);
         }
       } catch (fbErr: any) {
         console.warn('Firebase SMS dispatch note (using fallback OTP):', fbErr.message || fbErr);
-        setIsFirebaseOtp(false);
       }
 
       setShowOtpModal(true);
-      setResendCooldown(30);
-
+      setResendCooldown(45);
       const interval = setInterval(() => {
         setResendCooldown((prev) => {
           if (prev <= 1) {
@@ -173,8 +287,9 @@ export default function StudentSignupPage() {
           return prev - 1;
         });
       }, 1000);
-    } catch (err) {
-      setError('Could not connect to server. Please check your internet connection.');
+    } catch (err: any) {
+      console.error('Signup initiate error:', err);
+      setError('Could not connect to the server. Please check your internet connection.');
     } finally {
       setLoading(false);
     }
@@ -195,7 +310,7 @@ export default function StudentSignupPage() {
       const data = await res.json();
       if (data.success) {
         setDemoOtp(data.demoOtp || null);
-        setResendCooldown(30);
+        setResendCooldown(45);
         const interval = setInterval(() => {
           setResendCooldown((prev) => {
             if (prev <= 1) {
@@ -207,17 +322,17 @@ export default function StudentSignupPage() {
         }, 1000);
       }
     } catch (e) {
-      setError('Failed to resend OTP.');
+      console.error('Resend OTP error:', e);
     } finally {
       setOtpLoading(false);
     }
   };
 
-  // Step 3: Verify OTP and Create Account in DB
+  // Step 3: Verify OTP & Create Account
   const handleVerifyOtpAndCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otp.trim()) {
-      setError('Please enter the OTP received on your mobile.');
+    if (!otp || otp.trim().length < 4) {
+      setError('Please enter the 4 or 6-digit OTP code.');
       return;
     }
 
@@ -231,7 +346,7 @@ export default function StudentSignupPage() {
       try {
         await confirmationResult.confirm(otp.trim());
       } catch (fbErr: any) {
-        console.warn('Firebase OTP verification failed, checking fallback OTP:', fbErr);
+        console.warn('Firebase verify note, verifying against internal DB OTP store:', fbErr.message);
       }
     }
 
@@ -248,6 +363,7 @@ export default function StudentSignupPage() {
           board: board.includes('CBSE') ? 'CBSE' : 'RBSE',
           medium,
           city: city.trim(),
+          schoolName: schoolName.trim(),
           otp: otp.trim(),
         }),
       });
@@ -263,7 +379,10 @@ export default function StudentSignupPage() {
       setShowOtpModal(false);
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem('student_user', JSON.stringify(data.student));
+        localStorage.setItem(
+          'student_user',
+          JSON.stringify({ ...data.student, schoolName: schoolName.trim() })
+        );
       }
 
       setTimeout(() => {
@@ -277,60 +396,58 @@ export default function StudentSignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-indigo-50 to-emerald-50 text-slate-800 flex flex-col justify-between p-4 md:p-8 font-sans">
-      {/* Invisible Recaptcha Container for Google Firebase */}
-      <div id="recaptcha-container"></div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-amber-50 text-slate-800 flex flex-col justify-between p-4 md:p-8 font-sans">
+      <div id="recaptcha-container" />
 
       {/* Header */}
-      <header className="max-w-5xl mx-auto w-full flex items-center justify-between py-2">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-amber-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-indigo-500/20">
+      <header className="max-w-4xl mx-auto w-full flex items-center justify-between py-2">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-amber-500 text-white font-black text-xl flex items-center justify-center shadow-md shadow-indigo-500/20 group-hover:scale-105 transition-transform">
             ⚡
           </div>
           <div>
             <span className="text-xl font-black text-slate-900 tracking-tight">AI Tuition</span>
-            <span className="block text-[11px] font-bold text-indigo-600">Student Portal (Class 1–8)</span>
+            <span className="block text-[11px] font-bold text-indigo-600">Student Sign Up</span>
           </div>
         </Link>
 
-        <div className="text-xs">
-          <span className="text-slate-500 hidden sm:inline">Already have an account? </span>
-          <Link
-            href="/login"
-            className="font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3.5 py-2 rounded-xl border border-indigo-200"
-          >
-            Login →
-          </Link>
-        </div>
+        <Link
+          href="/login"
+          className="text-xs font-bold text-slate-600 hover:text-indigo-600 bg-white hover:bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 transition-colors shadow-2xs"
+        >
+          Already registered? <span className="text-indigo-600 font-extrabold">Login →</span>
+        </Link>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-xl mx-auto w-full my-6 bg-white rounded-3xl p-6 md:p-8 shadow-xl border border-indigo-100 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-indigo-500 to-emerald-400" />
+      {/* Main Registration Card */}
+      <main className="max-w-lg mx-auto w-full my-6 bg-white rounded-3xl p-6 md:p-8 shadow-2xl border border-indigo-50 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-amber-500" />
 
         <div className="mb-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-bold mb-2">
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" /> ₹200/Month • 24/7 Personal AI Home Tutor
-          </div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900">
-            Create Student Account
-          </h1>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black mb-2 border border-indigo-100">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            Class 1st to 8th • Free Homework Help
+          </span>
+          <h1 className="text-2xl font-black text-slate-900">Student Sign Up</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Sign up with OTP verification to start personalized AI learning.
+            Create an account to start learning with personal AI Teachers
           </p>
         </div>
 
-        {error && !showOtpModal && (
-          <div className="mb-5 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5">
+        {error && (
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-            <span>{error}</span>
+            <span className="flex-1">{error}</span>
           </div>
         )}
 
         {success && (
-          <div className="mb-5 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-3">
+          <div className="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-3 animate-in fade-in duration-200">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-            <span>Mobile verified & account created! Opening AI Classroom...</span>
+            <div>
+              <p className="font-black text-sm">Account created successfully!</p>
+              <p className="text-emerald-700 font-normal">Opening AI Tutor studio...</p>
+            </div>
           </div>
         )}
 
@@ -338,7 +455,7 @@ export default function StudentSignupPage() {
           {/* Student Full Name */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Student Full Name *
+              Student Name <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -348,29 +465,32 @@ export default function StudentSignupPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Aarav Sharma"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-900"
               />
             </div>
           </div>
 
-          {/* Parent Mobile Number */}
+          {/* Parent Mobile Number with +91 Country Badge */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700">
-                Parent Mobile Number *
+              <label className="block text-xs font-bold text-slate-700">
+                Parent Mobile Number <span className="text-rose-500">*</span>
               </label>
               <span className="text-[11px] font-semibold text-slate-400">10 Digits (OTP verification)</span>
             </div>
-            <div className="relative">
-              <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+            <div className="flex items-center rounded-2xl border-2 border-slate-200 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-100 transition-all overflow-hidden bg-slate-50/40">
+              <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 border-r border-slate-200 text-slate-700 font-bold text-xs shrink-0 select-none">
+                <span className="text-base">🇮🇳</span>
+                <span>+91</span>
+              </div>
               <input
                 type="tel"
                 required
                 maxLength={10}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                placeholder="e.g. 9829012345"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold tracking-wide"
+                placeholder="98290 12345"
+                className="w-full px-3.5 py-2.5 bg-transparent focus:outline-none text-sm font-bold tracking-wider text-slate-900 placeholder:text-slate-400 placeholder:font-normal"
               />
             </div>
           </div>
@@ -378,7 +498,7 @@ export default function StudentSignupPage() {
           {/* Password / PIN */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              Password / 4-Digit PIN *
+              Password / 4-Digit PIN <span className="text-rose-500">*</span>
             </label>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
@@ -388,12 +508,12 @@ export default function StudentSignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Easy 4-digit PIN or password for the child"
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-900"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                 tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
@@ -405,7 +525,7 @@ export default function StudentSignupPage() {
           {/* Class Picker */}
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-2">
-              Select Class *
+              Select Class <span className="text-rose-500">*</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
               {CLASSES.map((cls) => {
@@ -415,7 +535,7 @@ export default function StudentSignupPage() {
                     type="button"
                     key={cls}
                     onClick={() => setSelectedClass(cls)}
-                    className={`py-2 px-1 text-center rounded-xl text-xs font-black transition-all ${
+                    className={`py-2 px-1 text-center rounded-xl text-xs font-black transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400 scale-[1.02]'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
@@ -435,7 +555,7 @@ export default function StudentSignupPage() {
               <select
                 value={board}
                 onChange={(e) => setBoard(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 <option>RBSE (Rajasthan Board)</option>
                 <option>CBSE Board</option>
@@ -447,7 +567,7 @@ export default function StudentSignupPage() {
               <select
                 value={medium}
                 onChange={(e) => setMedium(e.target.value)}
-                className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
               >
                 <option value="HINDI">Hindi Medium</option>
                 <option value="ENGLISH">English Medium</option>
@@ -455,19 +575,91 @@ export default function StudentSignupPage() {
             </div>
           </div>
 
-          {/* City / District */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              City / District (Optional)
-            </label>
+          {/* City / District with Intelligent Suggestions & Auto-Detect */}
+          <div className="relative" ref={cityDropdownRef}>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                City / District (Optional)
+              </label>
+              <button
+                type="button"
+                onClick={handleDetectCurrentLocation}
+                disabled={isDetectingLocation}
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Detect current location using GPS"
+              >
+                <LocateFixed className={`w-3.5 h-3.5 ${isDetectingLocation ? 'animate-spin text-amber-500' : 'text-indigo-600'}`} />
+                <span>{isDetectingLocation ? 'Detecting...' : '📍 Auto-Detect'}</span>
+              </button>
+            </div>
             <div className="relative">
-              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="text"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="e.g. Alwar, Jaipur, Delhi"
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold"
+                onFocus={() => setCitySearchOpen(true)}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  setCitySearchOpen(true);
+                }}
+                placeholder="Type or select e.g. Jaipur, Kota, Alwar..."
+                className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold text-slate-800"
+              />
+              {city && (
+                <button
+                  type="button"
+                  onClick={() => setCity('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Dropdown Suggestions */}
+            {citySearchOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl border border-indigo-100 shadow-xl max-h-52 overflow-y-auto p-1.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="text-[10px] font-bold text-slate-400 px-2.5 py-1 uppercase tracking-wider">
+                  Select Location or District:
+                </div>
+                {POPULAR_LOCATIONS.filter((loc) =>
+                  loc.toLowerCase().includes((city || '').toLowerCase().trim())
+                ).map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => {
+                      setCity(loc.split(',')[0].trim());
+                      setCitySearchOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>{loc}</span>
+                    </div>
+                    {city.toLowerCase() === loc.split(',')[0].toLowerCase().trim() && (
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* School Name (Optional) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              School Name (Optional)
+            </label>
+            <div className="relative">
+              <GraduationCap className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                placeholder="e.g. Central Academy, Kendriya Vidyalaya, DPS..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold text-slate-800 placeholder:text-slate-400"
               />
             </div>
           </div>
@@ -476,7 +668,7 @@ export default function StudentSignupPage() {
           <button
             type="submit"
             disabled={loading || success}
-            className="w-full mt-4 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="w-full mt-4 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
           >
             {loading ? (
               <span>Sending OTP to Mobile...</span>
@@ -498,46 +690,47 @@ export default function StudentSignupPage() {
             <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> RBSE / CBSE
           </span>
           <span className="flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-indigo-600" /> Live AI Teachers
+            <Sparkles className="w-4 h-4 text-indigo-600" /> Class 1st to 8th
           </span>
         </div>
       </main>
 
       {/* OTP Verification Modal */}
       {showOtpModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-indigo-100 relative">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-indigo-100 relative animate-in zoom-in-95 duration-200">
             <button
-              type="button"
-              onClick={() => setShowOtpModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all"
+              onClick={() => {
+                setShowOtpModal(false);
+                setError(null);
+              }}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5" />
             </button>
 
             <div className="text-center mb-5">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-3">
-                <KeyRound className="w-6 h-6" />
+              <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl shadow-inner">
+                <KeyRound className="w-6 h-6 text-indigo-600" />
               </div>
               <h3 className="text-lg font-black text-slate-900">Verify Mobile OTP</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Enter the OTP code sent to <strong className="text-slate-800">+91 {phone}</strong>
+                Enter the code sent to <strong className="text-slate-700">+91 {phone}</strong>
               </p>
             </div>
 
-            {demoOtp && !isFirebaseOtp && (
+            {demoOtp && (
               <div
                 onClick={() => setOtp(demoOtp)}
-                className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all"
-                title="Click to auto-fill OTP"
+                className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all"
               >
-                <span>Demo OTP: <strong>{demoOtp}</strong></span>
-                <span className="text-[10px] text-amber-700 uppercase font-black underline">Auto Fill ↵</span>
+                <span>Verification Code: <strong>{demoOtp}</strong></span>
+                <span className="text-[10px] text-amber-700 uppercase font-black underline">Auto-Fill ↵</span>
               </div>
             )}
 
             {error && (
-              <div className="mb-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -552,39 +745,39 @@ export default function StudentSignupPage() {
                   required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  placeholder="• • • • • •"
-                  className="w-full text-center py-3 text-2xl tracking-[0.4em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                  placeholder="• • • •"
+                  className="w-full text-center py-2.5 text-2xl tracking-[0.4em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 bg-slate-50/50"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={otpLoading}
-                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 {otpLoading ? (
                   <span>Verifying OTP...</span>
                 ) : (
                   <>
-                    <span>Confirm & Finish Sign Up</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <span>Confirm & Start Learning</span>
+                    <CheckCircle2 className="w-4 h-4" />
                   </>
                 )}
               </button>
 
               <div className="text-center pt-1">
                 {resendCooldown > 0 ? (
-                  <span className="text-xs text-slate-400 font-semibold">
-                    Resend OTP in {resendCooldown}s
+                  <span className="text-xs text-slate-400 font-medium">
+                    Resend code in {resendCooldown}s
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={handleResendOtp}
-                    className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1 mx-auto"
+                    className="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Resend OTP</span>
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Resend OTP Code</span>
                   </button>
                 )}
               </div>
@@ -595,7 +788,7 @@ export default function StudentSignupPage() {
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 py-3">
-        © 2026 AI Tuition • Safe & Child-Friendly AI Learning Platform
+        © 2026 AI Tuition • Safe, Child-Friendly AI Learning Platform
       </footer>
     </div>
   );

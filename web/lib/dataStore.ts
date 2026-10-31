@@ -105,6 +105,7 @@ export async function createStudent(student: {
   board: string;
   medium: string;
   city: string;
+  schoolName?: string;
   isSubscribed?: boolean;
 }): Promise<Student> {
   const created = await prisma.user.create({
@@ -113,6 +114,7 @@ export async function createStudent(student: {
       phone: student.phone,
       passwordHash: student.password,
       role: 'STUDENT',
+      roleTitle: student.schoolName ? ("School: " + student.schoolName.trim()) : "Student",
       classGrade: student.classGrade,
       board: student.board,
       medium: student.medium,
@@ -629,5 +631,7 @@ export async function toggleStudentSubscription(studentId: string, isFree: boole
     return { success: false, message: err?.message || 'Error updating subscription' };
   }
 }
+
+
 
 

@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
       board = 'RBSE',
       medium = 'HINDI',
       city = 'Rajasthan',
+      schoolName = '',
       otp,
     } = body;
 
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
       board,
       medium,
       city: city || 'Rajasthan',
+      schoolName: schoolName ? schoolName.trim() : undefined,
       isSubscribed: false,
     });
 
@@ -96,3 +98,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
