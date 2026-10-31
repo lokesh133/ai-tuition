@@ -163,7 +163,7 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
 
   // Parse Multi-line Column Block in formula if present:
   // e.g.: kg g\n 44 520\n- 12 502 OR kg | g\n 44 | 520\n- 12 | 502
-  const colBlockRegex = /(?:kg|km|l|m|किग्रा|लीटर|मीटर)[\s\|]+(?:g|m|ml|cm|ग्रा|मिली|सेमी)[\s\S]*?\n\s*(\d+)[\s\|]+(\d+)[\s\S]*?\n\s*([\+\-−])\s*(\d+)[\s\|]+(\d+)/i;
+  const colBlockRegex = /(kg|km|l|m|किग्रा|लीटर|मीटर)[\s\|]+(g|m|ml|cm|ग्रा|मिली|सेमी)[\s\S]*?\n\s*(\d+)[\s\|]+(\d+)[\s\S]*?\n\s*([\+\-−])\s*(\d+)[\s\|]+(\d+)/i;
   const colBlockM = formula.match(colBlockRegex);
 
   // Parse horizontal 2-unit arithmetic:
@@ -176,6 +176,10 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   // e.g.: 84 kg 350 g - 59 kg
   const mixedRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)\s*([\+\-−])\s*(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)(?!\s*\d+\s*[a-z])/i;
   const mixedM = combined.match(mixedRegex);
+
+  // Parse mixed 1-unit and 2-unit arithmetic (e.g. 65 km - 38 km 650 m):
+  const mixedRevRegex = /(\d+)\s*(kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*([\+\-−])\s*(\d+)\s*(?:kg|किग्रा|km|किमी|l|लीटर|m|मीटर)\s*(\d+)\s*(g|ग्रा|m|मीटर|ml|मिली|cm|सेमी)/i;
+  const mixedRevM = combined.match(mixedRevRegex);
 
   // Parse "subtract X kg Y g from Z kg W g":
   // Group 1: X, Group 2: unit1, Group 3: Y, Group 4: unit2, Group 5: Z, Group 6: unit1, Group 7: W, Group 8: unit2
@@ -190,11 +194,13 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
   let bot_u2 = 0;
 
   if (colBlockM) {
-    top_u1 = parseInt(colBlockM[1], 10);
-    top_u2 = parseInt(colBlockM[2], 10);
-    isSubtraction = colBlockM[3] === '-' || colBlockM[3] === '−';
-    bot_u1 = parseInt(colBlockM[4], 10);
-    bot_u2 = parseInt(colBlockM[5], 10);
+    u1 = colBlockM[1].toLowerCase();
+    u2 = colBlockM[2].toLowerCase();
+    top_u1 = parseInt(colBlockM[3], 10);
+    top_u2 = parseInt(colBlockM[4], 10);
+    isSubtraction = colBlockM[5] === '-' || colBlockM[5] === '−';
+    bot_u1 = parseInt(colBlockM[6], 10);
+    bot_u2 = parseInt(colBlockM[7], 10);
   } else if (horizM) {
     u1 = horizM[2].toLowerCase();
     u2 = horizM[4].toLowerCase();
@@ -211,6 +217,14 @@ export function tryParseColumnMath(formula: string, question: string = ''): Colu
     isSubtraction = mixedM[5] === '-' || mixedM[5] === '−';
     bot_u1 = parseInt(mixedM[6], 10);
     bot_u2 = 0;
+  } else if (mixedRevM) {
+    u1 = mixedRevM[2].toLowerCase();
+    u2 = mixedRevM[6].toLowerCase();
+    top_u1 = parseInt(mixedRevM[1], 10);
+    top_u2 = 0;
+    isSubtraction = mixedRevM[3] === '-' || mixedRevM[3] === '−';
+    bot_u1 = parseInt(mixedRevM[4], 10);
+    bot_u2 = parseInt(mixedRevM[5], 10);
   } else if (fromM) {
     u1 = fromM[2].toLowerCase();
     u2 = fromM[4].toLowerCase();

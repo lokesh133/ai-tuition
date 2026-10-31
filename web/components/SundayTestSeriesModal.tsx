@@ -3563,12 +3563,12 @@ export default function SundayTestSeriesModal({
                       {/* Teacher Note & Explanation */}
                       <div className="bg-white/80 p-2.5 rounded-lg border border-slate-200 text-[11px] text-slate-700 space-y-1">
                         <div>
-                          <span className="font-bold text-indigo-700">शिक्षक समीक्षा: </span>
+                          <span className="font-bold text-indigo-700">{medium === 'english' ? 'Teacher Review: ' : 'शिक्षक समीक्षा: '}</span>
                           <span>{evalItem.teacherNote}</span>
                         </div>
                         {evalItem.explanation && (
                           <div className="text-slate-500">
-                            <span className="font-semibold">व्याख्या: </span>
+                            <span className="font-semibold">{medium === 'english' ? 'Explanation: ' : 'व्याख्या: '}</span>
                             <span>{evalItem.explanation}</span>
                           </div>
                         )}

@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Sparkles, Calculator, CheckCircle2, ChevronRight, Triangle as TriangleIcon, Square, Circle, Box } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Calculator, CheckCircle2, ChevronRight, Triangle as TriangleIcon, Square, Circle, Box, ZoomIn, X, Shapes, Eye } from 'lucide-react';
 
 interface VisualMathDiagramCardProps {
   question: string;
@@ -550,23 +550,298 @@ function tryExtractGeometry(question: string, answer: string): ParsedGeometrySha
   return null;
 }
 
+
+const PERIMETER_FIGURES = [
+  {
+    id: 'a',
+    titleHi: 'आकृति (a): T-आकार बहुभुज (8 भुजाएँ)',
+    titleEn: 'Figure (a): T-Shaped Polygon (8 sides)',
+    imgSrc: '/worksheet-diagrams/q6_a.jpg',
+    sidesHi: '8 cm, 5 cm, 2 cm, 3 cm, 2 cm, 3 cm, 2 cm, 4 cm',
+    sidesEn: '8 cm, 5 cm, 2 cm, 3 cm, 2 cm, 3 cm, 2 cm, 4 cm',
+    formulaHi: 'परिमाप = सभी 8 बाहरी भुजाओं का कुल योग',
+    formulaEn: 'Perimeter = Sum of all 8 outer sides',
+    calcHi: '8 cm + 5 cm + 2 cm + 3 cm + 2 cm + 3 cm + 2 cm + 4 cm = 29 cm',
+    calcEn: '8 cm + 5 cm + 2 cm + 3 cm + 2 cm + 3 cm + 2 cm + 4 cm = 29 cm',
+    ans: '29 cm',
+    descHi: 'सभी 8 बाहरी भुजाओं को जोड़ने पर: 8 + 5 + 2 + 3 + 2 + 3 + 2 + 4 = 29 cm कुल परिमाप आता है।',
+    descEn: 'Adding all 8 outer sides: 8 + 5 + 2 + 3 + 2 + 3 + 2 + 4 = 29 cm total perimeter.',
+  },
+  {
+    id: 'b',
+    titleHi: 'आकृति (b): स्वास्तिक बहुभुज (20 भुजाएँ / 4 समान शाखाएँ)',
+    titleEn: 'Figure (b): Swastik Polygon (20 sides / 4 symmetric arms)',
+    imgSrc: '/worksheet-diagrams/q6_b.jpg',
+    sidesHi: 'प्रत्येक शाखा: 5 cm + 1 cm + 4 cm + 3 cm + 4 cm = 17 cm',
+    sidesEn: 'Each arm: 5 cm + 1 cm + 4 cm + 3 cm + 4 cm = 17 cm',
+    formulaHi: 'परिमाप = 4 समान शाखाओं का योग = 4 × 17 cm',
+    formulaEn: 'Perimeter = 4 symmetric arms = 4 × 17 cm',
+    calcHi: '4 × (5 + 1 + 4 + 3 + 4) cm = 4 × 17 cm = 68 cm',
+    calcEn: '4 × (5 + 1 + 4 + 3 + 4) cm = 4 × 17 cm = 68 cm',
+    ans: '68 cm',
+    descHi: 'चारों शाखाएँ समान हैं, प्रत्येक शाखा का योग 17 cm है। कुल परिमाप 4 × 17 = 68 cm है।',
+    descEn: 'Four symmetric arms of 17 cm each. Total perimeter = 4 × 17 = 68 cm.',
+  },
+  {
+    id: 'c',
+    titleHi: 'आकृति (c): षट्भुज (Hexagon - 6 भुजाएँ)',
+    titleEn: 'Figure (c): Hexagon (6-sided Polygon)',
+    imgSrc: '/worksheet-diagrams/q6_c.jpg',
+    sidesHi: '16 m, 12 m, 18 m, 14 m, 15 m, 20 m',
+    sidesEn: '16 m, 12 m, 18 m, 14 m, 15 m, 20 m',
+    formulaHi: 'परिमाप = षट्भुज की सभी 6 भुजाओं का योग',
+    formulaEn: 'Perimeter = Sum of all 6 sides of hexagon',
+    calcHi: '16 m + 12 m + 18 m + 14 m + 15 m + 20 m = 95 m',
+    calcEn: '16 m + 12 m + 18 m + 14 m + 15 m + 20 m = 95 m',
+    ans: '95 m',
+    descHi: 'षट्भुज की सभी 6 भुजाओं को जोड़ने पर: 16 + 12 + 18 + 14 + 15 + 20 = 95 मीटर (m) कुल परिमाप है।',
+    descEn: 'Adding all 6 sides: 16 + 12 + 18 + 14 + 15 + 20 = 95 metres (m) total perimeter.',
+  },
+  {
+    id: 'd',
+    titleHi: 'आकृति (d): चतुर्भुज (Quadrilateral - 4 भुजाएँ)',
+    titleEn: 'Figure (d): Quadrilateral (4 sides)',
+    imgSrc: '/worksheet-diagrams/q6_d.jpg',
+    sidesHi: '7 cm, 8 cm, 5 cm, 6 cm',
+    sidesEn: '7 cm, 8 cm, 5 cm, 6 cm',
+    formulaHi: 'परिमाप = चारों भुजाओं का योग',
+    formulaEn: 'Perimeter = Sum of all 4 sides',
+    calcHi: '7 cm + 8 cm + 5 cm + 6 cm = 26 cm',
+    calcEn: '7 cm + 8 cm + 5 cm + 6 cm = 26 cm',
+    ans: '26 cm',
+    descHi: 'चारों भुजाओं को जोड़ने पर: 7 + 8 + 5 + 6 = 26 cm कुल परिमाप है।',
+    descEn: 'Adding all 4 sides: 7 + 8 + 5 + 6 = 26 cm total perimeter.',
+  },
+];
+
 export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
   question,
   answer,
   isDarkMode = false,
   medium = 'hindi'
 }) => {
+  const [zoomedImg, setZoomedImg] = useState<string | null>(null);
   const columnMath = tryExtractArithmetic(question, answer);
   const geometry = tryExtractGeometry(question, answer);
 
+  const isPerimeterQ = Boolean(
+    /perimeter|परिमाप/i.test(`${question} ${answer}`) &&
+    (!geometry || geometry.type === 'hexagon' || geometry.type === 'pentagon' || /q\.?6\b|fig|आकृति|चित्र|shape|षट्भुज|चतुर्भुज|hexagon|swastik|8\s*cm|20\s*m|7\s*cm/i.test(`${question} ${answer}`))
+  );
+
+  // If called in question box with no answer and no valid diagram detected, suppress empty card
+  if (!columnMath && !geometry && !isPerimeterQ && (!answer || !answer.trim())) {
+    return null;
+  }
+
   return (
-    <div className={`mt-2.5 rounded-2xl border transition-all overflow-hidden ${
-      isDarkMode
-        ? 'bg-slate-950/90 border-slate-800 text-slate-100'
-        : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
-    }`}>
-      {/* 1. If Column Arithmetic Detected (kg & g, L & mL, m & cm, etc.) */}
-      {columnMath ? (
+    <>
+      {/* High-Resolution Diagram Zoom Modal */}
+      {zoomedImg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          onClick={() => setZoomedImg(null)}
+        >
+          <div
+            className="relative bg-white dark:bg-slate-900 rounded-3xl p-4 max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <ZoomIn className="w-4 h-4 text-blue-600" />
+                {medium === 'english' ? 'High-Resolution Diagram View' : 'उच्च-गुणवत्ता रेखाचित्र (High-Res View)'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setZoomedImg(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex items-center justify-center w-full max-h-[75vh] overflow-auto">
+              <img
+                src={zoomedImg}
+                alt="Enlarged Diagram"
+                className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-sm border border-slate-200"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Diagram Card Container */}
+      <div className={`mt-2.5 rounded-2xl border transition-all overflow-hidden ${
+        isDarkMode
+          ? 'bg-slate-950/90 border-slate-800 text-slate-100'
+          : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
+      }`}>
+        {/* Multi-Figure Perimeter Section */}
+        {isPerimeterQ ? (
+          <div className="p-3.5 sm:p-4 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-indigo-100 dark:border-slate-800">
+              <span className="text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400">
+                <Shapes className="w-4 h-4 text-indigo-600" />
+                <span>
+                  {medium === 'english'
+                    ? (!answer || !answer.trim() ? 'Worksheet Figures: Q.6 Find the perimeter' : 'Q.6 Perimeter Solutions (Step-by-Step)')
+                    : (!answer || !answer.trim() ? 'अभ्यास आकृतियाँ: प्रश्न 6 (परिमाप ज्ञात कीजिए)' : 'प्रश्न 6 परिमाप का संपूर्ण सचित्र हल (विस्तार से)')}
+                </span>
+              </span>
+              <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                {medium === 'english' ? '4 Worksheet Figures' : '4 मूल आकृतियाँ'}
+              </span>
+            </div>
+
+            {/* Mode A: Question View (When answer is empty in question box) */}
+            {!answer || !answer.trim() ? (
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                  {medium === 'english'
+                    ? 'Find the perimeter of each shape given below by adding all its boundary sides:'
+                    : 'नीचे दी गई प्रत्येक आकृति के सभी बाहरी किनारों की लंबाइयों को जोड़कर परिमाप ज्ञात कीजिए:'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {PERIMETER_FIGURES.map((fig) => (
+                    <div
+                      key={fig.id}
+                      className="rounded-xl border border-indigo-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3 flex flex-col justify-between hover:shadow-xs transition-shadow"
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                        <span className="text-xs font-black text-indigo-900 dark:text-indigo-300">
+                          {medium === 'english' ? fig.titleEn : fig.titleHi}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setZoomedImg(fig.imgSrc)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 dark:bg-blue-950 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-800 cursor-pointer"
+                          title="बड़ा करके देखें"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>{medium === 'english' ? 'Zoom' : 'बड़ा देखें'}</span>
+                        </button>
+                      </div>
+                      <div
+                        className="my-2.5 bg-white dark:bg-slate-950 p-2 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center cursor-pointer group relative overflow-hidden h-40"
+                        onClick={() => setZoomedImg(fig.imgSrc)}
+                      >
+                        <img
+                          src={fig.imgSrc}
+                          alt={fig.titleEn}
+                          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="bg-white/90 text-blue-700 text-[10px] font-extrabold px-2 py-1 rounded-md shadow-xs flex items-center gap-1">
+                            <ZoomIn className="w-3 h-3" /> {medium === 'english' ? 'Click to zoom' : 'क्लिक करके बड़ा देखें'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="pt-1 text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800/60 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                        <span className="font-bold text-indigo-700 dark:text-indigo-400 block mb-0.5">
+                          {medium === 'english' ? 'Given Sides:' : 'दिए गए माप:'}
+                        </span>
+                        <p className="font-mono font-medium text-slate-800 dark:text-slate-200">
+                          {medium === 'english' ? fig.sidesEn : fig.sidesHi}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Mode B: Detailed Solution View */
+              <div className="space-y-4">
+                {/* Master Rule Banner */}
+                <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="text-xs leading-relaxed">
+                    <span className="font-extrabold text-indigo-900 dark:text-indigo-200 block mb-0.5">
+                      {medium === 'english' ? 'Master Formula & Rule:' : 'परिमाप का मूल नियम (Master Formula):'}
+                    </span>
+                    <p className="font-medium text-indigo-950 dark:text-indigo-200">
+                      {medium === 'english'
+                        ? 'Perimeter of any closed 2D shape = Sum of the lengths of all its boundary sides.'
+                        : 'किसी भी बंद समतल आकृति का परिमाप = उसकी सभी बाहरी भुजाओं (sides) की लम्बाइयों का योग।'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 4 Detailed Solution Breakdown Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  {PERIMETER_FIGURES.map((fig) => (
+                    <div
+                      key={fig.id}
+                      className="rounded-xl border border-indigo-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 space-y-2.5 shadow-2xs flex flex-col justify-between"
+                    >
+                      <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-xs font-black text-slate-900 dark:text-slate-100">
+                          {medium === 'english' ? fig.titleEn : fig.titleHi}
+                        </span>
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-700">
+                          {medium === 'english' ? 'Ans: ' : 'उत्तर: '}{fig.ans}
+                        </span>
+                      </div>
+
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-24 h-24 shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-1 flex items-center justify-center cursor-pointer hover:border-indigo-400 transition-colors"
+                          onClick={() => setZoomedImg(fig.imgSrc)}
+                          title="क्लिक करके बड़ा देखें"
+                        >
+                          <img
+                            src={fig.imgSrc}
+                            alt={fig.titleEn}
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+
+                        <div className="flex-1 space-y-1.5 text-[11px]">
+                          <div className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                            <span className="font-bold text-indigo-700 dark:text-indigo-300 block text-[10px] uppercase">
+                              {medium === 'english' ? 'Formula:' : 'सूत्र:'}
+                            </span>
+                            <p className="font-mono font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                              {medium === 'english' ? fig.formulaEn : fig.formulaHi}
+                            </p>
+                          </div>
+
+                          <div className="p-1.5 rounded-md bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800">
+                            <span className="font-bold text-emerald-800 dark:text-emerald-300 block text-[10px] uppercase">
+                              {medium === 'english' ? 'Calculation:' : 'गणना (हल):'}
+                            </span>
+                            <p className="font-mono font-black text-emerald-900 dark:text-emerald-200 leading-snug">
+                              {medium === 'english' ? fig.calcEn : fig.calcHi}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed bg-slate-50/50 dark:bg-slate-950/40 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                        {medium === 'english' ? fig.descEn : fig.descHi}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick Summary Pill Bar */}
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between flex-wrap gap-2 text-xs">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>{medium === 'english' ? 'Final Answers Summary:' : 'अंतिम उत्तर सारांश:'}</span>
+                  </span>
+                  <div className="flex items-center gap-2 flex-wrap font-mono font-bold">
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">(a) 29 cm</span>
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">(b) 68 cm</span>
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">(c) 95 m</span>
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300">(d) 26 cm</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : columnMath ? (
+          /* 1. If Column Arithmetic Detected (kg & g, L & mL, m & cm, etc.) */
         <div className="p-3.5 sm:p-4 space-y-3">
           <div className="flex items-center justify-between border-b pb-2 border-slate-200 dark:border-slate-800">
             <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
@@ -1005,7 +1280,7 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
             </div>
           </div>
         </div>
-      ) : (
+      ) : answer && answer.trim() ? (
         /* 3. Standard Textbook Answer (Full Width, No Squishing!) */
         <div className="p-3.5 sm:p-4 space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 dark:text-emerald-400">
@@ -1016,8 +1291,9 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
             {answer}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
+    </>
   );
 };
 
