@@ -584,13 +584,20 @@ export default function TuitionClassroomStudio() {
   const [isFitToHeight, setIsFitToHeight] = useState<boolean>(true);
   const [imageRotation, setImageRotation] = useState<number>(0);
   const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<'both' | 'worksheet' | 'whiteboard'>('both');
-  // Live Teacher Doubt Assistant States
+  // Live Teacher Doubt Assistant States (Multi-Turn Conversational Doubts)
   const [teacherDoubtPopup, setTeacherDoubtPopup] = useState<{
     isOpen: boolean;
     question: string;
     answer: string;
     questionNumber?: number;
+    turns?: Array<{ id: string; role: 'student' | 'teacher'; text: string; time?: string }>;
   } | null>(null);
+  const [popupInputText, setPopupInputText] = useState('');
+  const [isPopupListening, setIsPopupListening] = useState(false);
+  const [isPopupAnswering, setIsPopupAnswering] = useState(false);
+  const popupRecognitionRef = useRef<any>(null);
+  const popupSpeechHandledRef = useRef<boolean>(false);
+  const popupChatEndRef = useRef<HTMLDivElement | null>(null);
   const [highlightedQuestionId, setHighlightedQuestionId] = useState<number | null>(null);
 
   // 📱 Mobile Navigation Drawer State
@@ -715,6 +722,15 @@ export default function TuitionClassroomStudio() {
       setDailyUploadCount(isNaN(count) ? 0 : count);
     } catch { }
   }, []);
+
+  // Auto-scroll Teacher Doubt Popup conversation to bottom when new message arrives
+  useEffect(() => {
+    if (teacherDoubtPopup?.isOpen) {
+      setTimeout(() => {
+        popupChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [teacherDoubtPopup?.turns?.length, isPopupAnswering]);
 
   const [uploadedFiles, setUploadedFiles] = useState<Array<{ id: string; name: string; url: string; type: string }>>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
@@ -2766,6 +2782,7 @@ export default function TuitionClassroomStudio() {
   const [inputText, setInputText] = useState<string>('');
   const recognitionRef = useRef<any>(null);
   const lastSpokenTranscriptRef = useRef<string>('');
+  const hasHandledSpeechRef = useRef<boolean>(false);
 
   // STUDY HISTORY & TEACHER MEMORY (Real tuition log)
   const [studyHistory, setStudyHistory] = useState<StudyHistoryItem[]>([
@@ -3035,10 +3052,12 @@ export default function TuitionClassroomStudio() {
     if (isListening) {
       // User tapped Stop!
       setIsListening(false);
+      hasHandledSpeechRef.current = true;
       try {
         recognitionRef.current?.stop();
       } catch {}
       const finalQuery = (lastSpokenTranscriptRef.current || inputText).trim();
+      lastSpokenTranscriptRef.current = '';
       if (finalQuery && finalQuery !== 'Listening to your question...' && !finalQuery.includes('सुन रहे हैं')) {
         handleStudentQuery(finalQuery);
       }
@@ -3058,21 +3077,29 @@ export default function TuitionClassroomStudio() {
       rec.interimResults = true;
       rec.continuous = true;
       lastSpokenTranscriptRef.current = '';
+      hasHandledSpeechRef.current = false;
       setInputText('');
 
       rec.onstart = () => {
         setIsListening(true);
+        hasHandledSpeechRef.current = false;
       };
 
       rec.onresult = (e: any) => {
-        let transcript = '';
+        let finalTranscript = '';
+        let interimTranscript = '';
         for (let i = 0; i < e.results.length; i++) {
-          transcript += e.results[i][0].transcript;
+          const piece = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            finalTranscript += (finalTranscript ? ' ' : '') + piece.trim();
+          } else {
+            interimTranscript += (interimTranscript ? ' ' : '') + piece.trim();
+          }
         }
-        if (transcript) {
-          transcript = transcript.trim();
-          lastSpokenTranscriptRef.current = transcript;
-          setInputText(transcript);
+        const fullTranscript = (finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')).trim();
+        if (fullTranscript) {
+          lastSpokenTranscriptRef.current = fullTranscript;
+          setInputText(fullTranscript);
         }
       };
 
@@ -3083,7 +3110,10 @@ export default function TuitionClassroomStudio() {
 
       rec.onend = () => {
         setIsListening(false);
+        if (hasHandledSpeechRef.current) return;
+        hasHandledSpeechRef.current = true;
         const finalQuery = (lastSpokenTranscriptRef.current || inputText).trim();
+        lastSpokenTranscriptRef.current = '';
         if (finalQuery && finalQuery !== 'Listening to your question...' && !finalQuery.includes('सुन रहे हैं')) {
           handleStudentQuery(finalQuery);
         }
@@ -3094,6 +3124,187 @@ export default function TuitionClassroomStudio() {
       console.warn('Speech rec start error:', e);
       setIsListening(false);
     }
+  };
+
+  // 💬 Multi-Turn Follow-Up Doubt Solver INSIDE Teacher Doubt Popup
+  const handlePopupFollowupQuery = async (followUpText?: string) => {
+    const rawVal = followUpText !== undefined ? followUpText : popupInputText;
+    const q = (rawVal || '').trim();
+    if (!q) return;
+
+    stopAudio();
+    setPopupInputText('');
+    setIsPopupAnswering(true);
+
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const studentTurnId = String(Date.now());
+
+    // 1. Append student message immediately to turns
+    setTeacherDoubtPopup((prev) => {
+      if (!prev) return null;
+      const prevTurns = prev.turns || [
+        { id: '1', role: 'student', text: prev.question, time: 'अभी' },
+        { id: '2', role: 'teacher', text: prev.answer, time: 'अभी' },
+      ];
+      return {
+        ...prev,
+        question: q,
+        turns: [
+          ...prevTurns,
+          { id: studentTurnId, role: 'student', text: q, time: nowTime },
+        ],
+      };
+    });
+
+    // 2. Prepare conversation memory and context
+    const historyText = (teacherDoubtPopup?.turns || [])
+      .slice(-4)
+      .map((t) => `${t.role === 'student' ? 'Student' : currentTeacher.name}: ${t.text}`)
+      .join('\n');
+
+    const wsContext = whiteboardSteps
+      .slice(0, 8)
+      .map((s, idx) => `सवाल ${idx + 1}: ${s.question || ''} | हल: ${s.formula || ''}`)
+      .join('\n');
+
+    const combinedContext = [
+      historyText ? `Previous Conversation in Doubt Popup:\n${historyText}` : '',
+      wsContext ? `Current Worksheet Context:\n${wsContext}` : (detectedChapter ? `Chapter: ${detectedChapter}` : ''),
+    ].filter(Boolean).join('\n\n');
+
+    let reply = '';
+    try {
+      const res = await fetch('/api/tutor/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher_id: currentTeacher.id,
+          question: q,
+          mode: 'doubt_solving',
+          learning_language: medium === 'english' ? 'en' : 'hi',
+          board,
+          className,
+          worksheet_context: combinedContext,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        reply = data.reply || '';
+      }
+    } catch (err) {
+      console.warn('Popup followup fetch error:', err);
+    }
+
+    if (!reply) {
+      reply = medium === 'english'
+        ? `Great curiosity beta! Regarding "${q}": Always remember to break the problem into smaller simple steps. Check the steps on the board or ask me any word you didn't understand!`
+        : `शाबाश बेटा, बहुत बढ़िया सवाल पूछा! "${q}" के लिए याद रखो: गणित और पढ़ाई में हमेशा एक-एक कदम करके आगे बढ़ते हैं। बोर्ड पर लिखा हल भी देखो और जहाँ भी उलझन हो, मुझसे बेझिझक पूछो!`;
+    }
+
+    setIsPopupAnswering(false);
+
+    // 3. Append teacher response to turns & auto-speak
+    const teacherTurnId = String(Date.now() + 1);
+    setTeacherDoubtPopup((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        answer: reply,
+        turns: [
+          ...(prev.turns || []),
+          { id: teacherTurnId, role: 'teacher', text: reply, time: nowTime },
+        ],
+      };
+    });
+
+    setSpeechText(reply);
+    speakText(reply);
+  };
+
+  // 🎙️ Dedicated Speech Recognition for Follow-up Doubt Inside Popup
+  const togglePopupMic = () => {
+    if (typeof window === 'undefined') return;
+    stopAudio();
+
+    if (isPopupListening) {
+      setIsPopupListening(false);
+      popupSpeechHandledRef.current = true;
+      try {
+        popupRecognitionRef.current?.stop();
+      } catch {}
+      const q = popupInputText.trim();
+      if (q) {
+        handlePopupFollowupQuery(q);
+      }
+      return;
+    }
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) {
+      alert('ब्राउज़र में माइक उपलब्ध नहीं है। कृपया Chrome इस्तेमाल करें।');
+      return;
+    }
+
+    try {
+      const rec = new SpeechRec();
+      popupRecognitionRef.current = rec;
+      rec.lang = medium === 'english' ? 'en-IN' : 'hi-IN';
+      rec.interimResults = true;
+      rec.continuous = true;
+      popupSpeechHandledRef.current = false;
+
+      rec.onstart = () => {
+        setIsPopupListening(true);
+        popupSpeechHandledRef.current = false;
+      };
+
+      rec.onresult = (e: any) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = 0; i < e.results.length; i++) {
+          const piece = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            finalTranscript += (finalTranscript ? ' ' : '') + piece.trim();
+          } else {
+            interimTranscript += (interimTranscript ? ' ' : '') + piece.trim();
+          }
+        }
+        const full = (finalTranscript + (interimTranscript ? ' ' + interimTranscript : '')).trim();
+        if (full) {
+          setPopupInputText(full);
+        }
+      };
+
+      rec.onerror = () => setIsPopupListening(false);
+      rec.onend = () => {
+        setIsPopupListening(false);
+        if (popupSpeechHandledRef.current) return;
+        popupSpeechHandledRef.current = true;
+        const q = popupInputText.trim();
+        if (q) {
+          handlePopupFollowupQuery(q);
+        }
+      };
+
+      rec.start();
+    } catch {
+      setIsPopupListening(false);
+    }
+  };
+
+  // Close popup cleanly without affecting anything else
+  const handleClosePopup = () => {
+    stopAudio();
+    if (isPopupListening) {
+      try {
+        popupRecognitionRef.current?.stop();
+      } catch {}
+      setIsPopupListening(false);
+    }
+    setTeacherDoubtPopup(null);
+    setPopupInputText('');
+    setIsPopupAnswering(false);
   };
 
     // Dedicated Voice Answer Speech Recognition for Mock Test (Hindi & English Voice-First)
@@ -3951,6 +4162,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   const handleWorksheetDoubt = async (q: string): Promise<boolean> => {
     const qTrim = q.trim();
     const qLower = qTrim.toLowerCase();
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // A. Voice navigation commands
     if (qLower.includes('रफ काम') || qLower.includes('रफ़ काम') || qLower.includes('scratchpad') || qLower.includes('rough work')) {
@@ -3962,6 +4174,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         isOpen: true,
         question: qTrim,
         answer: msg,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: msg, time: nowTime },
+        ],
       });
       return true;
     }
@@ -3975,6 +4191,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         isOpen: true,
         question: qTrim,
         answer: msg,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: msg, time: nowTime },
+        ],
       });
       return true;
     }
@@ -3984,6 +4204,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       const msg = medium === 'english' ? 'Opened your original worksheet document in full screen!' : 'बेटा, मैंने आपकी असली वर्कशीट का डॉक्यूमेंट बड़ी स्क्रीन पर खोल दिया है!';
       setSpeechText(msg);
       speakText(msg);
+      setTeacherDoubtPopup({
+        isOpen: true,
+        question: qTrim,
+        answer: msg,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: msg, time: nowTime },
+        ],
+      });
       return true;
     }
 
@@ -4073,6 +4302,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         question: qTrim,
         answer: cleanAnswer,
         questionNumber: qNum,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: cleanAnswer, time: nowTime },
+        ],
       });
       return true;
     }
@@ -4112,6 +4345,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         isOpen: true,
         question: qTrim,
         answer: teacherAnswer,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: teacherAnswer, time: nowTime },
+        ],
       });
       return true;
     }
@@ -4129,6 +4366,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         isOpen: true,
         question: qTrim,
         answer: '⏳ ' + loadingMsg,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+        ],
       });
 
       // Prepare active worksheet context summary so AI knows the exact lesson/questions
@@ -4137,37 +4377,66 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         .map((s, idx) => `सवाल ${idx + 1}: ${s.question || ''} | हल: ${s.formula || ''}`)
         .join('\n');
 
-      const res = await fetch('/api/tutor/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teacher_id: currentTeacher.id,
-          question: qTrim,
-          mode: 'doubt_solving',
-          learning_language: medium === 'english' ? 'en' : 'hi',
-          board,
-          className,
-          worksheet_context: wsContext || (detectedChapter ? `Chapter: ${detectedChapter}` : ''),
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const reply = data.reply || (medium === 'english' ? 'Great question! Let me explain this clearly for you.' : 'बहुत अच्छा सवाल है बेटा! चलिए मैं आपको इसे समझाती हूँ।');
-        setSpeechText(reply);
-        speakText(reply);
-        setTeacherDoubtPopup({
-          isOpen: true,
-          question: qTrim,
-          answer: reply,
+      let reply = '';
+      try {
+        const res = await fetch('/api/tutor/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            teacher_id: currentTeacher.id,
+            question: qTrim,
+            mode: 'doubt_solving',
+            learning_language: medium === 'english' ? 'en' : 'hi',
+            board,
+            className,
+            worksheet_context: wsContext || (detectedChapter ? `Chapter: ${detectedChapter}` : ''),
+          }),
         });
-        return true;
-      }
-    } catch (err) {
-      console.warn('Failed to ask AI tutor doubt:', err);
-    }
 
-    return false;
+        if (res.ok) {
+          const data = await res.json();
+          reply = data.reply || '';
+        }
+      } catch (err) {
+        console.warn('Failed to ask AI tutor doubt:', err);
+      }
+
+      if (!reply) {
+        reply = medium === 'english'
+          ? `Great question beta! Let's understand: always follow the step-by-step method shown on the board. If you need any specific part explained, just ask me!`
+          : `बहुत अच्छा सवाल है बेटा! "${qTrim}" के लिए: हमेशा बोर्ड पर दिखाए गए चरणबद्ध तरीके को ध्यान से देखें। जहाँ भी आपको समझ न आए, मुझसे तुरंत पूछें!`;
+      }
+
+      setSpeechText(reply);
+      speakText(reply);
+      setTeacherDoubtPopup({
+        isOpen: true,
+        question: qTrim,
+        answer: reply,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: reply, time: nowTime },
+        ],
+      });
+      return true;
+    } catch (err) {
+      console.warn('AI doubt solving exception:', err);
+      const fallbackReply = medium === 'english'
+        ? 'Beta, look at the steps on the board carefully. You can ask me any step again!'
+        : 'बेटा, बोर्ड पर लिखे हल को ध्यान से समझें। आप मुझसे कोई भी कदम दोबारा पूछ सकते हैं!';
+      setSpeechText(fallbackReply);
+      speakText(fallbackReply);
+      setTeacherDoubtPopup({
+        isOpen: true,
+        question: qTrim,
+        answer: fallbackReply,
+        turns: [
+          { id: '1', role: 'student', text: qTrim, time: nowTime },
+          { id: '2', role: 'teacher', text: fallbackReply, time: nowTime },
+        ],
+      });
+      return true;
+    }
   };
 
   // Handle Free-Form Student Query or Doubt
@@ -4181,12 +4450,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
     // 💡 If a worksheet or questions are active, handle this query as an in-lesson DOUBT without clearing the whiteboard!
     if (whiteboardSteps.length > 0 || uploadedFiles.length > 0) {
-      const handled = await handleWorksheetDoubt(q);
-      if (handled) {
-        setInputText('');
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
+      await handleWorksheetDoubt(q);
+      setInputText('');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
     }
 
     // 2. Auto-archive previous active question or session to history
@@ -4211,7 +4478,6 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
     setInputText('');
     if (inputRef.current) inputRef.current.value = '';
-    setIsCheckingHomework(true); // Full dedicated loader on screen
 
     const qLower = q.toLowerCase();
 
@@ -4254,7 +4520,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         });
         setSpeechText(mathSol.speechText);
         speakText(mathSol.speechText);
-      }, 500);
+      }, 300);
       return;
     }
 
@@ -7013,72 +7279,205 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
             className="shrink-0 pt-1 pb-1 sm:pb-2 flex flex-col items-center justify-center w-full relative z-20 bg-transparent"
           >
             <div className="relative flex items-center gap-2 sm:gap-2.5 w-full max-w-2xl px-1 sm:px-0">
-              {/* 👨‍🏫 Live Teacher Doubt Explanation Card (FLOATING POPUP ABOVE DOCK) */}
+              {/* 👨‍🏫 Live Teacher Doubt Explanation Card (FLOATING POPUP ABOVE DOCK - MULTI-TURN) */}
               {teacherDoubtPopup && teacherDoubtPopup.isOpen && (
-                <div className="absolute bottom-full mb-3 left-0 right-0 z-50 bg-white/98 backdrop-blur-xl rounded-2xl border-2 border-indigo-300 shadow-2xl p-4 sm:p-5 flex flex-col max-h-[60vh] animate-in slide-in-from-bottom-3 duration-200">
-                  <div className="flex items-start justify-between gap-3 pb-2.5 border-b border-indigo-100 shrink-0">
-                    <div className="flex items-center gap-2.5">
+                <div className="absolute bottom-full mb-3 left-0 right-0 z-50 bg-white/98 backdrop-blur-xl rounded-2xl border-2 border-indigo-300 shadow-2xl p-3.5 sm:p-5 flex flex-col max-h-[75vh] animate-in slide-in-from-bottom-3 duration-200">
+                  {/* Header */}
+                  <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-indigo-100 shrink-0">
+                    <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center text-lg shrink-0 shadow-2xs">
                         {currentTeacher.emoji || '👨‍🏫'}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <h4 className="font-bold text-xs sm:text-sm text-slate-900">{currentTeacher.name}</h4>
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
-                            {medium === 'english' ? 'Teacher Live Doubt Solution' : 'टीचर डाउट समाधान'}
+                            {medium === 'english' ? 'Live Doubt Chat' : 'टीचर डाउट समाधान'}
                           </span>
                         </div>
                         <p className="text-[10px] text-slate-500 font-medium">{currentTeacher.role}</p>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        stopAudio();
-                        setTeacherDoubtPopup(null);
-                      }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
-                      title={medium === 'english' ? 'Close' : 'बंद करें'}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
 
-                  {/* Student Question */}
-                  <div className="mt-2.5 px-3 py-1.5 bg-indigo-50/70 rounded-xl border border-indigo-100 text-xs text-indigo-950 font-semibold flex items-start gap-2 shrink-0">
-                    <span className="text-indigo-600 font-bold shrink-0">🗣️ {medium === 'english' ? 'Your Doubt:' : 'आपका सवाल:'}</span>
-                    <span className="italic line-clamp-2">"{teacherDoubtPopup.question}"</span>
-                  </div>
+                    <div className="flex items-center gap-1.5">
+                      {/* Audio Stop / Listen Toggle */}
+                      {isSpeaking ? (
+                        <button
+                          type="button"
+                          onClick={stopAudio}
+                          className="px-2.5 py-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-all cursor-pointer animate-pulse"
+                          title="टीचर की आवाज़ रोकें"
+                        >
+                          <VolumeX className="w-3.5 h-3.5" />
+                          <span className="text-[11px]">{medium === 'english' ? 'Stop Voice' : 'बोलना रोकें'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const latestTeacherTurn = (teacherDoubtPopup.turns || []).slice().reverse().find((t) => t.role === 'teacher');
+                            const textToSpeak = latestTeacherTurn?.text || teacherDoubtPopup.answer;
+                            if (textToSpeak && !textToSpeak.startsWith('⏳')) {
+                              speakText(textToSpeak);
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+                          title="दोबारा सुनें"
+                        >
+                          <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                          <span className="text-[11px]">{medium === 'english' ? 'Listen' : 'दोबारा सुनें'}</span>
+                        </button>
+                      )}
 
-                  {/* Teacher's Answer Body (Scrollable) */}
-                  <div className="mt-2.5 p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 leading-relaxed font-medium shadow-2xs overflow-y-auto max-h-[35vh]">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 mb-1.5 sticky top-0 bg-slate-50/90 py-0.5 backdrop-blur-xs">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>{medium === 'english' ? `${currentTeacher.name}'s Answer:` : `${currentTeacher.name} का जवाब:`}</span>
+                      {/* Close button */}
+                      <button
+                        type="button"
+                        onClick={handleClosePopup}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all cursor-pointer"
+                        title={medium === 'english' ? 'Close' : 'बंद करें'}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <p className="whitespace-pre-line">{teacherDoubtPopup.answer}</p>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="mt-2.5 flex items-center justify-between gap-2 pt-2 border-t border-slate-100 shrink-0">
+                  {/* Multi-Turn Conversation Thread (Scrollable) */}
+                  <div className="mt-2.5 flex-1 overflow-y-auto max-h-[38vh] space-y-2.5 pr-1 text-xs sm:text-sm">
+                    {(teacherDoubtPopup.turns && teacherDoubtPopup.turns.length > 0 ? teacherDoubtPopup.turns : [
+                      { id: '1', role: 'student', text: teacherDoubtPopup.question, time: 'अभी' },
+                      { id: '2', role: 'teacher', text: teacherDoubtPopup.answer, time: 'अभी' },
+                    ]).map((turn, tIdx) => (
+                      turn.role === 'student' ? (
+                        <div key={turn.id || tIdx} className="flex justify-end">
+                          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl rounded-br-xs px-3.5 py-2 max-w-[88%] shadow-xs">
+                            <div className="text-[10px] text-blue-100 font-bold flex items-center gap-1 mb-0.5">
+                              <span>🗣️ {medium === 'english' ? 'Your Question' : 'आपका सवाल'}</span>
+                              {turn.time && <span className="opacity-70 text-[9px]">({turn.time})</span>}
+                            </div>
+                            <p className="font-semibold leading-relaxed">"{turn.text}"</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div key={turn.id || tIdx} className="flex justify-start">
+                          <div className="bg-slate-50 border border-slate-200 text-slate-800 rounded-2xl rounded-bl-xs p-3 max-w-[92%] shadow-2xs leading-relaxed">
+                            <div className="flex items-center justify-between gap-2 text-[10px] font-bold text-emerald-700 mb-1">
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                {currentTeacher.name} {medium === 'english' ? 'explained:' : 'ने समझाया:'}
+                              </span>
+                              {tIdx === (teacherDoubtPopup.turns?.length || 2) - 1 && isSpeaking && (
+                                <span className="text-rose-600 animate-pulse font-bold flex items-center gap-1">
+                                  <Volume2 className="w-3 h-3" /> बोल रहे हैं...
+                                </span>
+                              )}
+                            </div>
+                            <p className="whitespace-pre-line font-medium text-slate-800">{turn.text}</p>
+                          </div>
+                        </div>
+                      )
+                    ))}
+
+                    {/* Pending response indicator */}
+                    {isPopupAnswering && (
+                      <div className="flex justify-start">
+                        <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-2.5 flex items-center gap-2 text-xs text-blue-800 font-semibold animate-pulse">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                          <span>{currentTeacher.name} आपका नया सवाल समझ रहे हैं और जवाब तैयार कर रहे हैं... ✍️</span>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={popupChatEndRef} />
+                  </div>
+
+                  {/* Suggestion Chips */}
+                  <div className="mt-2 pt-1 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
                     <button
                       type="button"
-                      onClick={() => speakText(teacherDoubtPopup.answer)}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:scale-102 active:scale-98"
+                      onClick={() => handlePopupFollowupQuery(medium === 'english' ? 'Can you explain this in simpler words?' : 'कृपया इसे और सरल शब्दों में समझाएं')}
+                      className="px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-medium shrink-0 cursor-pointer transition-colors"
                     >
-                      <Volume2 className="w-3.5 h-3.5" />
-                      <span>{medium === 'english' ? 'Listen Again' : 'दोबारा सुनें'}</span>
+                      💡 {medium === 'english' ? 'Simpler Words' : 'सरल शब्दों में'}
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        stopAudio();
-                        setTeacherDoubtPopup(null);
-                      }}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                      onClick={() => handlePopupFollowupQuery(medium === 'english' ? 'Give an easy example for this.' : 'इसका एक आसान उदाहरण दीजिए')}
+                      className="px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-medium shrink-0 cursor-pointer transition-colors"
                     >
-                      {medium === 'english' ? 'Understood ✓' : 'समझ आ गया ✓'}
+                      📝 {medium === 'english' ? 'Easy Example' : 'एक उदाहरण दो'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePopupFollowupQuery(medium === 'english' ? 'Why does this step happen?' : 'यह स्टेप क्यों हुआ? कारण बताओ')}
+                      className="px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-[11px] font-medium shrink-0 cursor-pointer transition-colors"
+                    >
+                      ❓ {medium === 'english' ? 'Why this step?' : 'कारण बताओ'}
+                    </button>
+                  </div>
+
+                  {/* In-Popup Follow-Up Dock (Multiple Turn Questions!) */}
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-2 shrink-0">
+                    {/* In-Popup Mic */}
+                    <button
+                      type="button"
+                      onClick={togglePopupMic}
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white shrink-0 shadow-sm transition-all cursor-pointer ${
+                        isPopupListening
+                          ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-4 ring-red-200'
+                          : 'bg-indigo-600 hover:bg-indigo-700 active:scale-95'
+                      }`}
+                      title={isPopupListening ? 'बोलना पूरा हुआ (रोकें)' : 'माइक से बोलकर और पूछें'}
+                    >
+                      {isPopupListening ? (
+                        <Square className="w-3.5 h-3.5 fill-white text-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-white" />
+                      )}
+                    </button>
+
+                    {/* In-Popup Input */}
+                    <div className={`flex-1 bg-slate-50 border rounded-xl px-3 py-1.5 flex items-center gap-2 transition-all ${
+                      isPopupListening
+                        ? 'border-red-400 bg-red-50/20 ring-2 ring-red-100'
+                        : 'border-slate-200 focus-within:border-indigo-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-100'
+                    }`}>
+                      <input
+                        type="text"
+                        value={popupInputText}
+                        onChange={(e) => setPopupInputText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handlePopupFollowupQuery();
+                          }
+                        }}
+                        placeholder={
+                          isPopupListening
+                            ? (medium === 'english' ? '🎙️ Listening... speak your doubt!' : '🎙️ बोलिए बेटा, सुन रहा हूँ...')
+                            : (medium === 'english' ? 'Ask follow-up doubt (type or speak)...' : 'इस उत्तर में और क्या पूछना है? (बोलें या लिखें)...')
+                        }
+                        className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 outline-none font-medium"
+                      />
+                      {popupInputText.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => handlePopupFollowupQuery()}
+                          disabled={isPopupAnswering}
+                          className="p-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                          title="पूछें"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Understood / Close button */}
+                    <button
+                      type="button"
+                      onClick={handleClosePopup}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shrink-0 cursor-pointer transition-all active:scale-95"
+                    >
+                      {medium === 'english' ? 'Done ✓' : 'समझ आ गया ✓'}
                     </button>
                   </div>
                 </div>
