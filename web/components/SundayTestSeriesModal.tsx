@@ -39,6 +39,8 @@ import {
   Grid,
   Filter,
   ArrowLeft,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 import { getCurriculum, Chapter, SubjectCurriculum, fetchDynamicCurriculum } from '@/lib/curriculum-data';
 
@@ -50,7 +52,7 @@ export interface TestResultRecord {
   subjectName: string;
   classGrade: string;
   selectedChapters: Array<{ chapterNumber: number; title: string }>;
-  mode: 'typing' | 'upload';
+  mode: 'mcq' | 'typing' | 'upload';
   totalMaxMarks: number;
   obtainedMarks: number;
   percentage: number;
@@ -240,6 +242,82 @@ function getStudentFriendlyPageName(rawName?: string, index: number = 0, heading
   const clean = rawName.replace(/\.[^/.]+$/, '').trim();
   if (clean.length > 22) return `पेज #${index + 1}`;
   return clean;
+}
+
+
+function ensureFourOptions(
+  questionText: string,
+  correctAnswer?: string,
+  existingOptions?: string[],
+  subjectName?: string
+): { options: string[]; correctAnswer: string } {
+  let ans = (correctAnswer && correctAnswer.trim().length > 0)
+    ? correctAnswer.trim()
+    : 'सही उत्तर';
+
+  // If already has 4+ valid options
+  if (existingOptions && existingOptions.length >= 4) {
+    const opts = existingOptions.slice(0, 4);
+    if (!opts.some((o) => o.toLowerCase() === ans.toLowerCase())) {
+      opts[0] = ans;
+    }
+    return { options: opts, correctAnswer: ans };
+  }
+
+  // If 2 options (e.g. True/False or pair)
+  if (existingOptions && existingOptions.length >= 2) {
+    const list = [...existingOptions];
+    if (!list.some((o) => o.includes('दोनों') || o.includes('Both')) && list.length < 4) {
+      list.push('उपरोक्त दोनों (Both)');
+    }
+    if (!list.some((o) => o.includes('कोई नहीं') || o.includes('None')) && list.length < 4) {
+      list.push('इनमें से कोई नहीं (None of these)');
+    }
+    while (list.length < 4) {
+      list.push(`विकल्प ${list.length + 1}`);
+    }
+    return { options: list, correctAnswer: ans };
+  }
+
+  // Check if answer is numeric
+  const numMatch = ans.match(/-?\d+(\.\d+)?/);
+  if (numMatch) {
+    const val = parseFloat(numMatch[0]);
+    const d1 = `${val + 2}`;
+    const d2 = `${Math.max(0, val - 2)}`;
+    const d3 = `${val * 2}`;
+    const opts = [
+      ans,
+      ans.replace(numMatch[0], d1),
+      ans.replace(numMatch[0], d2),
+      ans.replace(numMatch[0], d3),
+    ];
+    const unique = Array.from(new Set(opts));
+    while (unique.length < 4) {
+      unique.push(`${val + unique.length * 3}`);
+    }
+    const shuffled = unique.slice(0, 4).sort(() => 0.5 - Math.random());
+    return { options: shuffled, correctAnswer: ans };
+  }
+
+  // Fallback textual options
+  const defaultDistractors = [
+    'उपरोक्त सभी (All of these)',
+    'इनमें से कोई नहीं (None of these)',
+    'केवल विकल्प (क) सही है',
+    'सत्य एवं प्रमाणित',
+  ];
+  const list = [ans];
+  for (const d of defaultDistractors) {
+    if (list.length < 4 && !list.includes(d)) {
+      list.push(d);
+    }
+  }
+  while (list.length < 4) {
+    list.push(`विकल्प ${list.length + 1}`);
+  }
+  const shuffled = list.slice(0, 4).sort(() => 0.5 - Math.random());
+  return { options: shuffled, correctAnswer: ans };
 }
 
 export default function SundayTestSeriesModal({
@@ -975,14 +1053,23 @@ export default function SundayTestSeriesModal({
     }
   }, [activeSubject]);
 
-  // Exam taking mode: 'typing' | 'upload'
-  const [examMode, setExamMode] = useState<'typing' | 'upload'>('typing');
+  // Selected Duration in minutes: 40 | 60 | 120 (default 40 minutes)
+  const [selectedDurationMinutes, setSelectedDurationMinutes] = useState<number>(40);
+
+  // Exam taking mode: 'mcq' | 'typing' | 'upload' (default 'mcq')
+  const [examMode, setExamMode] = useState<'mcq' | 'typing' | 'upload'>('mcq');
+
+  // Paper Lock State (prevents accidental edits when locked)
+  const [isPaperLocked, setIsPaperLocked] = useState<boolean>(false);
+
+  // Autosave status timestamp display
+  const [lastAutoSavedTime, setLastAutoSavedTime] = useState<string>('अभी-अभी (Just now)');
 
   // Generated Questions for the test
   const [generatedQuestions, setGeneratedQuestions] = useState<TestQuestion[]>([]);
   const [totalExamMarks, setTotalExamMarks] = useState<number>(25);
 
-  // Student Answers (for typing mode)
+  // Student Answers (for typing and MCQ modes)
   const [typedAnswers, setTypedAnswers] = useState<Record<string, string>>({});
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
 
@@ -1004,11 +1091,10 @@ export default function SundayTestSeriesModal({
   const [currentResult, setCurrentResult] = useState<TestResultRecord | null>(null);
   const [testHistory, setTestHistory] = useState<TestResultRecord[]>([]);
 
-  // 40-Minute Countdown Timer for Test Series (40 minutes = 2400 seconds)
-  const EXAM_DURATION_SECONDS = 40 * 60; // 40 minutes (2400 seconds)
-  const [examTimeLeft, setExamTimeLeft] = useState<number>(EXAM_DURATION_SECONDS);
+  // Configurable Countdown Timer for Test Series (40min / 1h / 2h)
+  const [examTimeLeft, setExamTimeLeft] = useState<number>(40 * 60);
 
-  // Auto-countdown timer when student is taking the exam in 'exam' tab
+  // Auto-countdown timer: when timer reaches 0, paper automatically submits!
   useEffect(() => {
     if (!isOpen || activeTab !== 'exam') return;
 
@@ -1016,7 +1102,7 @@ export default function SundayTestSeriesModal({
       setExamTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timerId);
-          // Automatic submission after 40 minutes!
+          // Automatic submission after selected time!
           setTimeout(() => {
             handleSubmitTest(true);
           }, 100);
@@ -1080,6 +1166,10 @@ export default function SundayTestSeriesModal({
           if (parsed.totalExamMarks) setTotalExamMarks(parsed.totalExamMarks);
           if (parsed.examMode) setExamMode(parsed.examMode);
           if (parsed.selectedSubjectId) setSelectedSubjectId(parsed.selectedSubjectId);
+          if (parsed.selectedDurationMinutes) setSelectedDurationMinutes(parsed.selectedDurationMinutes);
+          if (typeof parsed.isPaperLocked === 'boolean') setIsPaperLocked(parsed.isPaperLocked);
+          if (typeof parsed.examTimeLeft === 'number') setExamTimeLeft(parsed.examTimeLeft);
+          if (Array.isArray(parsed.uploadedImages)) setUploadedImages(parsed.uploadedImages);
           if (parsed.activeTab === 'exam') setActiveTab('exam');
         }
       }
@@ -1102,13 +1192,20 @@ export default function SundayTestSeriesModal({
             totalExamMarks,
             examMode,
             selectedSubjectId,
+            selectedDurationMinutes,
+            isPaperLocked,
+            examTimeLeft,
+            uploadedImages,
             activeTab: 'exam',
             timestamp: Date.now(),
           })
         );
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        setLastAutoSavedTime(timeStr);
       } catch {}
     }
-  }, [activeTab, generatedQuestions, typedAnswers, activeQuestionIndex, totalExamMarks, examMode, selectedSubjectId]);
+  }, [activeTab, generatedQuestions, typedAnswers, activeQuestionIndex, totalExamMarks, examMode, selectedSubjectId, selectedDurationMinutes, isPaperLocked, examTimeLeft, uploadedImages]);
 
   // Save Test History to localStorage + Server Database
   const saveToHistory = (record: TestResultRecord) => {
@@ -1160,284 +1257,161 @@ export default function SundayTestSeriesModal({
     setSelectedChapterNumbers([activeSubject.chapters[0].chapterNumber]);
   };
 
-  // 1. GENERATE TEST PAPER FROM SELECTED CHAPTERS, PREVIOUS WORKS (#18, #19), AND/OR UPLOADED FILES
+  // 1. GENERATE TEST PAPER FROM UPLOADED WORKSHEET / PREVIOUS WORKS (#18, #19) OR SUBJECT
   const handleGenerateExam = () => {
-    const isUsingChapters = testSourceMode === 'chapters' || testSourceMode === 'both';
-    const isUsingUploaded = testSourceMode === 'uploaded' || testSourceMode === 'both';
-
-    const hasHistorySelected = selectedHistoryIds.length > 0;
-    const hasFilesSelected = selectedFileIds.length > 0;
-
-    if (isUsingChapters && selectedChapterNumbers.length === 0 && !isUsingUploaded) {
-      alert('कृपया कम से कम एक अध्याय चुनें।');
-      return;
-    }
-    if (isUsingUploaded && !hasHistorySelected && !hasFilesSelected && !isUsingChapters) {
-      alert('कृपया कम से कम एक पिछला काम (#18, #19 आदि) या अपलोड किया गया पेज चुनें।');
-      return;
-    }
-
-    const selectedUploadedQuestionsCount = isUsingUploaded
-      ? (hasHistorySelected ? selectedHistoryIds.length : selectedFileIds.reduce((acc, fid) => acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0), 0))
-      : 0;
-
-    if (isUsingUploaded && !isUsingChapters && !hasHistorySelected && selectedUploadedQuestionsCount === 0) {
-      alert('कृपया अपलोड किए गए पेजों में से कम से कम एक सवाल चुनें (चेकबॉक्स टिक करें) जिसे आप टेस्ट में देना चाहते हैं।');
-      return;
-    }
-
     const questions: TestQuestion[] = [];
     let qIdCounter = 1;
 
-    // --- PART 1: QUESTIONS FROM CHAPTERS ---
-    if (isUsingChapters && activeSubject && selectedChapterNumbers.length > 0) {
-      const chosenChapters = activeSubject.chapters.filter((c) =>
-        selectedChapterNumbers.includes(c.chapterNumber)
-      );
+    // A. Priority 1: From selected previous works / worksheets (#18, #19, etc.)
+    if (selectedHistoryIds.length > 0) {
+      const chosenWorks = historyWorks.filter((w) => selectedHistoryIds.includes(w.id));
+      chosenWorks.forEach((work) => {
+        const workTag = `काम #${work.workNumber}`;
+        const workTitle = work.title || work.subjectName || workTag;
+        const validItems = work.parsedQuestions && work.parsedQuestions.length > 0
+          ? work.parsedQuestions.filter((q) => q.selected)
+          : [];
 
-      // Section A: MCQs (1 Mark each)
-      chosenChapters.forEach((ch) => {
-        const mcqs = ch.sampleQuestions?.filter((sq) => sq.type === 'mcq') || [];
-        mcqs.forEach((q) => {
+        validItems.forEach((item) => {
           questions.push({
-            id: `q_${qIdCounter++}`,
+            id: `q_hw_${qIdCounter++}`,
+            chapterNumber: work.workNumber,
+            chapterTitle: workTitle,
+            section: 'A',
+            sectionTitle: examMode === 'mcq'
+              ? "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)"
+              : item.type === 'mcq'
+              ? "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)"
+              : item.type === 'fill'
+              ? "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)"
+              : "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
+            type: examMode === 'mcq' ? 'mcq' : item.type,
+            marks: examMode === 'mcq' ? 1 : item.marks,
+            question: item.cleanText,
+            options: item.options,
+            correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध हल' : 'सही उत्तर'),
+            explanation: `यह प्रश्न आपके पिछले काम #${work.workNumber} (${workTitle}) से है।`,
+            sourceTag: workTag,
+          });
+        });
+      });
+    }
+
+    // B. Priority 2: From selected uploaded pages/files
+    if (selectedFileIds.length > 0) {
+      const chosenFiles = availableExamFiles.filter((f) => selectedFileIds.includes(f.id));
+      chosenFiles.forEach((f, fIdx) => {
+        const cleanTitle = getStudentFriendlyPageName(f.name, fIdx, f.chapterTitle || pageDataMap?.[f.id]?.heading);
+        const selectedItems = (fileQuestionsMap[f.id] || []).filter((item) => item.selected);
+
+        selectedItems.forEach((item) => {
+          questions.push({
+            id: `q_up_${qIdCounter++}`,
+            chapterNumber: fIdx + 1,
+            chapterTitle: cleanTitle,
+            section: 'A',
+            sectionTitle: examMode === 'mcq'
+              ? "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)"
+              : item.type === 'mcq'
+              ? "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)"
+              : item.type === 'fill'
+              ? "खंड 'ख' : लघु उत्तरीय प्रश्न (Short Answer)"
+              : "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
+            type: examMode === 'mcq' ? 'mcq' : item.type,
+            marks: examMode === 'mcq' ? 1 : item.marks,
+            question: item.cleanText,
+            options: item.options,
+            correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध हल' : 'सही उत्तर'),
+            explanation: `यह प्रश्न आपके द्वारा अपलोड किए गए ${cleanTitle} से है।`,
+            sourceTag: `पेज #${fIdx + 1}`,
+          });
+        });
+      });
+    }
+
+    // C. Fallback: If no files or works were explicitly selected, but available files exist, auto-select and extract!
+    if (questions.length === 0 && (availableExamFiles.length > 0 || historyWorks.length > 0)) {
+      if (availableExamFiles.length > 0) {
+        const latestF = availableExamFiles[availableExamFiles.length - 1];
+        const rawQ = fileQuestionsMap[latestF.id] || [];
+        rawQ.forEach((item) => {
+          questions.push({
+            id: `q_up_${qIdCounter++}`,
+            chapterNumber: 1,
+            chapterTitle: latestF.name,
+            section: 'A',
+            sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
+            type: examMode === 'mcq' ? 'mcq' : item.type,
+            marks: examMode === 'mcq' ? 1 : item.marks,
+            question: item.cleanText,
+            options: item.options,
+            correctAnswer: item.correctAnswer || 'सही उत्तर',
+            explanation: `यह प्रश्न आपके अपलोड किए गए ${latestF.name} से है।`,
+            sourceTag: 'वर्कशीट',
+          });
+        });
+      }
+    }
+
+    // D. Subject curriculum fallback: If still empty (no uploaded worksheet), take from activeSubject
+    if (questions.length === 0 && activeSubject?.chapters) {
+      activeSubject.chapters.slice(0, 4).forEach((ch) => {
+        const chQuestions = ch.sampleQuestions || [];
+        chQuestions.slice(0, 2).forEach((sq) => {
+          questions.push({
+            id: `q_sub_${qIdCounter++}`,
+            chapterNumber: ch.chapterNumber,
+            chapterTitle: ch.titleHindi || ch.titleEnglish,
+            section: 'A',
+            sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
+            type: examMode === 'mcq' ? 'mcq' : sq.type,
+            marks: examMode === 'mcq' ? 1 : (sq.type === 'solve' ? 4 : 2),
+            question: sq.question,
+            options: sq.options,
+            correctAnswer: sq.correctAnswer,
+            explanation: sq.explanation || 'पाठ्यपुस्तक के अनुसार।',
+            sourceTag: `अध्याय ${ch.chapterNumber}`,
+          });
+        });
+
+        if (chQuestions.length === 0 && ch.concepts && ch.concepts.length > 0) {
+          questions.push({
+            id: `q_sub_${qIdCounter++}`,
             chapterNumber: ch.chapterNumber,
             chapterTitle: ch.titleHindi || ch.titleEnglish,
             section: 'A',
             sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
             type: 'mcq',
             marks: 1,
-            question: q.question,
-            options: q.options || ['विकल्प 1', 'विकल्प 2', 'विकल्प 3', 'विकल्प 4'],
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || 'पाठ्यपुस्तक के अनुसार।',
-            sourceTag: `अध्याय ${ch.chapterNumber}`,
-          });
-        });
-
-        // If chapter has fewer than 4 MCQs, generate conceptual MCQs from concepts and formulas
-        if (mcqs.length < 4 && ch.concepts && ch.concepts.length > 0) {
-          const needed = 4 - mcqs.length;
-          ch.concepts.slice(0, needed).forEach((c, cIdx) => {
-            questions.push({
-              id: `q_${qIdCounter++}`,
-              chapterNumber: ch.chapterNumber,
-              chapterTitle: ch.titleHindi || ch.titleEnglish,
-              section: 'A',
-              sectionTitle: "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)",
-              type: 'mcq',
-              marks: 1,
-              question: `अध्याय "${ch.titleHindi}" के अनुसार: "${c}" से संबंधित सही विकल्प चुनें:`,
-              options: [
-                c,
-                'इनमें से कोई नहीं',
-                ch.concepts[(cIdx + 1) % ch.concepts.length] !== c ? ch.concepts[(cIdx + 1) % ch.concepts.length] : 'सामान्य नियम',
-                'उपरोक्त दोनों'
-              ],
-              correctAnswer: c,
-              explanation: `पाठ्यपुस्तक के अनुसार यह "${ch.titleHindi}" का मुख्य सिद्धांत है।`,
-              sourceTag: `अध्याय ${ch.chapterNumber}`,
-            });
-          });
-        }
-      });
-
-      // Section B: Fill in blanks / Short Answers (2 Marks each)
-      chosenChapters.forEach((ch) => {
-        const fills = ch.sampleQuestions?.filter((sq) => sq.type === 'fill') || [];
-        fills.forEach((q) => {
-          questions.push({
-            id: `q_${qIdCounter++}`,
-            chapterNumber: ch.chapterNumber,
-            chapterTitle: ch.titleHindi || ch.titleEnglish,
-            section: 'B',
-            sectionTitle: "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)",
-            type: 'fill',
-            marks: 2,
-            question: q.question,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || 'पाठ्यपुस्तक के अनुसार।',
-            sourceTag: `अध्याय ${ch.chapterNumber}`,
-          });
-        });
-
-        if (fills.length < 3 && ch.keyFormulas && ch.keyFormulas.length > 0) {
-          const needed = 3 - fills.length;
-          ch.keyFormulas.slice(0, needed).forEach((kf) => {
-            questions.push({
-              id: `q_${qIdCounter++}`,
-              chapterNumber: ch.chapterNumber,
-              chapterTitle: ch.titleHindi || ch.titleEnglish,
-              section: 'B',
-              sectionTitle: "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)",
-              type: 'fill',
-              marks: 2,
-              question: `रिक्त स्थान भरें या संक्षेप में लिखें: [ ${kf.split(':')[0]} ] के नियम को स्पष्ट करें।`,
-              correctAnswer: kf,
-              explanation: `${ch.titleHindi} का आवश्यक सूत्र।`,
-              sourceTag: `अध्याय ${ch.chapterNumber}`,
-            });
-          });
-        } else if (fills.length === 0 && ch.concepts && ch.concepts.length > 1) {
-          questions.push({
-            id: `q_${qIdCounter++}`,
-            chapterNumber: ch.chapterNumber,
-            chapterTitle: ch.titleHindi || ch.titleEnglish,
-            section: 'B',
-            sectionTitle: "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)",
-            type: 'fill',
-            marks: 2,
-            question: `संक्षेप में समझाएं: "${ch.concepts[1] || ch.concepts[0]}" से आप क्या समझते हैं?`,
-            correctAnswer: ch.concepts[1] || ch.concepts[0],
-            explanation: `${ch.titleHindi} के अनुसार महत्वपूर्ण सिद्धांत।`,
-            sourceTag: `अध्याय ${ch.chapterNumber}`,
-          });
-        }
-      });
-
-      // Section C: Long Answer / Step-by-Step Solve (5 Marks each)
-      chosenChapters.forEach((ch) => {
-        const solves = ch.sampleQuestions?.filter((sq) => sq.type === 'solve') || [];
-        solves.forEach((q) => {
-          questions.push({
-            id: `q_${qIdCounter++}`,
-            chapterNumber: ch.chapterNumber,
-            chapterTitle: ch.titleHindi || ch.titleEnglish,
-            section: 'C',
-            sectionTitle: "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
-            type: 'solve',
-            marks: 5,
-            question: q.question,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation || 'चरणबद्ध हल प्रस्तुत करें।',
-            sourceTag: `अध्याय ${ch.chapterNumber}`,
-          });
-        });
-
-        if (solves.length === 0) {
-          questions.push({
-            id: `q_${qIdCounter++}`,
-            chapterNumber: ch.chapterNumber,
-            chapterTitle: ch.titleHindi || ch.titleEnglish,
-            section: 'C',
-            sectionTitle: "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
-            type: 'solve',
-            marks: 5,
-            question: `अभ्यास प्रश्न: ${ch.titleHindi} के मुख्य उदाहरण को चरणबद्ध तरीके से अपनी भाषा में हल करें व समझाएं।`,
-            correctAnswer: ch.keyFormulas?.[0] || ch.concepts?.[0] || 'विस्तृत हल',
-            explanation: `${ch.titleHindi} का मुख्य अनुप्रयोग।`,
+            question: `अध्याय "${ch.titleHindi}" का मुख्य सिद्धांत क्या है?`,
+            options: [ch.concepts[0], 'इनमें से कोई नहीं', 'सामान्य नियम', 'उपरोक्त दोनों'],
+            correctAnswer: ch.concepts[0],
+            explanation: 'पाठ्यपुस्तक के अनुसार।',
             sourceTag: `अध्याय ${ch.chapterNumber}`,
           });
         }
       });
     }
 
-    // --- PART 2A: QUESTIONS FROM SELECTED PREVIOUS WORKS (पिछला काम - e.g. काम #18, काम #19) ---
-    if (isUsingUploaded && selectedHistoryIds.length > 0) {
-      const chosenWorks = historyWorks.filter((w) => selectedHistoryIds.includes(w.id));
-
-      chosenWorks.forEach((work) => {
-        const workTag = `काम #${work.workNumber}`;
-        const workTitle = work.title || work.subjectName || workTag;
-
-        let addedCount = 0;
-        work.parsedQuestions.forEach((item) => {
-          if (!item.selected) return;
-          addedCount++;
-
-          const section = item.type === 'mcq'
-            ? 'A'
-            : item.type === 'fill'
-            ? 'B'
-            : 'C';
-
-          const sectionTitle = item.type === 'mcq'
-            ? (item.options?.length === 2 && item.options.includes('सत्य (True)')
-                ? "खंड 'क' : सही या गलत (True / False)"
-                : "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)")
-            : item.type === 'fill'
-            ? "खंड 'ख' : रिक्त स्थान एवं लघु उत्तरीय प्रश्न (Short Answer)"
-            : "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)";
-
-          questions.push({
-            id: `q_hw_${qIdCounter++}`,
-            chapterNumber: work.workNumber,
-            chapterTitle: workTitle,
-            section,
-            sectionTitle,
-            type: item.type,
-            marks: item.marks,
-            question: item.cleanText,
-            options: item.options,
-            correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध विस्तृत हल एवं उत्तर।' : 'मुख्य बिंदु एवं व्याख्या।'),
-            explanation: `यह प्रश्न आपके पिछले काम #${work.workNumber} (${workTitle}) से है।`,
-            sourceTag: workTag,
-          });
-        });
-
-        if (addedCount === 0) {
-          questions.push({
-            id: `q_hw_${qIdCounter++}`,
-            chapterNumber: work.workNumber,
-            chapterTitle: workTitle,
-            section: 'C',
-            sectionTitle: "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)",
-            type: 'solve',
-            marks: 5,
-            question: `काम #${work.workNumber} अभ्यास: "${workTitle}" के मुख्य प्रश्न व उदाहरण को चरणबद्ध तरीके से हल करें।`,
-            correctAnswer: 'चरणबद्ध विस्तृत हल एवं उत्तर।',
-            explanation: `यह प्रश्न आपके पिछले काम #${work.workNumber} से है।`,
-            sourceTag: workTag,
-          });
-        }
-      });
-    }
-
-    // --- PART 2B: QUESTIONS FROM SELECTED UPLOADED FILES ---
-    if (isUsingUploaded && (uploadSubTab === 'pages' || selectedHistoryIds.length === 0) && selectedFileIds.length > 0) {
-      const chosenFiles = availableExamFiles.filter((f) => selectedFileIds.includes(f.id));
-
-      chosenFiles.forEach((f, fIdx) => {
-        const cleanTitle = getStudentFriendlyPageName(f.name, fIdx, f.chapterTitle || pageDataMap?.[f.id]?.heading);
-        const selectedItems = (fileQuestionsMap[f.id] || []).filter((item) => item.selected);
-
-        if (selectedItems.length > 0) {
-          selectedItems.forEach((item) => {
-            const section = item.type === 'mcq'
-              ? 'A'
-              : item.type === 'fill'
-              ? 'B'
-              : 'C';
-
-            const sectionTitle = item.type === 'mcq'
-              ? (item.options?.length === 2 && item.options.includes('सत्य (True)')
-                  ? "खंड 'क' : सही या गलत (True / False)"
-                  : "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)")
-              : item.type === 'fill'
-              ? "खंड 'ख' : लघु उत्तरीय प्रश्न (Short Answer)"
-              : "खंड 'ग' : विस्तृत एवं हल करने योग्य सवाल (Solve with Steps)";
-
-            questions.push({
-              id: `q_up_${qIdCounter++}`,
-              chapterNumber: fIdx + 1,
-              chapterTitle: cleanTitle,
-              section,
-              sectionTitle,
-              type: item.type,
-              marks: item.marks,
-              question: item.cleanText,
-              options: item.options,
-              correctAnswer: item.correctAnswer || (item.type === 'solve' ? 'चरणबद्ध विस्तृत हल एवं उत्तर।' : 'मुख्य बिंदु एवं व्याख्या।'),
-              explanation: `यह प्रश्न आपके द्वारा अपलोड किए गए ${cleanTitle} से है।`,
-              sourceTag: `पेज #${fIdx + 1}`,
-            });
-          });
-        }
+    // E. IN MCQ MODE: Ensure EVERY single question has 4 options!
+    if (examMode === 'mcq') {
+      questions.forEach((q) => {
+        const { options, correctAnswer } = ensureFourOptions(
+          q.question,
+          q.correctAnswer,
+          q.options,
+          activeSubject?.subject
+        );
+        q.type = 'mcq';
+        q.options = options;
+        q.correctAnswer = correctAnswer;
+        q.sectionTitle = "खंड 'क' : बहुविकल्पीय प्रश्न (Multiple Choice)";
+        q.marks = 1;
       });
     }
 
     if (questions.length === 0) {
-      alert('कृपया कम से कम एक अध्याय, पिछला काम (#18, #19 आदि) या अपलोड किया गया पेज चुनें।');
+      alert('कृपया कोई वर्कशीट अपलोड करें या विषय चुनें।');
       return;
     }
 
@@ -1448,7 +1422,8 @@ export default function SundayTestSeriesModal({
     setTypedAnswers({});
     setActiveQuestionIndex(0);
     setUploadedImages([]);
-    setExamTimeLeft(EXAM_DURATION_SECONDS);
+    setIsPaperLocked(false);
+    setExamTimeLeft(selectedDurationMinutes * 60);
     setActiveTab('exam');
   };
 
@@ -1506,6 +1481,7 @@ export default function SundayTestSeriesModal({
 
   // Insert Quick Math Symbols into active answer
   const handleInsertSymbol = (questionId: string, sym: string) => {
+    if (isPaperLocked) return;
     setTypedAnswers((prev) => ({
       ...prev,
       [questionId]: (prev[questionId] || '') + sym,
@@ -1514,6 +1490,7 @@ export default function SundayTestSeriesModal({
 
   // Handle Photo Upload (for manual written copy)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isPaperLocked) return;
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -1530,6 +1507,7 @@ export default function SundayTestSeriesModal({
   };
 
   const handleRemoveImage = (index: number) => {
+    if (isPaperLocked) return;
     setUploadedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -1553,7 +1531,7 @@ export default function SundayTestSeriesModal({
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  // 2. SUBMIT TEST & GET AI RESULT (Supports Auto-Submit when 40-minute timer expires)
+  // 2. SUBMIT TEST & GET AI RESULT (Supports Auto-Submit when timer expires)
   const handleSubmitTest = async (isAutoSubmit: boolean = false) => {
     if (!isAutoSubmit) {
       if (examMode === 'upload' && uploadedImages.length === 0) {
@@ -1561,10 +1539,10 @@ export default function SundayTestSeriesModal({
         return;
       }
 
-      if (examMode === 'typing') {
+      if (examMode === 'typing' || examMode === 'mcq') {
         const answeredCount = Object.values(typedAnswers).filter((a) => a.trim().length > 0).length;
         if (answeredCount === 0) {
-          alert('कृपया कम से कम एक प्रश्न का उत्तर टाइप करें।');
+          alert('कृपया कम से कम एक प्रश्न का उत्तर दें।');
           return;
         }
       }
@@ -1573,37 +1551,19 @@ export default function SundayTestSeriesModal({
     setIsSubmitting(true);
 
     try {
-      const chosenChapters = (testSourceMode === 'uploaded')
-        ? availableExamFiles.filter((f) => selectedFileIds.includes(f.id)).map((f, i) => ({
-            chapterNumber: i + 1,
-            title: f.name,
-          }))
-        : (testSourceMode === 'both')
-        ? [
-            ...activeSubject.chapters
-              .filter((c) => selectedChapterNumbers.includes(c.chapterNumber))
-              .map((c) => ({
-                chapterNumber: c.chapterNumber,
-                title: c.titleHindi || c.titleEnglish,
-              })),
-            ...availableExamFiles.filter((f) => selectedFileIds.includes(f.id)).map((f, i) => ({
-              chapterNumber: 100 + i + 1,
-              title: f.name,
-            })),
-          ]
-        : activeSubject.chapters
-            .filter((c) => selectedChapterNumbers.includes(c.chapterNumber))
-            .map((c) => ({
-              chapterNumber: c.chapterNumber,
-              title: c.titleHindi || c.titleEnglish,
-            }));
+      const chosenChapters = [
+        {
+          chapterNumber: 1,
+          title: activeSubject?.subjectHindi || activeSubject?.subject || 'साप्ताहिक टेस्ट',
+        },
+      ];
 
       const res = await fetch('/api/test/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentName: activeStudentName,
-          subjectName: activeSubject.subjectHindi || activeSubject.subject,
+          subjectName: activeSubject?.subjectHindi || activeSubject?.subject || 'सामान्य',
           classGrade: className,
           selectedChapters: chosenChapters,
           mode: examMode,
@@ -1700,7 +1660,7 @@ export default function SundayTestSeriesModal({
                   activeTab === 'configure' ? 'bg-indigo-600 text-white shadow' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                1. सिलेबस व अध्याय
+                1. टेस्ट सेटअप
               </button>
               <button
                 type="button"
@@ -1821,1263 +1781,536 @@ export default function SundayTestSeriesModal({
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-5 bg-slate-50 print:p-0 print:bg-white print:overflow-visible">
           {/* ================= TAB 1: CONFIGURE & SELECT CHAPTERS / UPLOADED PAGES ================= */}
           {activeTab === 'configure' && (
-            <div className={`space-y-4 ${isFullPage ? 'max-w-5xl' : 'max-w-3xl'} mx-auto`}>
-              {/* Step Title */}
-              <div className="bg-indigo-50 border border-indigo-200/80 rounded-2xl p-3 sm:p-3.5 flex items-start gap-3">
-                <span className="text-3xl">🎯</span>
-                <div className="flex-1">
-                  <h4 className="text-base font-black text-indigo-950">
-                    साप्ताहिक टेस्ट पेपर तैयार करें (Weekly Test Creator)
-                  </h4>
-                  <p className="text-xs text-indigo-800/80 mt-0.5">
-                    आप किताब के अध्यायों से, अपने अपलोड किए गए पेजों/नोट्स से, या दोनों को मिलाकर एक साथ टेस्ट तैयार कर सकते हैं!
+            <div className={`space-y-4.5 ${isFullPage ? 'max-w-5xl' : 'max-w-3xl'} mx-auto`}>
+              {/* Step Title & Banner */}
+              <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl p-5 shadow-lg flex items-start gap-4">
+                <span className="text-4xl">📝</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-black">
+                      साप्ताहिक टेस्ट सेटअप (Weekly Test Setup)
+                    </h3>
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400 text-slate-950">
+                      {board} • {className}
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-200 mt-1">
+                    विषय चुनें, वर्कशीट से सवाल लें, टेस्ट का तरीका व समय चुनें — और 1-क्लिक में टेस्ट शुरू करें!
                   </p>
                 </div>
               </div>
 
-              {/* 1. TEST SOURCE PICKER */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+              {/* 1. SELECT SUBJECT */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <span>1. टेस्ट का स्रोत चुनें (Test Source):</span>
+                    <span>1. विषय चुनें (Select Subject):</span>
                   </label>
-                  {availableExamFiles.length > 0 && (
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                      📸 {availableExamFiles.length} पेज उपलब्ध
-                    </span>
-                  )}
+                  <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                    चयनित: {activeSubject?.subjectHindi || activeSubject?.subject}
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                  {subjects.map((sub) => {
+                    const isSelected = sub.id === selectedSubjectId;
+                    return (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => setSelectedSubjectId(sub.id)}
+                        className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.02] ring-2 ring-indigo-400/30'
+                            : 'bg-white text-slate-800 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl">{sub.emoji}</span>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
+                        </div>
+                        <div className="mt-2">
+                          <div className="text-xs font-black line-clamp-1">
+                            {sub.subjectHindi || sub.subject}
+                          </div>
+                          <div
+                            className={`text-[10px] mt-0.5 truncate ${
+                              isSelected ? 'text-indigo-200' : 'text-slate-500'
+                            }`}
+                          >
+                            {sub.teacherName}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. UPLOADED WORKSHEET & PAGES (Test Source) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+                  <div>
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <span>2. टेस्ट सामग्री व वर्कशीट (Worksheet Source):</span>
+                      {availableExamFiles.length > 0 && (
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          📸 {availableExamFiles.length} पेज उपलब्ध
+                        </span>
+                      )}
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      अपलोड की गई वर्कशीट या पुराने काम से सवाल लेकर टेस्ट तैयार किया जाएगा।
+                    </p>
+                  </div>
+
+                  {/* Direct Upload Button */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      ref={modalFileInputRef}
+                      accept="image/*,application/pdf"
+                      multiple
+                      onChange={handleModalFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => modalFileInputRef.current?.click()}
+                      className="text-xs font-black text-white px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-xs flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>+ नया पेपर फोटो अपलोड करें</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Worksheet Cards Display */}
+                {availableExamFiles.length > 0 || historyWorks.length > 0 ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-52 overflow-y-auto pr-1">
+                      {/* Available/Current Session Files */}
+                      {availableExamFiles.map((f, fIdx) => {
+                        const isSel = selectedFileIds.includes(f.id);
+                        const qCount =
+                          fileQuestionsMap[f.id]?.filter((q) => q.selected).length ||
+                          f.detectedQuestions?.length ||
+                          0;
+                        return (
+                          <div
+                            key={f.id}
+                            onClick={() => handleToggleFileSelection(f.id)}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 select-none ${
+                              isSel
+                                ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-2xs ring-1 ring-indigo-400'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center border border-slate-300">
+                              {f.url ? (
+                                <img src={f.url} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <FileText className="w-5 h-5 text-indigo-600" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-black truncate">{f.name}</div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                {qCount > 0 ? `${qCount} सवाल पहचाने गए` : 'वर्कशीट पेज'}
+                              </div>
+                            </div>
+                            <div
+                              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${
+                                isSel
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'border border-slate-300 bg-white text-transparent'
+                              }`}
+                            >
+                              ✓
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* History Works (e.g. #18, #19) */}
+                      {historyWorks.map((hw) => {
+                        const isSel = selectedHistoryIds.includes(hw.id);
+                        return (
+                          <div
+                            key={hw.id}
+                            onClick={() => handleToggleHistoryWork(hw.id)}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center gap-3 select-none ${
+                              isSel
+                                ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-2xs ring-1 ring-indigo-400'
+                                : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            }`}
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-700 font-black text-xs shrink-0 flex items-center justify-center border border-indigo-200">
+                              #{hw.workNumber}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-black truncate">
+                                काम #{hw.workNumber}: {hw.title || hw.subjectName}
+                              </div>
+                              <div className="text-[10px] text-slate-500 mt-0.5">
+                                {hw.parsedQuestions?.length || 0} सवाल
+                              </div>
+                            </div>
+                            <div
+                              className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-xs ${
+                                isSel
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'border border-slate-300 bg-white text-transparent'
+                              }`}
+                            >
+                              ✓
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">📄</span>
+                      <div>
+                        <div className="text-xs font-bold text-slate-800">
+                          वर्तमान में कोई वर्कशीट अपलोड नहीं है
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          आप ऊपर &quot;+ नया पेपर फोटो अपलोड करें&quot; से फोटो जोड़ सकते हैं, या सीधे &quot;{activeSubject?.subjectHindi || activeSubject?.subject}&quot; के मुख्य सवालों से टेस्ट दे सकते हैं!
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => modalFileInputRef.current?.click()}
+                      className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shrink-0 shadow-sm cursor-pointer"
+                    >
+                      📷 फोटो अपलोड करें
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. TEST TAKING MODE (MCQ / Typing / Print Upload) */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
+                <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <span>3. टेस्ट देने का तरीका चुनें (Choose Test Mode):</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* 1. MCQ Mode */}
                   <button
                     type="button"
-                    onClick={() => setTestSourceMode('chapters')}
-                    className={`p-3 rounded-xl border text-left font-bold text-xs transition-all flex items-center gap-2.5 cursor-pointer ${
-                      testSourceMode === 'chapters'
+                    onClick={() => setExamMode('mcq')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      examMode === 'mcq'
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400/30'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-2xl">📚</span>
-                    <div className="min-w-0">
-                      <div className="font-black text-xs">किताब के अध्याय</div>
-                      <div className={`text-[10px] truncate ${testSourceMode === 'chapters' ? 'text-indigo-200' : 'text-slate-500'}`}>
-                        सिलेबस के चैप्टर्स से टेस्ट
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">🎯</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            examMode === 'mcq'
+                              ? 'bg-amber-400 text-slate-950'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          अनुशंसित (Recommended)
+                        </span>
                       </div>
+                      <div className="text-xs sm:text-sm font-black">चार विकल्प (MCQ Mode)</div>
+                      <p
+                        className={`text-[11px] mt-1.5 leading-relaxed ${
+                          examMode === 'mcq' ? 'text-indigo-100' : 'text-slate-500'
+                        }`}
+                      >
+                        हर सवाल के 4 विकल्प (A, B, C, D) मिलेंगे। सही विकल्प पर 1-क्लिक करके उत्तर दें। सबसे तेज़ व आसान!
+                      </p>
                     </div>
                   </button>
 
+                  {/* 2. Typing Mode */}
                   <button
                     type="button"
-                    onClick={() => setTestSourceMode('uploaded')}
-                    className={`p-3 rounded-xl border text-left font-bold text-xs transition-all flex items-center gap-2.5 cursor-pointer ${
-                      testSourceMode === 'uploaded'
+                    onClick={() => setExamMode('typing')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      examMode === 'typing'
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400/30'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-2xl">🗂️</span>
-                    <div className="min-w-0">
-                      <div className="font-black text-xs flex items-center gap-1.5">
-                        <span>पिछला काम व अपलोड पेज</span>
-                        {historyWorks.length > 0 ? (
-                          <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
-                            testSourceMode === 'uploaded' ? 'bg-white text-indigo-700' : 'bg-emerald-600 text-white'
-                          }`}>
-                            {historyWorks.length} काम
-                          </span>
-                        ) : availableExamFiles.length > 0 ? (
-                          <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
-                            testSourceMode === 'uploaded' ? 'bg-white text-indigo-700' : 'bg-emerald-600 text-white'
-                          }`}>
-                            {availableExamFiles.length}
-                          </span>
-                        ) : null}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">✍️</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            examMode === 'typing' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          बोलकर / लिखकर
+                        </span>
                       </div>
-                      <div className={`text-[10px] truncate ${testSourceMode === 'uploaded' ? 'text-indigo-200' : 'text-slate-500'}`}>
-                        पिछला काम (#18, #19 आदि) या कॉपी पेज
-                      </div>
+                      <div className="text-xs sm:text-sm font-black">ऑनलाइन टाइपिंग (Type & Voice)</div>
+                      <p
+                        className={`text-[11px] mt-1.5 leading-relaxed ${
+                          examMode === 'typing' ? 'text-indigo-100' : 'text-slate-500'
+                        }`}
+                      >
+                        स्क्रीन पर कीबोर्ड से चरणबद्ध उत्तर लिखें या नीले माइक बटन से बोलकर हिंदी/अंग्रेजी में टाइप करें।
+                      </p>
                     </div>
                   </button>
 
+                  {/* 3. Print & Upload Mode */}
                   <button
                     type="button"
-                    onClick={() => setTestSourceMode('both')}
-                    className={`p-3 rounded-xl border text-left font-bold text-xs transition-all flex items-center gap-2.5 cursor-pointer ${
-                      testSourceMode === 'both'
+                    onClick={() => setExamMode('upload')}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      examMode === 'upload'
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-md ring-2 ring-indigo-400/30'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                        : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="text-2xl">🌟</span>
-                    <div className="min-w-0">
-                      <div className="font-black text-xs">दोनों मिलाकर (Hybrid)</div>
-                      <div className={`text-[10px] truncate ${testSourceMode === 'both' ? 'text-indigo-200' : 'text-slate-500'}`}>
-                        अध्याय + अपलोड किए पेज
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-3xl">🖨️</span>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            examMode === 'upload' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          असली कॉपी विधि
+                        </span>
                       </div>
+                      <div className="text-xs sm:text-sm font-black">प्रिंट निकालें व कॉपी अपलोड करें</div>
+                      <p
+                        className={`text-[11px] mt-1.5 leading-relaxed ${
+                          examMode === 'upload' ? 'text-indigo-100' : 'text-slate-500'
+                        }`}
+                      >
+                        स्कूल जैसा A4 पेपर प्रिंट निकालें, पेन से कॉपी में हल करें और कैमरे से फोटो खींचकर अपलोड करें।
+                      </p>
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* 2. UPLOADED PAGES & NOTES SELECTION (When 'uploaded' or 'both' mode active) */}
-              {(testSourceMode === 'uploaded' || testSourceMode === 'both') && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
-                  {/* Header & Upload Action */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2.5">
-                    <div>
-                      <h5 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                        <span>{uploadSubTab === 'history' ? '🗂️ पिछला काम (वर्कशीट/सेशन)' : '📸 अपलोड किए गए पेज व नोट्स'}</span>
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
-                          {uploadSubTab === 'history'
-                            ? `${selectedHistoryIds.length} / ${historyWorks.length} काम चुने गए`
-                            : `${selectedFileIds.length} / ${availableExamFiles.length} पेज चुने गए`}
-                        </span>
-                      </h5>
-                      <p className="text-[11px] text-slate-500">
-                        {uploadSubTab === 'history'
-                          ? 'आप काम #18, काम #19 या दोनों को एक साथ चुनकर सीधे टेस्ट बना सकते हैं!'
-                          : 'पहले से अपलोड किए पेज चुनें या नया फोटो जोड़ें — AI इन्हीं पेजों से टेस्ट बनाएगा!'}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <input
-                        type="file"
-                        ref={modalFileInputRef}
-                        accept="image/*,application/pdf"
-                        multiple
-                        onChange={handleModalFileUpload}
-                        className="hidden"
-                      />
+              {/* 4. EXAM DURATION SELECTOR */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
+                <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <span>4. परीक्षा का समय चुनें (Select Time Duration):</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { mins: 40, label: '⏱️ 40 मिनट', sub: 'मानक साप्ताहिक परीक्षा (अनुशंसित)' },
+                    { mins: 60, label: '⏱️ 1 घंटा (60 मिनट)', sub: 'विस्तृत अभ्यास परीक्षा' },
+                    { mins: 120, label: '⏱️ 2 घंटे (120 मिनट)', sub: 'संपूर्ण सत्र परीक्षा' },
+                  ].map((t) => {
+                    const isSel = selectedDurationMinutes === t.mins;
+                    return (
                       <button
+                        key={t.mins}
                         type="button"
-                        onClick={() => modalFileInputRef.current?.click()}
-                        className="text-xs font-black text-white px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 shadow-sm flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all"
-                        title="एक साथ 1 से 20+ फोटो या पेज अपलोड करें"
+                        onClick={() => setSelectedDurationMinutes(t.mins)}
+                        className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSel
+                            ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md ring-2 ring-amber-300 font-black scale-[1.01]'
+                            : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 font-bold'
+                        }`}
                       >
-                        <Camera className="w-3.5 h-3.5" />
-                        <span>+ नया फोटो/पेज जोड़ें (17+ बल्क अपलोड)</span>
-                      </button>
-
-                      {/* View Mode Toggle (Active when viewing raw pages) */}
-                      {uploadSubTab === 'pages' && availableExamFiles.length > 0 && (
-                        <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-slate-600">
-                          <button
-                            type="button"
-                            onClick={() => setFileViewMode('grid')}
-                            className={`p-1.5 rounded-lg transition-all ${
-                              fileViewMode === 'grid'
-                                ? 'bg-white text-indigo-600 shadow-xs font-bold'
-                                : 'hover:text-slate-900'
-                            }`}
-                            title="ग्रिड कार्ड व्यू (Grid View)"
-                          >
-                            <Grid className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setFileViewMode('compact')}
-                            className={`p-1.5 rounded-lg transition-all ${
-                              fileViewMode === 'compact'
-                                ? 'bg-white text-indigo-600 shadow-xs font-bold'
-                                : 'hover:text-slate-900'
-                            }`}
-                            title="कॉम्पैक्ट लिस्ट व्यू (Compact Table View)"
-                          >
-                            <List className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="text-sm font-black flex items-center justify-between">
+                          <span>{t.label}</span>
+                          {isSel && <Check className="w-4 h-4 text-slate-950 stroke-[3]" />}
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sub-Tab Selector: 'history' (पिछला काम) vs 'pages' (पेज दर पेज) */}
-                  {historyWorks.length > 0 && (
-                    <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setUploadSubTab('history')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          uploadSubTab === 'history'
-                            ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400/30'
-                            : 'bg-white hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <span className="text-sm">📂</span>
-                        <span>पिछला काम से चुनें</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          uploadSubTab === 'history' ? 'bg-indigo-900 text-white' : 'bg-slate-200 text-slate-800'
-                        }`}>
-                          {selectedHistoryIds.length} / {historyWorks.length} काम चुने
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setUploadSubTab('pages')}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                          uploadSubTab === 'pages'
-                            ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400/30'
-                            : 'bg-white hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        <span className="text-sm">📸</span>
-                        <span>पेज दर पेज चुनें</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          uploadSubTab === 'pages' ? 'bg-indigo-900 text-white' : 'bg-slate-200 text-slate-800'
-                        }`}>
-                          {selectedFileIds.length} / {availableExamFiles.length} पेज
-                        </span>
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Bulk Upload Scanning Progress Bar */}
-                  {uploadProgress && (
-                    <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/80 text-indigo-950 space-y-2 animate-pulse">
-                      <div className="flex items-center justify-between text-xs font-black">
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-indigo-600 shrink-0" />
-                          <span>
-                            AI स्कैनिंग जारी: {uploadProgress.current} / {uploadProgress.total} फोटो ({uploadProgress.fileName})
-                          </span>
-                        </span>
-                        <span className="bg-indigo-600 text-white px-2 py-0.5 rounded-full text-[10px]">
-                          {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-indigo-200 h-2 rounded-full overflow-hidden">
                         <div
-                          className="bg-indigo-600 h-full transition-all duration-300"
-                          style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
-                        />
-                      </div>
-                      <p className="text-[11px] text-indigo-700">
-                        कृपया प्रतीक्षा करें, AI आपके सभी पेजों से प्रश्नों को पढ़ रहा है...
-                      </p>
-                    </div>
-                  )}
-
-                  {/* --- SUB-VIEW 1: PREVIOUS WORKS (पिछला काम - e.g. 19 works) --- */}
-                  {uploadSubTab === 'history' && historyWorks.length > 0 && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      {/* Presets Toolbar for Previous Works */}
-                      <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-700 flex-wrap gap-2">
-                          <span className="flex items-center gap-1.5 text-indigo-900 font-black">
-                            <span>⚡</span>
-                            <span>क्विक सेलेक्शन (काम #18, #19 या दोनों):</span>
-                          </span>
-                          <span className="text-[11px] text-slate-500 font-semibold">
-                            कुल {historyWorks.length} पिछले काम उपलब्ध हैं
-                          </span>
+                          className={`text-[11px] mt-1 ${
+                            isSel ? 'text-slate-900 font-medium' : 'text-slate-500'
+                          }`}
+                        >
+                          {t.sub}
                         </div>
-
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {/* 1. Only #19 (Latest) */}
-                          <button
-                            type="button"
-                            onClick={() => handleSelectWorkByNumber(historyWorks.length)}
-                            className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                              selectedHistoryIds.length === 1 &&
-                              selectedHistoryIds[0] === historyWorks[historyWorks.length - 1]?.id
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                            }`}
-                            title="सिर्फ सबसे नया काम चुनें"
-                          >
-                            ⚡ सिर्फ काम #{historyWorks.length}
-                          </button>
-
-                          {/* 2. Only #18 (Previous) */}
-                          {historyWorks.length >= 2 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectWorkByNumber(historyWorks.length - 1)}
-                              className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                                selectedHistoryIds.length === 1 &&
-                                selectedHistoryIds[0] === historyWorks[historyWorks.length - 2]?.id
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                  : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                              }`}
-                              title="सिर्फ पिछला काम चुनें"
-                            >
-                              ⚡ सिर्फ काम #{historyWorks.length - 1}
-                            </button>
-                          )}
-
-                          {/* 3. BOTH #18 and #19 Together */}
-                          {historyWorks.length >= 2 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectWorksBoth(historyWorks.length - 1, historyWorks.length)}
-                              className={`text-xs font-black px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                                selectedHistoryIds.length === 2 &&
-                                selectedHistoryIds.includes(historyWorks[historyWorks.length - 1]?.id) &&
-                                selectedHistoryIds.includes(historyWorks[historyWorks.length - 2]?.id)
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                  : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
-                              }`}
-                              title="काम #18 और #19 दोनों को मिलाकर टेस्ट लें"
-                            >
-                              ⚡ काम #{historyWorks.length - 1} और #{historyWorks.length} दोनों
-                            </button>
-                          )}
-
-                          {/* 4. Latest 3 Works */}
-                          {historyWorks.length >= 3 && (
-                            <button
-                              type="button"
-                              onClick={() => handleSelectLatestHistoryWorks(3)}
-                              className="text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 cursor-pointer"
-                              title="आख़िरी 3 काम चुनें"
-                            >
-                              ⚡ आख़िरी 3 काम
-                            </button>
-                          )}
-
-                          {/* 5. Select All */}
-                          <button
-                            type="button"
-                            onClick={handleSelectAllHistoryWorks}
-                            className={`text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                              selectedHistoryIds.length === historyWorks.length
-                                ? 'bg-indigo-600 text-white border-indigo-600'
-                                : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                            }`}
-                          >
-                            ⭐ सभी चुनें ({historyWorks.length})
-                          </button>
-
-                          {/* 6. Deselect All */}
-                          <button
-                            type="button"
-                            onClick={handleDeselectAllHistoryWorks}
-                            className="text-xs font-bold px-2.5 py-1.5 rounded-xl bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 cursor-pointer"
-                          >
-                            🚫 सब हटाएं
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* History Works Grid (Displayed in reverse order so latest #19, #18 are at top) */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[30rem] overflow-y-auto pr-1">
-                        {[...historyWorks].reverse().map((work) => {
-                          const isSelected = selectedHistoryIds.includes(work.id);
-                          return (
-                            <div
-                              key={work.id}
-                              onClick={() => handleToggleHistoryWork(work.id)}
-                              className={`p-3.5 rounded-2xl border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-2.5 select-none ${
-                                isSelected
-                                  ? 'border-indigo-600 bg-indigo-50/60 shadow-md ring-2 ring-indigo-400/20'
-                                  : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
-                              }`}
-                            >
-                              <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <span className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 ${
-                                    isSelected
-                                      ? 'bg-indigo-600 text-white shadow-xs'
-                                      : 'bg-slate-100 text-slate-800 border border-slate-200'
-                                  }`}>
-                                    <span>{isSelected ? '✓' : '○'}</span>
-                                    <span>काम #{work.workNumber}</span>
-                                  </span>
-                                  <span className="text-[10px] font-bold text-slate-400">
-                                    {work.dateLabel || work.date}
-                                  </span>
-                                </div>
-
-                                <h6 className="font-bold text-xs sm:text-sm text-slate-900 leading-snug line-clamp-2">
-                                  {work.title || work.subjectName}
-                                </h6>
-
-                                <div className="flex items-center gap-2 text-[11px] font-bold text-slate-500 flex-wrap">
-                                  <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">
-                                    📚 {work.subjectName || 'सामान्य'}
-                                  </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    {work.parsedQuestions.length} सवाल उपलब्ध
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="pt-2.5 border-t border-black/5 flex items-center justify-between">
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleSelectOnlyHistoryWork(work.id, e)}
-                                  className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
-                                  title={`सिर्फ काम #${work.workNumber} चुनें`}
-                                >
-                                  <span>⭐ सिर्फ यह काम</span>
-                                </button>
-                                <span className={`text-xs font-bold ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`}>
-                                  {isSelected ? 'चुना गया है ✓' : 'क्लिक करके चुनें'}
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Selected History Works Question Preview */}
-                      {selectedHistoryIds.length > 0 && (
-                        <div className="pt-3 border-t border-slate-200/80 space-y-3">
-                          <div className="flex items-center justify-between flex-wrap gap-2">
-                            <h6 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                              <span>📋 चुने गए पिछले काम के सवाल (टेस्ट में शामिल होंगे):</span>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800">
-                                {historyWorks
-                                  .filter((w) => selectedHistoryIds.includes(w.id))
-                                  .reduce((acc, w) => acc + w.parsedQuestions.length, 0)}{' '}
-                                सवाल तैयार हैं
-                              </span>
-                            </h6>
-                          </div>
-
-                          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                            {historyWorks
-                              .filter((w) => selectedHistoryIds.includes(w.id))
-                              .map((work) => (
-                                <div
-                                  key={work.id}
-                                  className="p-3 rounded-xl border border-indigo-100 bg-indigo-50/40 space-y-2"
-                                >
-                                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 pb-1.5 border-b border-indigo-100/80">
-                                    <span className="text-indigo-900 font-black">
-                                      📁 काम #{work.workNumber}: {work.title || work.subjectName}
-                                    </span>
-                                    <span className="text-[11px] text-indigo-700">
-                                      {work.parsedQuestions.length} सवाल
-                                    </span>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {work.parsedQuestions.map((pq, pIdx) => (
-                                      <div
-                                        key={pq.id || pIdx}
-                                        className="text-xs text-slate-700 font-medium flex items-start gap-2 bg-white/80 p-2 rounded-lg border border-slate-100"
-                                      >
-                                        <span className="font-bold text-indigo-600 shrink-0">
-                                          {pIdx + 1}.
-                                        </span>
-                                        <span className="leading-snug">{pq.cleanText}</span>
-                                      </div>
-                                    ))}
-                                    {work.parsedQuestions.length === 0 && (
-                                      <div className="text-xs text-slate-500 italic p-1">
-                                        इस काम के मुख्य अभ्यास से अभ्यास प्रश्न टेस्ट में तैयार किए जाएंगे।
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* --- SUB-VIEW 2: RAW PAGES VIEW --- */}
-                  {(uploadSubTab === 'pages' || historyWorks.length === 0) && (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      {availableExamFiles.length > 0 && (
-                        <div className="space-y-2 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                          {/* Search Bar + Presets */}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="relative flex-1 min-w-[180px]">
-                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-                              <input
-                                type="text"
-                                value={fileSearchQuery}
-                                onChange={(e) => setFileSearchQuery(e.target.value)}
-                                placeholder="🔍 पेज नंबर या नाम खोजें (उदा. 3, WhatsApp...)"
-                                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-indigo-500 focus:ring-1 focus:ring-indigo-400"
-                              />
-                              {fileSearchQuery && (
-                                <button
-                                  type="button"
-                                  onClick={() => setFileSearchQuery('')}
-                                  className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 text-xs"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Presets Chips (Clean & Simple) */}
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <button
-                                type="button"
-                                onClick={handleSelectAllFiles}
-                                className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                  selectedFileIds.length === availableExamFiles.length
-                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                                }`}
-                              >
-                                ⭐ सभी चुनें ({availableExamFiles.length})
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleInvertFileSelection}
-                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 cursor-pointer"
-                                title="उल्टा चयन करें"
-                              >
-                                🔄 उल्टा
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleDeselectAllFiles}
-                                className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 cursor-pointer"
-                              >
-                                🚫 सब हटाएं
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Quick Range Selection for 10+ / 17+ pages */}
-                          {availableExamFiles.length >= 6 && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60 flex-wrap text-xs text-slate-600">
-                              <span className="font-bold text-[11px] text-slate-500">📑 त्वरित रेंज (Quick Range):</span>
-                              <button
-                                type="button"
-                                onClick={() => handleSelectRangeFiles(1, 5)}
-                                className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
-                              >
-                                पेज 1 - 5
-                              </button>
-                              {availableExamFiles.length >= 10 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectRangeFiles(6, 10)}
-                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
-                                >
-                                  पेज 6 - 10
-                                </button>
-                              )}
-                              {availableExamFiles.length >= 15 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectRangeFiles(11, 15)}
-                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
-                                >
-                                  पेज 11 - 15
-                                </button>
-                              )}
-                              {availableExamFiles.length >= 16 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSelectRangeFiles(16, availableExamFiles.length)}
-                                  className="px-2 py-0.5 rounded-md bg-white border border-slate-300 hover:border-indigo-400 font-bold text-[11px] hover:text-indigo-600"
-                                >
-                                  पेज 16 - {availableExamFiles.length}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                  {/* Empty State */}
-                  {availableExamFiles.length === 0 ? (
-                    <div className="p-8 rounded-2xl border-2 border-dashed border-slate-200 text-center flex flex-col items-center justify-center bg-slate-50">
-                      <Upload className="w-10 h-10 text-slate-400 mb-2" />
-                      <h6 className="text-sm font-bold text-slate-700">अभी कोई पेज उपलब्ध नहीं है</h6>
-                      <p className="text-xs text-slate-500 max-w-sm mt-1">
-                        अपनी कॉपी, किताब का पन्ना, या होमवर्क नोट्स का फोटो खींचें या अपलोड करें। AI उनसे टेस्ट पेपर तैयार करेगा!
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => modalFileInputRef.current?.click()}
-                        className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs flex items-center gap-2 shadow-sm cursor-pointer"
-                      >
-                        <Camera className="w-4 h-4" />
-                        <span>फोटो अपलोड करें</span>
                       </button>
-                    </div>
-                  ) : filteredAvailableFiles.length === 0 ? (
-                    <div className="p-6 text-center text-slate-500 text-xs bg-slate-50 rounded-xl border border-slate-200">
-                      '{fileSearchQuery}' से मेल खाता कोई पेज नहीं मिला।{' '}
-                      <button
-                        type="button"
-                        onClick={() => setFileSearchQuery('')}
-                        className="text-indigo-600 font-bold underline ml-1"
-                      >
-                        सर्च रीसेट करें
-                      </button>
-                    </div>
-                  ) : fileViewMode === 'compact' ? (
-                    /* COMPACT LIST VIEW - BEST FOR 17+ FILES */
-                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white max-h-96 overflow-y-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 sticky top-0 z-10 font-bold">
-                          <tr>
-                            <th className="py-2.5 px-3 w-10">चुनें</th>
-                            <th className="py-2.5 px-2 w-14">फोटो</th>
-                            <th className="py-2.5 px-3">पेज विवरण</th>
-                            <th className="py-2.5 px-3 text-center">सवाल</th>
-                            <th className="py-2.5 px-3 text-right">त्वरित चयन</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {filteredAvailableFiles.map((f, idx) => {
-                            const isSelected = selectedFileIds.includes(f.id);
-                            const qCount = f.detectedQuestions?.length || 0;
-                            return (
-                              <tr
-                                key={f.id}
-                                onClick={() => handleToggleFileSelection(f.id)}
-                                className={`cursor-pointer transition-colors ${
-                                  isSelected ? 'bg-indigo-50/70 hover:bg-indigo-50' : 'hover:bg-slate-50'
-                                }`}
-                              >
-                                <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => handleToggleFileSelection(f.id)}
-                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                                  />
-                                </td>
-                                <td className="py-2 px-2">
-                                  {f.url ? (
-                                    <img
-                                      src={f.url}
-                                      alt={f.name}
-                                      className="w-10 h-10 object-cover rounded-lg border border-slate-200 bg-slate-100"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 rounded-lg border border-slate-200 bg-slate-100 flex items-center justify-center">
-                                      <FileText className="w-4 h-4 text-slate-400" />
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3">
-                                  <div className="font-black text-slate-900 truncate max-w-xs">{f.name}</div>
-                                  <div className="text-[10px] text-slate-500 truncate">
-                                    {f.chapterTitle || `पेज #${idx + 1}`}
-                                  </div>
-                                </td>
-                                <td className="py-2 px-3 text-center">
-                                  {qCount > 0 ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                                      {qCount} सवाल
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] text-slate-400">—</span>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleSelectOnlyFile(f.id, e)}
-                                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                                      isSelected && selectedFileIds.length === 1
-                                        ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 border border-slate-200'
-                                    }`}
-                                    title="बाकी सभी को हटाकर केवल इस पेज से टेस्ट बनाएं"
-                                  >
-                                    ⭐ सिर्फ यह चुनें
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    /* GRID VIEW WITH "ONLY THIS" BUTTON ON EVERY CARD */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-[28rem] overflow-y-auto pr-1">
-                      {filteredAvailableFiles.map((f, idx) => {
-                        const isSelected = selectedFileIds.includes(f.id);
-                        const qCount = f.detectedQuestions?.length || 0;
-                        return (
-                          <div
-                            key={f.id}
-                            onClick={() => handleToggleFileSelection(f.id)}
-                            className={`p-3 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between gap-2.5 select-none ${
-                              isSelected
-                                ? 'bg-indigo-50/90 border-indigo-500 text-indigo-950 shadow-sm ring-2 ring-indigo-400/30'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => handleToggleFileSelection(f.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-4 h-4 mt-1 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer shrink-0"
-                              />
-                              {f.url ? (
-                                <img
-                                  src={f.url}
-                                  alt={f.name}
-                                  className="w-12 h-12 object-cover rounded-xl border border-slate-200 bg-slate-100 shrink-0"
-                                />
-                              ) : (
-                                <div className="w-12 h-12 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
-                                  <FileText className="w-5 h-5 text-slate-400" />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-black truncate">{f.name}</div>
-                                <div className="text-[10px] text-slate-500 mt-0.5 truncate">
-                                  {f.chapterTitle || `पेज #${idx + 1}`}
-                                </div>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  {qCount > 0 ? (
-                                    <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">
-                                      {qCount} सवाल उपलब्ध
-                                    </span>
-                                  ) : (
-                                    <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px]">
-                                      {f.sourceType === 'history' ? 'पिछला काम' : f.sourceType === 'custom_upload' ? 'नया अपलोड' : 'सत्र पेज'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Action Bar with "Select Only This" */}
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100/80" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] text-slate-400 font-medium">
-                                #{idx + 1}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => handleSelectOnlyFile(f.id, e)}
-                                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                                  isSelected && selectedFileIds.length === 1
-                                    ? 'bg-amber-400 text-slate-950 font-black shadow-xs'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-indigo-100 hover:text-indigo-800 border border-slate-200'
-                                }`}
-                                title="बाकी सभी को हटाकर केवल इस पेज से टेस्ट बनाएं"
-                              >
-                                ⭐ सिर्फ यह
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Interactive Question Inspector & Selector ("konnsa question dena h") */}
-                  {selectedFileIds.length > 0 && (
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                          <h6 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                            <span>📋 पहचाने गए सवाल (चुनें कि कौन-से टेस्ट में देने हैं):</span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                              {selectedFileIds.reduce(
-                                (acc, fid) =>
-                                  acc +
-                                  (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0),
-                                0
-                              )}{' '}
-                              सवाल चुने गए
-                            </span>
-                          </h6>
-                          <p className="text-[11px] text-slate-500">
-                            AI ने आपके पन्नों से सवाल पहचान लिए हैं। जिसे टेस्ट में देना है उस पर टिक (✓) रखें, बाकियों को हटा सकते हैं।
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Scanning Banner */}
-                      {isScanningFiles && (
-                        <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 flex items-center gap-2.5 animate-pulse">
-                          <Loader2 className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
-                          <div className="text-xs">
-                            <span className="font-bold">AI पेज को ध्यान से पढ़ रहा है...</span>{' '}
-                            <span className="text-[11px] text-indigo-700">
-                              सवालों और अभ्यासों की पहचान की जा रही है...
-                            </span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                        {selectedFileIds.map((fileId) => {
-                          const f = availableExamFiles.find((item) => item.id === fileId);
-                          if (!f) return null;
-                          const qList = fileQuestionsMap[fileId] || [];
-                          const selCount = qList.filter((q) => q.selected).length;
-                          const totalMarks = qList
-                            .filter((q) => q.selected)
-                            .reduce((acc, q) => acc + q.marks, 0);
-
-                          return (
-                            <div
-                              key={fileId}
-                              className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5"
-                            >
-                              <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 flex-wrap gap-2">
-                                <div className="flex items-center gap-2">
-                                  {f.url ? (
-                                    <img
-                                      src={f.url}
-                                      alt={f.name}
-                                      className="w-7 h-7 object-cover rounded-md border border-slate-200"
-                                    />
-                                  ) : (
-                                    <FileText className="w-4 h-4 text-indigo-600" />
-                                  )}
-                                  <span className="text-xs font-black text-slate-800">
-                                    {f.name}
-                                  </span>
-                                  <span className="text-[10px] text-slate-500 font-medium">
-                                    ({selCount}/{qList.length} चुने • {totalMarks} अंक)
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSelectAllQuestions(fileId)}
-                                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 px-2 py-0.5 rounded bg-white border border-indigo-200 cursor-pointer"
-                                  >
-                                    सभी चुनें
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeselectAllQuestions(fileId)}
-                                    className="text-[10px] font-bold text-slate-600 hover:text-slate-700 px-2 py-0.5 rounded bg-white border border-slate-200 cursor-pointer"
-                                  >
-                                    सभी हटाएं
-                                  </button>
-                                  {f.url && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRescanFile(f)}
-                                      disabled={isScanningFiles}
-                                      className="text-[10px] font-bold text-emerald-700 hover:text-emerald-800 px-2 py-0.5 rounded bg-white border border-emerald-200 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                                      title="AI से इस पेज को दोबारा स्कैन करवाएं"
-                                    >
-                                      <RefreshCw
-                                        className={`w-3 h-3 ${isScanningFiles ? 'animate-spin' : ''}`}
-                                      />
-                                      <span>पुनः स्कैन</span>
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-
-                              {qList.length === 0 ? (
-                                <div className="py-3 text-center text-xs text-slate-500 bg-white rounded-lg border border-dashed border-slate-200">
-                                  <span>इस पेज पर अभी कोई सवाल नहीं मिला। </span>
-                                  <span className="font-bold text-indigo-600">
-                                    ऊपर 'पुनः स्कैन' दबाएं या नीचे नया सवाल जोड़ें।
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="space-y-1.5">
-                                  {qList.map((item, qIdx) => {
-                                    const isEditing = editingQuestionId === item.id;
-                                    return (
-                                      <div
-                                        key={item.id}
-                                        className={`p-2 rounded-lg border transition-all flex items-start gap-2 ${
-                                          item.selected
-                                            ? 'bg-white border-emerald-300 text-slate-900 shadow-2xs'
-                                            : 'bg-slate-100/60 border-slate-200 text-slate-400 opacity-60'
-                                        }`}
-                                      >
-                                        <button
-                                          type="button"
-                                          onClick={() => handleToggleQuestion(fileId, item.id)}
-                                          className="mt-0.5 shrink-0 cursor-pointer focus:outline-hidden"
-                                        >
-                                          {item.selected ? (
-                                            <CheckSquare className="w-4 h-4 text-emerald-600" />
-                                          ) : (
-                                            <Square className="w-4 h-4 text-slate-400" />
-                                          )}
-                                        </button>
-
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                            <span className="text-[10px] font-black text-slate-500">
-                                              Q.{qIdx + 1}
-                                            </span>
-                                            <span
-                                              className={`text-[9px] font-black px-1.5 py-0.2 rounded ${
-                                                item.type === 'mcq'
-                                                  ? 'bg-amber-100 text-amber-800'
-                                                  : item.type === 'solve'
-                                                  ? 'bg-purple-100 text-purple-800'
-                                                  : 'bg-blue-100 text-blue-800'
-                                              }`}
-                                            >
-                                              {item.type === 'mcq'
-                                                ? 'MCQ • 1 अंक'
-                                                : item.type === 'solve'
-                                                ? 'विस्तृत हल • 5 अंक'
-                                                : 'लघु उत्तरीय • 2 अंक'}
-                                            </span>
-                                          </div>
-
-                                          {isEditing ? (
-                                            <div className="flex items-center gap-1.5 mt-1">
-                                              <input
-                                                type="text"
-                                                value={editingQuestionText}
-                                                onChange={(e) =>
-                                                  setEditingQuestionText(e.target.value)
-                                                }
-                                                className="flex-1 p-1 rounded border border-indigo-400 text-xs font-medium text-slate-900 bg-white"
-                                                autoFocus
-                                              />
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  handleSaveEditQuestion(fileId, item.id)
-                                                }
-                                                className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold"
-                                              >
-                                                सेव
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => setEditingQuestionId(null)}
-                                                className="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px]"
-                                              >
-                                                रद्द
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <div className="text-xs font-medium leading-relaxed">
-                                              {item.cleanText}
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                                          {!isEditing && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handleStartEditQuestion(item)}
-                                              className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer"
-                                              title="सवाल बदलें"
-                                            >
-                                              <Edit3 className="w-3 h-3" />
-                                            </button>
-                                          )}
-                                          <button
-                                            type="button"
-                                            onClick={() => handleDeleteQuestion(fileId, item.id)}
-                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer"
-                                            title="यह सवाल हटाएं"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-
-                              <div className="pt-1.5 flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  placeholder="इस पेज से कोई सवाल जोड़ें..."
-                                  value={newQuestionInputs[fileId] || ''}
-                                  onChange={(e) =>
-                                    setNewQuestionInputs((prev) => ({
-                                      ...prev,
-                                      [fileId]: e.target.value,
-                                    }))
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault();
-                                      handleAddQuestion(fileId);
-                                    }
-                                  }}
-                                  className="flex-1 p-1.5 rounded-lg border border-slate-200 text-xs bg-white placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-400"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddQuestion(fileId)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>जोड़ें</span>
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* End of Sub-View 2: Raw Pages */}
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* 3. SYLLABUS & CHAPTER SELECTION (When 'chapters' or 'both' mode active) */}
-              {(testSourceMode === 'chapters' || testSourceMode === 'both') && (
-                <>
-                  {/* Subject Selection Tabs */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                      {testSourceMode === 'both' ? '2. विषय चुनें (Select Subject):' : 'विषय चुनें (Select Subject):'}
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-                      {subjects.map((sub) => {
-                        const isSelected = sub.id === selectedSubjectId;
-                        return (
-                          <button
-                            key={sub.id}
-                            type="button"
-                            onClick={() => setSelectedSubjectId(sub.id)}
-                            className={`p-3 rounded-2xl border text-left transition-all flex flex-col justify-between ${
-                              isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.02]'
-                                : 'bg-white text-slate-800 border-slate-200 hover:border-indigo-300 hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="text-2xl">{sub.emoji}</span>
-                              {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-                            </div>
-                            <div className="mt-2">
-                              <div className="text-xs font-black line-clamp-1">
-                                {sub.subjectHindi || sub.subject}
-                              </div>
-                              <div
-                                className={`text-[10px] mt-0.5 ${
-                                  isSelected ? 'text-indigo-200' : 'text-slate-500'
-                                }`}
-                              >
-                                {sub.chapters?.length || 0} अध्याय • {sub.teacherName}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Multiple Chapter Selection Checkboxes */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-3">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-                      <div>
-                        <h5 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                          <span>{activeSubject?.subjectHindi || activeSubject?.subject} के चैप्टर्स चुनें</span>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
-                            {selectedChapterNumbers.length} चुने गए
-                          </span>
-                        </h5>
-                        <p className="text-[11px] text-slate-500">
-                          मल्टीपल चैप्टर्स चुन सकते हैं (उदा. अध्याय 3 और 4 दोनों एक साथ)
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllChapters}
-                          className="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200"
-                        >
-                          सभी चुनें
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleDeselectAllChapters}
-                          className="text-xs font-bold text-slate-600 hover:text-slate-700 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200"
-                        >
-                          रीसेट
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Chapter list */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-                      {activeSubject?.chapters?.map((ch) => {
-                        const isChecked = selectedChapterNumbers.includes(ch.chapterNumber);
-                        return (
-                          <label
-                            key={ch.id}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
-                              isChecked
-                                ? 'bg-indigo-50/70 border-indigo-300 text-indigo-950 shadow-2xs'
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleChapter(ch.chapterNumber)}
-                              className="w-4 h-4 mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 cursor-pointer"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-black flex items-center gap-1.5">
-                                <span className="px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 text-[10px]">
-                                  अध्याय {ch.chapterNumber}
-                                </span>
-                                <span className="truncate">{ch.titleHindi || ch.titleEnglish}</span>
-                              </div>
-                              <div className="text-[10px] text-slate-500 mt-0.5 truncate">
-                                {ch.concepts?.slice(0, 2).join(' • ') || 'महत्वपूर्ण अवधारणाएं'}
-                              </div>
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              )}
+                {/* Auto-Submit Notice */}
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs flex items-center gap-2.5 font-medium">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+                  <span>
+                    <strong>ऑटो-सबमिट सूचना:</strong> {selectedDurationMinutes} मिनट का समय पूरा होते ही पेपर <strong>अपने-आप सबमिट</strong> हो जाएगा और तुरंत रिजल्ट स्क्रीन पर आ जाएगा।
+                  </span>
+                </div>
+              </div>
 
               {/* Bottom Generate Action Button */}
-              {(() => {
-                const selHistoryWorks = historyWorks.filter((w) => selectedHistoryIds.includes(w.id));
-                const selHistoryQCount = selHistoryWorks.reduce(
-                  (acc, w) => acc + (w.parsedQuestions.length > 0 ? w.parsedQuestions.length : 1),
-                  0
-                );
-                const selHistoryMarks = selHistoryWorks.reduce(
-                  (acc, w) =>
-                    acc +
-                    (w.parsedQuestions.length > 0
-                      ? w.parsedQuestions.reduce((m, q) => m + q.marks, 0)
-                      : 5),
-                  0
-                );
-
-                const selFileQCount = selectedFileIds.reduce(
-                  (acc, fid) =>
-                    acc + (fileQuestionsMap[fid]?.filter((q) => q.selected).length || 0),
-                  0
-                );
-                const selFileMarks = selectedFileIds.reduce(
-                  (acc, fid) =>
-                    acc +
-                    (fileQuestionsMap[fid]
-                      ?.filter((q) => q.selected)
-                      .reduce((m, q) => m + q.marks, 0) || 0),
-                  0
-                );
-
-                const totalUploadedOrHistoryQCount = selHistoryQCount + selFileQCount;
-                const totalUploadedOrHistoryMarks = selHistoryMarks + selFileMarks;
-                const hasAnyUploadedOrHistory =
-                  selectedHistoryIds.length > 0 || selectedFileIds.length > 0;
-
-                const isGenerateDisabled =
-                  (testSourceMode === 'chapters' && selectedChapterNumbers.length === 0) ||
-                  (testSourceMode === 'uploaded' &&
-                    (!hasAnyUploadedOrHistory || totalUploadedOrHistoryQCount === 0)) ||
-                  (testSourceMode === 'both' &&
-                    selectedChapterNumbers.length === 0 &&
-                    (!hasAnyUploadedOrHistory || totalUploadedOrHistoryQCount === 0));
-
-                return (
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleGenerateExam}
-                      disabled={isGenerateDisabled}
-                      className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
-                    >
-                      <FileText className="w-5 h-5" />
-                      <span>
-                        {testSourceMode === 'uploaded'
-                          ? `चुने गए ${totalUploadedOrHistoryQCount} सवालों से टेस्ट बनाएं (${totalUploadedOrHistoryMarks} अंक) →`
-                          : testSourceMode === 'both'
-                          ? `अध्याय + ${totalUploadedOrHistoryQCount} काम/पेज सवालों से कंबाइंड टेस्ट बनाएं →`
-                          : 'व्हाइट पेपर टेस्ट पेपर तैयार करें (Generate Test Paper) →'}
-                      </span>
-                    </button>
-                  </div>
-                );
-              })()}
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleGenerateExam}
+                  className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-indigo-800 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                >
+                  <FileText className="w-5 h-5 text-amber-300" />
+                  <span>
+                    🚀 {activeSubject?.subjectHindi || activeSubject?.subject} का टेस्ट शुरू करें ({selectedDurationMinutes} मिनट) →
+                  </span>
+                </button>
+              </div>
             </div>
           )}
 
-          {/* ================= TAB 2: EXAM PAPER (WHITE PAPER + TYPING & UPLOAD) ================= */}
+          {/* ================= TAB 2: EXAM PAPER ================= */}
           {activeTab === 'exam' && (
             <div className="space-y-4 max-w-3xl mx-auto">
               {/* Exam Options & Mode Selector Bar (Hidden in Print) */}
               <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-slate-700">परीक्षा देने का तरीका:</span>
-                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-black text-slate-700">तरीका:</span>
+                  <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold">
                     <button
                       type="button"
-                      onClick={() => setExamMode('typing')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all ${
-                        examMode === 'typing'
+                      onClick={() => !isPaperLocked && setExamMode('mcq')}
+                      disabled={isPaperLocked}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                        examMode === 'mcq'
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      } ${isPaperLocked ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>⌨️ ऑनलाइन टाइपिंग</span>
+                      🎯 चार विकल्प (MCQ)
                     </button>
                     <button
                       type="button"
-                      onClick={() => setExamMode('upload')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all ${
+                      onClick={() => !isPaperLocked && setExamMode('typing')}
+                      disabled={isPaperLocked}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
+                        examMode === 'typing'
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      } ${isPaperLocked ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      ⌨️ टाइपिंग
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => !isPaperLocked && setExamMode('upload')}
+                      disabled={isPaperLocked}
+                      className={`px-2.5 py-1 rounded-lg transition-all ${
                         examMode === 'upload'
                           ? 'bg-indigo-600 text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      } ${isPaperLocked ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>🖨️ प्रिंट निकालें व कॉपी अपलोड करें</span>
+                      🖨️ प्रिंट व कॉपी
                     </button>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* ⏱️ 40-Minute Countdown Timer Badge */}
+                  {/* Autosave Indicator */}
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-[11px] font-bold shadow-2xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    <span>🟢 स्वतः सुरक्षित</span>
+                    <span className="text-[10px] opacity-80 font-mono">({lastAutoSavedTime})</span>
+                  </div>
+
+                  {/* Paper Lock Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsPaperLocked(!isPaperLocked)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-xs transition-all cursor-pointer ${
+                      isPaperLocked
+                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 ring-2 ring-amber-300'
+                        : 'bg-slate-800 hover:bg-slate-700 text-white'
+                    }`}
+                    title={
+                      isPaperLocked
+                        ? 'पेपर अनलॉक करें (Unlock Paper to edit answers)'
+                        : 'पेपर लॉक करें (Lock Paper to prevent accidental edits)'
+                    }
+                  >
+                    {isPaperLocked ? (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-slate-950" />
+                        <span>🔒 पेपर लॉक है (अनलॉक करें)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Unlock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>🔒 पेपर लॉक करें</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Countdown Timer Badge */}
                   <div
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-black shadow-xs transition-all ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-black shadow-xs transition-all ${
                       examTimeLeft <= 300
                         ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
                         : examTimeLeft <= 600
                         ? 'bg-amber-50 border-amber-300 text-amber-800'
                         : 'bg-emerald-50 border-emerald-300 text-emerald-800'
                     }`}
-                    title="40 मिनट पूरे होते ही परीक्षा अपने-आप सबमिट हो जाएगी"
+                    title={`${selectedDurationMinutes} मिनट पूरे होते ही परीक्षा अपने-आप सबमिट हो जाएगी`}
                   >
-                    <Clock className={`w-4 h-4 ${examTimeLeft <= 300 ? 'text-rose-600 animate-spin' : 'text-emerald-600'}`} />
-                    <span className="tabular-nums font-mono text-sm">
+                    <Clock
+                      className={`w-3.5 h-3.5 ${
+                        examTimeLeft <= 300 ? 'text-rose-600 animate-spin' : 'text-emerald-600'
+                      }`}
+                    />
+                    <span className="tabular-nums font-mono text-xs sm:text-sm">
                       ⏱️ {formatExamTimer(examTimeLeft)}
                     </span>
-                    <span className="text-[10px] font-bold opacity-80">(40 मिनट ऑटो-सबमिट)</span>
+                    <span className="text-[10px] font-bold opacity-80">
+                      ({selectedDurationMinutes}m ऑटो-सबमिट)
+                    </span>
                   </div>
 
                   <button
                     type="button"
                     onClick={handlePrintTestPaper}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5 text-amber-400" />
-                    <span>प्रिंट पेपर (A4 PDF)</span>
+                    <span>प्रिंट</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('configure')}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-all"
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>चैप्टर बदलें</span>
+                    <span>सेटअप</span>
                   </button>
                 </div>
               </div>
+
+              {/* Locked Notice Banner */}
+              {isPaperLocked && (
+                <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-amber-950 font-sans shadow-sm print:hidden">
+                  <div className="flex items-center gap-2.5">
+                    <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <div className="text-xs font-black">🔒 पेपर लॉक है (Paper Locked)</div>
+                      <div className="text-[11px] text-amber-800">
+                        आपके उत्तर सुरक्षित हैं। अनजाने में किसी विकल्प या उत्तर में बदलाव से सुरक्षा सक्रिय है। यदि बदलाव करना चाहें तो ऊपर &apos;अनलॉक करें&apos; बटन दबाएं।
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaperLocked(false)}
+                    className="px-3 py-1 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 text-xs font-black shrink-0 transition-all shadow-xs cursor-pointer"
+                  >
+                    🔓 अनलॉक करें
+                  </button>
+                </div>
+              )}
 
               {/* 🖨️ AUTHENTIC WHITE PAPER TEST SHEET */}
               <div className="bg-white text-slate-900 rounded-2xl p-6 sm:p-10 shadow-md border border-slate-200 font-serif space-y-6 print:border-none print:shadow-none print:p-0 print:m-0">
@@ -3090,38 +2323,41 @@ export default function SundayTestSeriesModal({
                     राजकीय प्राथमिक एवं उच्च प्राथमिक विद्यालय
                   </h2>
                   <h3 className="text-sm sm:text-base font-bold text-indigo-950 font-sans">
-                    साप्ताहिक मूल्यांकन टेस्ट परीक्षा (Practice Test Paper)
+                    साप्ताहिक मूल्यांकन टेस्ट परीक्षा (Weekly Test Series)
                   </h3>
-                  <div className="flex items-center justify-between text-xs font-bold pt-2 px-1 font-sans border-t border-slate-200 mt-2 text-slate-700">
+                  <div className="flex items-center justify-between text-xs font-bold pt-2 px-1 font-sans border-t border-slate-200 mt-2 text-slate-700 flex-wrap gap-2">
                     <span>विषय: {activeSubject?.subjectHindi || activeSubject?.subject}</span>
                     <span>{className}</span>
-                    <span>समय: 45 मिनट</span>
+                    <span>समय: {selectedDurationMinutes} मिनट</span>
                     <span>पूर्णांक (Max Marks): {totalExamMarks}</span>
                   </div>
                 </div>
 
-                {/* Student Details Sheet Box */}
-                <div className="border border-slate-800 p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold bg-slate-50 font-sans gap-2 print:bg-transparent">
+                {/* Student Info Box */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-sans border border-slate-300 p-2.5 rounded-lg bg-slate-50">
                   <div>
-                    छात्र का नाम: <span className="font-mono text-sm underline decoration-dotted">{activeStudentName}</span>
+                    छात्र का नाम: <span className="font-mono text-sm underline decoration-dotted font-bold">{activeStudentName}</span>
                   </div>
                   <div>रोल नंबर: [ .................... ]</div>
                   <div>दिनांक: {new Date().toLocaleDateString('hi-IN')}</div>
                   <div>
-                    सिलेबस / स्रोत:{' '}
-                    <span className="text-indigo-700">
-                      {testSourceMode === 'uploaded'
-                        ? `अपलोड किए गए ${selectedFileIds.length} पेज`
-                        : testSourceMode === 'both'
-                        ? `अध्याय ${selectedChapterNumbers.join(', ')} + ${selectedFileIds.length} अपलोड पेज`
-                        : `अध्याय ${selectedChapterNumbers.join(', ')}`}
+                    मोड:{' '}
+                    <span className="text-indigo-700 font-bold">
+                      {examMode === 'mcq'
+                        ? 'चार विकल्प (MCQ)'
+                        : examMode === 'typing'
+                        ? 'ऑनलाइन टाइपिंग'
+                        : 'प्रिंट व कॉपी'}
                     </span>
                   </div>
                 </div>
 
                 {/* Instructions */}
                 <div className="text-[11px] text-slate-600 font-sans bg-amber-50/70 p-2.5 rounded-lg border border-amber-200/60 print:hidden">
-                  <span className="font-bold text-amber-900">निर्देश:</span> सभी प्रश्न हल करना अनिवार्य है। दाहिनी ओर अंक दिए गए हैं। आप नीचे सीधे टाइप कर सकते हैं या ऊपर &quot;प्रिंट पेपर&quot; दबाकर पेन से हल कर फोटो अपलोड कर सकते हैं।
+                  <span className="font-bold text-amber-900">निर्देश:</span> सभी प्रश्न हल करना अनिवार्य है। समय: {selectedDurationMinutes} मिनट (समय समाप्ति पर स्वतः सबमिट)।
+                  {examMode === 'mcq' && ' कृपया हर प्रश्न के सही विकल्प (क, ख, ग, घ) पर क्लिक करें।'}
+                  {examMode === 'typing' && ' आप कीबोर्ड से या बोलकर अपना उत्तर टाइप करें।'}
+                  {examMode === 'upload' && ' आप प्रिंट निकालें, पेन से कॉपी में हल करें और नीचे फोटो अपलोड करें।'}
                 </div>
 
                 {/* QUESTIONS LISTING */}
@@ -3134,7 +2370,7 @@ export default function SundayTestSeriesModal({
                       <div
                         key={q.id}
                         className={`p-4 rounded-xl border transition-all ${
-                          examMode === 'typing' && activeQuestionIndex === idx
+                          activeQuestionIndex === idx
                             ? 'border-indigo-400 bg-indigo-50/20 shadow-xs'
                             : 'border-slate-200 bg-white'
                         }`}
@@ -3146,13 +2382,9 @@ export default function SundayTestSeriesModal({
                               प्रश्न {idx + 1}
                             </span>
                             <span className="text-indigo-700 text-[11px]">{q.sectionTitle}</span>
-                            {q.sourceTag ? (
+                            {q.sourceTag && (
                               <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold">
                                 📸 {q.sourceTag}
-                              </span>
-                            ) : (
-                              <span className="text-slate-400 text-[10px] hidden sm:inline">
-                                (अध्याय {q.chapterNumber}: {q.chapterTitle})
                               </span>
                             )}
                           </div>
@@ -3166,9 +2398,9 @@ export default function SundayTestSeriesModal({
                           {q.question}
                         </div>
 
-                        {/* MCQ OPTIONS DISPLAY */}
-                        {q.type === 'mcq' && q.options && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 font-sans">
+                        {/* MCQ OPTIONS DISPLAY (Shown in MCQ Mode OR when question has options) */}
+                        {(examMode === 'mcq' || q.type === 'mcq') && q.options && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-3 font-sans">
                             {q.options.map((opt, optIdx) => {
                               const letters = ['(क)', '(ख)', '(ग)', '(घ)'];
                               const isSelected = studentAns === opt || studentAns === letters[optIdx];
@@ -3176,24 +2408,38 @@ export default function SundayTestSeriesModal({
                                 <button
                                   key={optIdx}
                                   type="button"
+                                  disabled={isPaperLocked}
                                   onClick={() => {
+                                    if (isPaperLocked) return;
                                     setTypedAnswers((prev) => ({ ...prev, [q.id]: opt }));
+                                    setActiveQuestionIndex(idx);
                                   }}
-                                  className={`p-2.5 rounded-xl border text-left text-xs font-medium transition-all flex items-center gap-2 ${
+                                  className={`p-3 rounded-xl border text-left text-xs font-medium transition-all flex items-center gap-2.5 ${
+                                    isPaperLocked ? 'cursor-not-allowed opacity-90' : 'cursor-pointer hover:border-indigo-400'
+                                  } ${
                                     isSelected
-                                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs'
+                                      ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-xs scale-[1.01]'
                                       : 'bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100'
                                   }`}
                                 >
+                                  <div
+                                    className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 text-xs font-bold ${
+                                      isSelected
+                                        ? 'border-white bg-white text-indigo-700'
+                                        : 'border-slate-300 bg-white text-slate-600'
+                                    }`}
+                                  >
+                                    {isSelected ? '✓' : letters[optIdx].replace(/[()]/g, '')}
+                                  </div>
                                   <span className="font-bold opacity-80">{letters[optIdx]}</span>
-                                  <span>{opt}</span>
+                                  <span className="flex-1 leading-snug">{opt}</span>
                                 </button>
                               );
                             })}
                           </div>
                         )}
 
-                        {/* TYPING INPUT BOX (Shown when in Typing Mode and for Fill / Solve questions) */}
+                        {/* TYPING INPUT BOX (Shown in Typing Mode for non-MCQs) */}
                         {examMode === 'typing' && q.type !== 'mcq' && (
                           <div className="mt-3 space-y-2 font-sans print:hidden">
                             {/* Rich Toolbar: Voice Typing + Math Symbols */}
@@ -3206,8 +2452,9 @@ export default function SundayTestSeriesModal({
                                   <button
                                     key={sym}
                                     type="button"
+                                    disabled={isPaperLocked}
                                     onClick={() => handleInsertSymbol(q.id, sym)}
-                                    className="px-2 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 text-slate-800 font-bold text-xs hover:border-indigo-400"
+                                    className="px-2 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-200 text-slate-800 font-bold text-xs hover:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
                                     title={`जोड़ें ${sym}`}
                                   >
                                     {sym}
@@ -3218,8 +2465,9 @@ export default function SundayTestSeriesModal({
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
+                                  disabled={isPaperLocked}
                                   onClick={() => toggleVoiceTyping(q.id)}
-                                  className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                     isVoiceListening
                                       ? 'bg-rose-600 text-white animate-pulse'
                                       : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
@@ -3242,16 +2490,22 @@ export default function SundayTestSeriesModal({
                             {/* Main Typing Textarea */}
                             <textarea
                               rows={q.type === 'solve' ? 4 : 2}
+                              disabled={isPaperLocked}
                               value={studentAns}
-                              onChange={(e) =>
-                                setTypedAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))
-                              }
+                              onChange={(e) => {
+                                if (isPaperLocked) return;
+                                setTypedAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
+                              }}
                               placeholder={
-                                q.type === 'solve'
+                                isPaperLocked
+                                  ? '🔒 पेपर लॉक है (अनलॉक करके उत्तर लिखें)'
+                                  : q.type === 'solve'
                                   ? 'यहाँ अपना चरणबद्ध हल (Step-by-step) टाइप करें...'
                                   : 'यहाँ सही उत्तर लिखें...'
                               }
-                              className="w-full p-3 rounded-b-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans text-xs sm:text-sm text-slate-900 bg-white placeholder:text-slate-400"
+                              className={`w-full p-3 rounded-b-xl border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans text-xs sm:text-sm ${
+                                isPaperLocked ? 'bg-slate-100 text-slate-600 cursor-not-allowed' : 'bg-white text-slate-900'
+                              } placeholder:text-slate-400`}
                             />
                           </div>
                         )}
@@ -3300,17 +2554,24 @@ export default function SundayTestSeriesModal({
                     onChange={handleFileUpload}
                     accept="image/*"
                     multiple
+                    disabled={isPaperLocked}
                     className="hidden"
                   />
 
                   {/* Upload Drop Area */}
                   <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-indigo-50/30 hover:bg-indigo-50/70"
+                    onClick={() => !isPaperLocked && fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all ${
+                      isPaperLocked
+                        ? 'border-slate-300 bg-slate-100 cursor-not-allowed'
+                        : 'border-indigo-300 hover:border-indigo-500 cursor-pointer bg-indigo-50/30 hover:bg-indigo-50/70'
+                    }`}
                   >
                     <Upload className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
                     <div className="text-xs font-bold text-slate-800">
-                      क्लिक करके फोटो अपलोड करें या कैमरा चालू करें
+                      {isPaperLocked
+                        ? '🔒 पेपर लॉक है (फोटो अपलोड करने के लिए अनलॉक करें)'
+                        : 'क्लिक करके फोटो अपलोड करें या कैमरा चालू करें'}
                     </div>
                     <p className="text-[10px] text-slate-500 mt-1">
                       (PNG, JPG, JPEG - एक से अधिक पृष्ठ जोड़ सकते हैं)
@@ -3334,19 +2595,21 @@ export default function SundayTestSeriesModal({
                               alt={`Page ${i + 1}`}
                               className="w-full h-full object-cover"
                             />
-                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveImage(i);
-                                }}
-                                className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-500 shadow"
-                                title="हटाएं"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            {!isPaperLocked && (
+                              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveImage(i);
+                                  }}
+                                  className="p-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-500 shadow cursor-pointer"
+                                  title="हटाएं"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
                             <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
                               पेज {i + 1}
                             </span>
@@ -3364,46 +2627,65 @@ export default function SundayTestSeriesModal({
                   <div className="font-bold flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span>
-                      {examMode === 'typing'
-                        ? `कुल ${generatedQuestions.length} में से ${
+                      {examMode === 'upload'
+                        ? `${uploadedImages.length} कॉपी पृष्ठ अपलोड किए गए`
+                        : `कुल ${generatedQuestions.length} में से ${
                             Object.values(typedAnswers).filter((a) => a.trim().length > 0).length
-                          } प्रश्न हल किए गए`
-                        : `${uploadedImages.length} कॉपी पृष्ठ अपलोड किए गए`}
+                          } प्रश्न हल किए गए`}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold ${
-                      examTimeLeft <= 300
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
-                        : examTimeLeft <= 600
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    }`}>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold ${
+                        examTimeLeft <= 300
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                          : examTimeLeft <= 600
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}
+                    >
                       <Clock className="w-3.5 h-3.5" />
-                      ⏱️ {formatExamTimer(examTimeLeft)} शेष (40 मिनट बाद स्वतः सबमिट)
+                      ⏱️ {formatExamTimer(examTimeLeft)} शेष ({selectedDurationMinutes} मिनट बाद स्वतः सबमिट)
                     </span>
-                    <span className="text-[11px] text-slate-400">सबमिट करते ही AI शिक्षक द्वारा अंकों की जांच व रिज़ल्ट तैयार होगा।</span>
+                    <span className="text-[11px] text-slate-400">
+                      सबमिट करते ही AI शिक्षक द्वारा अंकों की जांच व रिज़ल्ट तैयार होगा।
+                    </span>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleSubmitTest(false)}
-                  disabled={isSubmitting}
-                  className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>AI कॉपी जांच रहा है...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Award className="w-4 h-4" />
-                      <span>परीक्षा जमा करें और रिज़ल्ट देखें →</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPaperLocked(!isPaperLocked)}
+                    className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer ${
+                      isPaperLocked
+                        ? 'bg-amber-500 text-slate-950 font-black'
+                        : 'bg-white/10 hover:bg-white/20 text-slate-200'
+                    }`}
+                  >
+                    {isPaperLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                    <span>{isPaperLocked ? 'अनलॉक करें' : 'पेपर लॉक'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSubmitTest(false)}
+                    disabled={isSubmitting}
+                    className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>AI कॉपी जांच रहा है...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Award className="w-4 h-4" />
+                        <span>परीक्षा जमा करें और रिज़ल्ट देखें →</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -3691,7 +2973,7 @@ export default function SundayTestSeriesModal({
                               {rec.selectedChapters?.map((c) => `Ch ${c.chapterNumber}`).join(', ') || 'टेस्ट'}
                             </span>
                             <span className="text-[10px] text-slate-500">
-                              {rec.mode === 'typing' ? '⌨️ ऑनलाइन टाइपिंग' : '📸 कॉपी फोटो'}
+                              {rec.mode === 'mcq' ? '🎯 चार विकल्प (MCQ)' : rec.mode === 'typing' ? '⌨️ ऑनलाइन टाइपिंग' : '📸 कॉपी फोटो'}
                             </span>
                           </div>
                           <div className="text-[11px] text-slate-500">

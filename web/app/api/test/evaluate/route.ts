@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     }> = [];
 
     // 1. TYPING MODE EVALUATION
-    if (mode === 'typing') {
+    if (mode === 'typing' || mode === 'mcq') {
       for (const q of questions) {
         const studentAns = (typedAnswers[q.id] || '').trim();
         const maxMarks = q.marks || 1;
