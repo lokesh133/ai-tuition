@@ -1,4 +1,4 @@
-// In-memory OTP storage with 5-minute validity
+// In-memory OTP storage with 5-minute validity (supports Mobile & Email)
 interface OtpRecord {
   code: string;
   purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN';
@@ -11,39 +11,46 @@ if (!globalForOtp.otpMap) {
 }
 const otpMap = globalForOtp.otpMap;
 
+function cleanIdentifier(identifier: string): string {
+  if (identifier.includes('@')) {
+    return identifier.trim().toLowerCase();
+  }
+  return identifier.trim().replace(/\D/g, '');
+}
+
 export function generateAndSaveOtp(
-  phone: string,
+  identifier: string,
   purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN'
 ): { otp: string; expiresAt: number } {
-  const cleanPhone = phone.trim().replace(/\D/g, '');
+  const cleanKey = cleanIdentifier(identifier);
   // 4-digit secure random OTP (e.g. 1000 - 9999)
   const otp = Math.floor(1000 + Math.random() * 9000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-  otpMap.set(cleanPhone, {
+  otpMap.set(cleanKey, {
     code: otp,
     purpose,
     expiresAt,
   });
 
-  console.log(`🔑 [AI Tuition OTP] Phone: ${cleanPhone} | Purpose: ${purpose} | OTP: ${otp}`);
+  console.log(`🔑 [AI Tuition OTP] Target: ${cleanKey} | Purpose: ${purpose} | OTP: ${otp}`);
   return { otp, expiresAt };
 }
 
 export function verifyOtpCode(
-  phone: string,
+  identifier: string,
   enteredOtp: string,
   purpose: 'SIGNUP' | 'FORGOT_PASSWORD' | 'LOGIN'
 ): { valid: boolean; message: string } {
-  const cleanPhone = phone.trim().replace(/\D/g, '');
-  const record = otpMap.get(cleanPhone);
+  const cleanKey = cleanIdentifier(identifier);
+  const record = otpMap.get(cleanKey);
 
   if (!record) {
     return { valid: false, message: 'OTP expired or not requested. Please request a new OTP.' };
   }
 
   if (record.expiresAt < Date.now()) {
-    otpMap.delete(cleanPhone);
+    otpMap.delete(cleanKey);
     return { valid: false, message: 'OTP has expired. Please request a new OTP.' };
   }
 
@@ -56,6 +63,6 @@ export function verifyOtpCode(
   }
 
   // Once verified, consume the OTP
-  otpMap.delete(cleanPhone);
+  otpMap.delete(cleanKey);
   return { valid: true, message: 'OTP verified successfully!' };
 }

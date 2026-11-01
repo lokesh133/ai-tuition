@@ -1,30 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyOtpCode } from '@/lib/otpStore';
-import { findStudentByPhone, createStudent } from '@/lib/dataStore';
+import { findStudentByPhone, findStudentByEmail, createStudent } from '@/lib/dataStore';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { phone, otp } = body;
+    const { phone, email, identifier, otp } = body;
 
-    if (!phone || !otp) {
+    const targetEmail = (email || (identifier && identifier.includes('@') ? identifier : '') || '').trim().toLowerCase();
+    const rawPhone = (phone || (identifier && !identifier.includes('@') ? identifier : '') || '').toString().trim();
+    const cleanOtp = String(otp || '').trim();
+
+    if (!cleanOtp) {
       return NextResponse.json(
-        { success: false, message: 'कृपया 10 अंकों का मोबाइल नंबर और ओटीपी दर्ज करें।' },
+        { success: false, message: 'Please enter the verification OTP.' },
         { status: 400 }
       );
     }
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    const cleanOtp = String(otp).trim();
+    // ==========================================
+    // 1. EMAIL OTP LOGIN VERIFICATION
+    // ==========================================
+    if (targetEmail) {
+      const verification = verifyOtpCode(targetEmail, cleanOtp, 'LOGIN');
+      if (!verification.valid) {
+        return NextResponse.json(
+          { success: false, message: verification.message },
+          { status: 400 }
+        );
+      }
 
+      let student = await findStudentByEmail(targetEmail);
+
+      if (!student) {
+        return NextResponse.json(
+          { success: false, message: 'This email is not registered. Please Sign Up first.' },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Welcome back ${student.name}!`,
+        student: {
+          id: student.id,
+          name: student.name,
+          phone: student.phone || '',
+          email: student.email || targetEmail,
+          classGrade: student.classGrade,
+          board: student.board,
+          medium: student.medium,
+          isSubscribed: Boolean(student.isSubscribed),
+        },
+      });
+    }
+
+    // ==========================================
+    // 2. MOBILE PHONE OTP LOGIN VERIFICATION
+    // ==========================================
+    const cleanPhone = rawPhone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
       return NextResponse.json(
-        { success: false, message: 'कृपया मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।' },
+        { success: false, message: 'Please enter a valid 10-digit mobile number or email.' },
         { status: 400 }
       );
     }
 
-    // Verify OTP
     const verification = verifyOtpCode(cleanPhone, cleanOtp, 'LOGIN');
     if (!verification.valid) {
       return NextResponse.json(
@@ -33,30 +74,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find student in DB/store
     let student = await findStudentByPhone(cleanPhone);
 
-    // If student doesn't exist yet, auto-create a student profile so login is 100% seamless
     if (!student) {
-      student = await createStudent({
-        name: `विद्यार्थी (${cleanPhone.slice(-4)})`,
-        phone: cleanPhone,
-        password: '',
-        classGrade: 'Class 5th',
-        board: 'CBSE',
-        medium: 'HINDI',
-        city: 'India',
-        isSubscribed: false,
-      });
+      return NextResponse.json(
+        { success: false, message: 'This mobile number is not registered. Please Sign Up first.' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: `नमस्ते ${student.name}, AI Tutor में आपका स्वागत है!`,
+      message: `Welcome back ${student.name}!`,
       student: {
         id: student.id,
         name: student.name,
         phone: student.phone,
+        email: student.email || '',
         classGrade: student.classGrade,
         board: student.board,
         medium: student.medium,
@@ -66,7 +100,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Student OTP login error:', error);
     return NextResponse.json(
-      { success: false, message: 'ओटीपी लॉगिन में त्रुटि हुई। कृपया पुनः प्रयास करें।' },
+      { success: false, message: 'Server error while verifying OTP.' },
       { status: 500 }
     );
   }

@@ -4,6 +4,8 @@ export interface Student {
   id: string;
   name: string;
   phone: string;
+  email?: string;
+  schoolName?: string;
   password?: string;
   classGrade: string;
   board: string;
@@ -99,8 +101,9 @@ export async function getAllStudents(): Promise<Student[]> {
 
 export async function createStudent(student: {
   name: string;
-  phone: string;
-  password: string;
+  phone?: string;
+  email?: string;
+  password?: string;
   classGrade: string;
   board: string;
   medium: string;
@@ -111,8 +114,9 @@ export async function createStudent(student: {
   const created = await prisma.user.create({
     data: {
       name: student.name,
-      phone: student.phone,
-      passwordHash: student.password,
+      phone: student.phone || null,
+      email: student.email ? student.email.trim().toLowerCase() : null,
+      passwordHash: student.password || '',
       role: 'STUDENT',
       roleTitle: student.schoolName ? ("School: " + student.schoolName.trim()) : "Student",
       classGrade: student.classGrade,
@@ -160,6 +164,39 @@ export async function findStudentByPhone(phone: string): Promise<Student | null>
     console.error('findStudentByPhone error:', err);
     return null;
   }
+}
+
+export async function findStudentByEmail(email: string): Promise<Student | null> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const u = await prisma.user.findFirst({
+      where: { email: cleanEmail, role: 'STUDENT' },
+    });
+    if (!u) return null;
+    return {
+      id: u.id,
+      name: u.name,
+      phone: u.phone || '',
+      password: u.passwordHash,
+      classGrade: u.classGrade || '',
+      board: u.board || 'RBSE',
+      medium: u.medium || 'HINDI',
+      city: u.city || 'Rajasthan',
+      isSubscribed: u.isSubscribed,
+      doubtsAsked: u.doubtsAsked,
+      createdAt: u.createdAt.toISOString(),
+    };
+  } catch (err) {
+    console.error('findStudentByEmail error:', err);
+    return null;
+  }
+}
+
+export async function findStudentByIdentifier(identifier: string): Promise<Student | null> {
+  if (identifier.includes('@')) {
+    return findStudentByEmail(identifier);
+  }
+  return findStudentByPhone(identifier.replace(/\D/g, ''));
 }
 
 export async function findStudentById(id: string): Promise<Student | null> {
@@ -228,6 +265,31 @@ export async function updateStudentProfile(
     console.error('updateStudentProfile error:', err);
     return null;
   }
+}
+
+export async function updateStudentPasswordByEmail(email: string, newPassword: string): Promise<boolean> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const student = await prisma.user.findFirst({
+      where: { email: cleanEmail, role: 'STUDENT' },
+    });
+    if (!student) return false;
+    await prisma.user.update({
+      where: { id: student.id },
+      data: { passwordHash: newPassword.trim() },
+    });
+    return true;
+  } catch (err) {
+    console.error('updateStudentPasswordByEmail error:', err);
+    return false;
+  }
+}
+
+export async function updateStudentPasswordByIdentifier(identifier: string, newPassword: string): Promise<boolean> {
+  if (identifier.includes('@')) {
+    return updateStudentPasswordByEmail(identifier, newPassword);
+  }
+  return updateStudentPasswordByPhone(identifier.replace(/\\D/g, ''), newPassword);
 }
 
 export async function updateStudentPasswordByPhone(
@@ -327,7 +389,7 @@ export async function findAdminByEmail(email: string): Promise<AdminUser | null>
 export async function createAdminUser(user: {
   name: string;
   email: string;
-  password: string;
+  password?: string;
   role: 'SUPER_ADMIN' | 'SUB_ADMIN';
   roleTitle: string;
   permissions: {
@@ -388,6 +450,8 @@ export interface StudentSubscriptionRecord {
   userId: string;
   studentName: string;
   phone: string;
+  email?: string;
+  schoolName?: string;
   classGrade: string;
   planName: string;
   amount: number;
@@ -631,6 +695,9 @@ export async function toggleStudentSubscription(studentId: string, isFree: boole
     return { success: false, message: err?.message || 'Error updating subscription' };
   }
 }
+
+
+
 
 
 

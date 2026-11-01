@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createStudent, findStudentByPhone } from '@/lib/dataStore';
+import { createStudent, findStudentByPhone, findStudentByEmail } from '@/lib/dataStore';
 import { verifyOtpCode } from '@/lib/otpStore';
 
 export async function POST(req: NextRequest) {
@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
     const {
       name,
       phone,
+      email = '',
       password,
       classGrade,
       board = 'RBSE',
@@ -46,17 +47,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const existing = await findStudentByPhone(cleanPhone);
-    if (existing) {
+    const existingPhone = await findStudentByPhone(cleanPhone);
+    if (existingPhone) {
       return NextResponse.json(
         { success: false, message: 'This mobile number is already registered. Please Login instead.' },
         { status: 409 }
       );
     }
 
-    // Verify OTP if provided
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+    if (cleanEmail) {
+      const existingEmail = await findStudentByEmail(cleanEmail);
+      if (existingEmail) {
+        return NextResponse.json(
+          { success: false, message: 'This email is already registered. Please Login instead.' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Verify OTP if provided (supports both phone OTP and email OTP)
     if (otp) {
-      const verification = verifyOtpCode(cleanPhone, otp.trim(), 'SIGNUP');
+      let verification = verifyOtpCode(cleanPhone, otp.trim(), 'SIGNUP');
+      if (!verification.valid && cleanEmail) {
+        const emailVerification = verifyOtpCode(cleanEmail, otp.trim(), 'SIGNUP');
+        if (emailVerification.valid) {
+          verification = emailVerification;
+        }
+      }
+
       if (!verification.valid) {
         return NextResponse.json(
           { success: false, message: verification.message },
@@ -68,6 +87,7 @@ export async function POST(req: NextRequest) {
     const newStudent = await createStudent({
       name: name.trim(),
       phone: cleanPhone,
+      email: cleanEmail || undefined,
       password: password.trim(),
       classGrade,
       board,
@@ -84,6 +104,7 @@ export async function POST(req: NextRequest) {
         id: newStudent.id,
         name: newStudent.name,
         phone: newStudent.phone,
+        email: newStudent.email || cleanEmail,
         classGrade: newStudent.classGrade,
         board: newStudent.board,
         medium: newStudent.medium,
@@ -98,4 +119,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

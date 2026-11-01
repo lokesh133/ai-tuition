@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   Sparkles,
   Phone,
+  Mail,
   Lock,
   User,
   ArrowRight,
@@ -15,17 +16,14 @@ import {
   MapPin,
   AlertCircle,
   X,
-  KeyRound,
   RotateCcw,
   Eye,
   EyeOff,
   GraduationCap,
   LocateFixed,
   Check,
-  Building2,
+  Search,
 } from 'lucide-react';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { firebaseAuth } from '@/lib/firebase';
 
 const CLASSES = [
   'Class 1',
@@ -40,24 +38,58 @@ const CLASSES = [
 
 const POPULAR_LOCATIONS = [
   'Jaipur, Rajasthan',
+  'Chomu (Jaipur)',
+  'Bassi (Jaipur)',
+  'Shahpura (Jaipur)',
+  'Phulera (Jaipur)',
+  'Kotputli, Rajasthan',
   'Jodhpur, Rajasthan',
+  'Phalodi (Jodhpur)',
+  'Piparcity (Jodhpur)',
   'Kota, Rajasthan',
   'Alwar, Rajasthan',
+  'Behror (Alwar)',
+  'Neemrana (Alwar)',
+  'Tijara (Alwar)',
   'Ajmer, Rajasthan',
+  'Kishangarh (Ajmer)',
+  'Beawar, Rajasthan',
+  'Pushkar (Ajmer)',
   'Bikaner, Rajasthan',
+  'Nokha (Bikaner)',
   'Udaipur, Rajasthan',
+  'Nathdwara (Rajsamand)',
   'Bhilwara, Rajasthan',
   'Sikar, Rajasthan',
+  'Neem Ka Thana, Rajasthan',
+  'Fatehpur (Sikar)',
+  'Shrimadhopur (Sikar)',
   'Bharatpur, Rajasthan',
   'Pali, Rajasthan',
+  'Sojat (Pali)',
+  'Sumerpur (Pali)',
   'Sri Ganganagar, Rajasthan',
+  'Suratgarh (Ganganagar)',
   'Hanumangarh, Rajasthan',
+  'Nohar (Hanumangarh)',
   'Jhunjhunu, Rajasthan',
+  'Nawalgarh (Jhunjhunu)',
+  'Chirawa (Jhunjhunu)',
   'Churu, Rajasthan',
+  'Sardarshahar (Churu)',
+  'Sujangarh (Churu)',
   'Nagaur, Rajasthan',
+  'Didwana (Nagaur)',
+  'Makrana (Nagaur)',
+  'Kuchaman (Nagaur)',
   'Tonk, Rajasthan',
+  'Niwai (Tonk)',
+  'Malpura (Tonk)',
   'Sawai Madhopur, Rajasthan',
+  'Gangapur City, Rajasthan',
   'Dausa, Rajasthan',
+  'Bandikui (Dausa)',
+  'Lalsot (Dausa)',
   'Chittorgarh, Rajasthan',
   'Bundi, Rajasthan',
   'Baran, Rajasthan',
@@ -67,19 +99,18 @@ const POPULAR_LOCATIONS = [
   'Pratapgarh, Rajasthan',
   'Rajsamand, Rajasthan',
   'Sirohi, Rajasthan',
+  'Abu Road (Sirohi)',
   'Jalore, Rajasthan',
+  'Bhinmal (Jalore)',
+  'Sanchore, Rajasthan',
   'Barmer, Rajasthan',
+  'Balotra, Rajasthan',
   'Jaisalmer, Rajasthan',
   'Delhi (NCR)',
   'Gurugram, Haryana',
   'Noida, UP',
-  'Mumbai, Maharashtra',
-  'Pune, Maharashtra',
   'Ahmedabad, Gujarat',
   'Indore, MP',
-  'Bhopal, MP',
-  'Lucknow, UP',
-  'Patna, Bihar',
 ];
 
 export default function StudentSignupPage() {
@@ -88,6 +119,7 @@ export default function StudentSignupPage() {
   // Form State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedClass, setSelectedClass] = useState('Class 5');
@@ -99,6 +131,8 @@ export default function StudentSignupPage() {
   // Location suggestions & GPS state
   const [citySearchOpen, setCitySearchOpen] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const cityDropdownRef = useRef<HTMLDivElement>(null);
 
   // OTP Verification Modal State
@@ -107,10 +141,6 @@ export default function StudentSignupPage() {
   const [demoOtp, setDemoOtp] = useState<string | null>(null);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
-
-  // Firebase Phone Auth
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [isFirebaseOtp, setIsFirebaseOtp] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,19 +157,46 @@ export default function StudentSignupPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Clean up recaptcha on unmount
+  // Live Village / Town Search via OpenStreetMap
   useEffect(() => {
-    return () => {
-      if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-        } catch (e) {}
-      }
-    };
-  }, []);
+    const query = city.trim();
+    if (!query || query.length < 2) {
+      setLiveSuggestions([]);
+      return;
+    }
 
-  // Auto-Detect Current Location using GPS + Reverse Geocoding
+    const timer = setTimeout(async () => {
+      try {
+        setIsSearchingLocation(true);
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&addressdetails=1&limit=6`
+        );
+        if (res.ok) {
+          const items = await res.json();
+          const parsed = items.map((it: any) => {
+            const place =
+              it.address?.village ||
+              it.address?.hamlet ||
+              it.address?.suburb ||
+              it.address?.town ||
+              it.address?.city ||
+              it.name;
+            const district = it.address?.state_district || it.address?.county || it.address?.state;
+            return district && place !== district ? `${place} (${district})` : place || it.display_name.split(',')[0];
+          });
+          setLiveSuggestions(Array.from(new Set(parsed)).filter(Boolean) as string[]);
+        }
+      } catch (err) {
+        console.warn('Live location search error:', err);
+      } finally {
+        setIsSearchingLocation(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [city]);
+
+  // Auto-Detect Current Exact Village / Kasba Location using GPS + Reverse Geocoding
   const handleDetectCurrentLocation = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
@@ -152,18 +209,32 @@ export default function StudentSignupPage() {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16&addressdetails=1`
           );
           if (res.ok) {
             const data = await res.json();
-            const detected =
-              data.address?.city ||
-              data.address?.state_district ||
+            const villageOrTown =
+              data.address?.village ||
+              data.address?.hamlet ||
+              data.address?.suburb ||
               data.address?.town ||
-              data.address?.county ||
-              data.address?.state;
-            if (detected) {
-              setCity(detected);
+              data.address?.neighbourhood ||
+              data.address?.residential;
+
+            const district =
+              data.address?.state_district ||
+              data.address?.city ||
+              data.address?.county;
+
+            let detectedLocation = '';
+            if (villageOrTown && district && villageOrTown.toLowerCase() !== district.toLowerCase()) {
+              detectedLocation = `${villageOrTown} (${district})`;
+            } else {
+              detectedLocation = villageOrTown || district || data.address?.state || 'Rajasthan';
+            }
+
+            if (detectedLocation) {
+              setCity(detectedLocation);
               setCitySearchOpen(false);
             }
           }
@@ -190,14 +261,15 @@ export default function StudentSignupPage() {
       return false;
     }
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    if (cleanPhone.length !== 10) {
-      setError('Mobile number must be exactly 10 digits.');
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setError('Please enter a valid Email Address for OTP verification (e.g. name@gmail.com).');
       return false;
     }
 
-    if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      setError('Please enter a valid Indian mobile number starting with 6, 7, 8, or 9.');
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setError('Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.');
       return false;
     }
 
@@ -209,73 +281,30 @@ export default function StudentSignupPage() {
     return true;
   };
 
-  // Setup Firebase invisible reCAPTCHA
-  const setupRecaptcha = () => {
-    if (typeof window === 'undefined') return null;
-    try {
-      if (!(window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier = new RecaptchaVerifier(
-          firebaseAuth,
-          'recaptcha-container',
-          {
-            size: 'invisible',
-            callback: () => {},
-            'expired-callback': () => {
-              (window as any).recaptchaVerifier?.clear();
-              (window as any).recaptchaVerifier = null;
-            },
-          }
-        );
-      }
-      return (window as any).recaptchaVerifier;
-    } catch (e) {
-      console.warn('reCAPTCHA init note:', e);
-      return null;
-    }
-  };
-
-  // Step 1: Request OTP on Student Mobile
+  // Step 1: Request OTP on Student Email
   const handleInitiateSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanEmail = email.trim().toLowerCase();
     setLoading(true);
     setError(null);
 
-    // 1. Check with DB if phone is already registered
     try {
       const checkRes = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, purpose: 'SIGNUP' }),
+        body: JSON.stringify({ email: cleanEmail, purpose: 'SIGNUP' }),
       });
 
       const checkData = await checkRes.json();
       if (!checkRes.ok || !checkData.success) {
-        setError(checkData.message || 'This mobile number is already registered or invalid.');
+        setError(checkData.message || 'Unable to send OTP to email. Please check your email address.');
         setLoading(false);
         return;
       }
 
       setDemoOtp(checkData.demoOtp || null);
-
-      // 2. Try Firebase Phone Auth for real SMS
-      try {
-        const appVerifier = setupRecaptcha();
-        if (appVerifier) {
-          const confirmation = await signInWithPhoneNumber(
-            firebaseAuth,
-            `+91${cleanPhone}`,
-            appVerifier
-          );
-          setConfirmationResult(confirmation);
-          setIsFirebaseOtp(true);
-        }
-      } catch (fbErr: any) {
-        console.warn('Firebase SMS dispatch note (using fallback OTP):', fbErr.message || fbErr);
-      }
-
       setShowOtpModal(true);
       setResendCooldown(45);
       const interval = setInterval(() => {
@@ -295,17 +324,17 @@ export default function StudentSignupPage() {
     }
   };
 
-  // Step 2: Resend OTP
+  // Step 2: Resend OTP to Email
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanEmail = email.trim().toLowerCase();
     setOtpLoading(true);
 
     try {
       const res = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone, purpose: 'SIGNUP' }),
+        body: JSON.stringify({ email: cleanEmail, purpose: 'SIGNUP' }),
       });
       const data = await res.json();
       if (data.success) {
@@ -328,11 +357,11 @@ export default function StudentSignupPage() {
     }
   };
 
-  // Step 3: Verify OTP & Create Account
+  // Step 3: Verify Email OTP & Create Account
   const handleVerifyOtpAndCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!otp || otp.trim().length < 4) {
-      setError('Please enter the 4 or 6-digit OTP code.');
+      setError('Please enter the 4-digit OTP code.');
       return;
     }
 
@@ -340,17 +369,8 @@ export default function StudentSignupPage() {
     setError(null);
 
     const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanEmail = email.trim().toLowerCase();
 
-    // 1. If Firebase Confirmation is active, confirm with Firebase
-    if (confirmationResult && isFirebaseOtp) {
-      try {
-        await confirmationResult.confirm(otp.trim());
-      } catch (fbErr: any) {
-        console.warn('Firebase verify note, verifying against internal DB OTP store:', fbErr.message);
-      }
-    }
-
-    // 2. Create Student in Supabase Database
     try {
       const res = await fetch('/api/auth/student/signup', {
         method: 'POST',
@@ -358,6 +378,7 @@ export default function StudentSignupPage() {
         body: JSON.stringify({
           name: name.trim(),
           phone: cleanPhone,
+          email: cleanEmail,
           password: password.trim(),
           classGrade: selectedClass,
           board: board.includes('CBSE') ? 'CBSE' : 'RBSE',
@@ -370,7 +391,7 @@ export default function StudentSignupPage() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data.message || 'OTP verification failed. Please check OTP.');
+        setError(data.message || 'OTP verification failed. Please check OTP code.');
         setOtpLoading(false);
         return;
       }
@@ -395,10 +416,18 @@ export default function StudentSignupPage() {
     }
   };
 
+  // Combined suggestions: Live Nominatim results + Popular Locations matching query
+  const combinedSuggestions = Array.from(
+    new Set([
+      ...liveSuggestions,
+      ...POPULAR_LOCATIONS.filter((loc) =>
+        loc.toLowerCase().includes((city || '').toLowerCase().trim())
+      ),
+    ])
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-amber-50 text-slate-800 flex flex-col justify-between p-4 md:p-8 font-sans">
-      <div id="recaptcha-container" />
-
       {/* Header */}
       <header className="max-w-4xl mx-auto w-full flex items-center justify-between py-2">
         <Link href="/" className="flex items-center gap-3 group">
@@ -435,9 +464,21 @@ export default function StudentSignupPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-            <span className="flex-1">{error}</span>
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in duration-200">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span>{error}</span>
+              {error.toLowerCase().includes('login') && (
+                <div className="mt-1.5">
+                  <Link
+                    href="/login"
+                    className="font-black text-rose-800 hover:text-rose-950 underline inline-flex items-center gap-1"
+                  >
+                    Click here to Login →
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -470,13 +511,37 @@ export default function StudentSignupPage() {
             </div>
           </div>
 
-          {/* Parent Mobile Number with +91 Country Badge */}
+          {/* Email Address (For Free Instant OTP) */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-700">
+                Email Address <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] font-semibold text-emerald-600">Free Instant OTP</span>
+            </div>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. student@gmail.com"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-900"
+              />
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1 pl-1">
+              Your 4-digit verification code will be sent to this email
+            </p>
+          </div>
+
+          {/* Parent Mobile Number */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-slate-700">
                 Parent Mobile Number <span className="text-rose-500">*</span>
               </label>
-              <span className="text-[11px] font-semibold text-slate-400">10 Digits (OTP verification)</span>
+              <span className="text-[11px] font-semibold text-slate-400">10 Digits</span>
             </div>
             <div className="flex items-center rounded-2xl border-2 border-slate-200 focus-within:border-indigo-600 focus-within:ring-4 focus-within:ring-indigo-100 transition-all overflow-hidden bg-slate-50/40">
               <div className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-100 border-r border-slate-200 text-slate-700 font-bold text-xs shrink-0 select-none">
@@ -575,21 +640,24 @@ export default function StudentSignupPage() {
             </div>
           </div>
 
-          {/* City / District with Intelligent Suggestions & Auto-Detect */}
+          {/* Village / Town / City Location with Live Search & Auto-Detect */}
           <div className="relative" ref={cityDropdownRef}>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                City / District (Optional)
-              </label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700">
+                  गांव / कस्बा / शहर (Village, Town or City)
+                </label>
+                <span className="text-[10px] text-slate-400">अपना गांव, कस्बा या शहर लिखें या चुनें</span>
+              </div>
               <button
                 type="button"
                 onClick={handleDetectCurrentLocation}
                 disabled={isDetectingLocation}
-                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors"
-                title="Detect current location using GPS"
+                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer transition-colors bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200"
+                title="Detect exact village/town location using GPS"
               >
                 <LocateFixed className={`w-3.5 h-3.5 ${isDetectingLocation ? 'animate-spin text-amber-500' : 'text-indigo-600'}`} />
-                <span>{isDetectingLocation ? 'Detecting...' : '📍 Auto-Detect'}</span>
+                <span>{isDetectingLocation ? 'खोज रहे हैं...' : '📍 GPS Auto-Detect'}</span>
               </button>
             </div>
             <div className="relative">
@@ -602,8 +670,8 @@ export default function StudentSignupPage() {
                   setCity(e.target.value);
                   setCitySearchOpen(true);
                 }}
-                placeholder="Type or select e.g. Jaipur, Kota, Alwar..."
-                className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold text-slate-800"
+                placeholder="उदा. बस्सी, चौमूं, सांभर, मकराना, जयपुर..."
+                className="w-full pl-10 pr-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold text-slate-800 placeholder:text-slate-400"
               />
               {city && (
                 <button
@@ -616,33 +684,39 @@ export default function StudentSignupPage() {
               )}
             </div>
 
-            {/* Dropdown Suggestions */}
+            {/* Dropdown Suggestions with Villages & Towns */}
             {citySearchOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl border border-indigo-100 shadow-xl max-h-52 overflow-y-auto p-1.5 animate-in fade-in zoom-in-95 duration-150">
-                <div className="text-[10px] font-bold text-slate-400 px-2.5 py-1 uppercase tracking-wider">
-                  Select Location or District:
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-2xl border border-indigo-100 shadow-xl max-h-56 overflow-y-auto p-1.5 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <span>सुझाव (गांव, कस्बा या जिला):</span>
+                  {isSearchingLocation && <span className="text-indigo-600 lowercase font-normal">खोज रहे हैं...</span>}
                 </div>
-                {POPULAR_LOCATIONS.filter((loc) =>
-                  loc.toLowerCase().includes((city || '').toLowerCase().trim())
-                ).map((loc) => (
-                  <button
-                    key={loc}
-                    type="button"
-                    onClick={() => {
-                      setCity(loc.split(',')[0].trim());
-                      setCitySearchOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                      <span>{loc}</span>
-                    </div>
-                    {city.toLowerCase() === loc.split(',')[0].toLowerCase().trim() && (
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    )}
-                  </button>
-                ))}
+
+                {combinedSuggestions.length > 0 ? (
+                  combinedSuggestions.slice(0, 15).map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => {
+                        setCity(loc);
+                        setCitySearchOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                        <span>{loc}</span>
+                      </div>
+                      {city.toLowerCase() === loc.toLowerCase() && (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-xs text-slate-500">
+                    आप अपना गांव या कस्बा सीधे टाइप कर सकते हैं — वही सेव हो जाएगा।
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -658,7 +732,7 @@ export default function StudentSignupPage() {
                 type="text"
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
-                placeholder="e.g. Central Academy, Kendriya Vidyalaya, DPS..."
+                placeholder="उदा. Central Academy, राजकीय उच्च प्राथमिक विद्यालय, KV..."
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold text-slate-800 placeholder:text-slate-400"
               />
             </div>
@@ -671,10 +745,10 @@ export default function StudentSignupPage() {
             className="w-full mt-4 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white font-black text-sm shadow-xl shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
           >
             {loading ? (
-              <span>Sending OTP to Mobile...</span>
+              <span>Sending Verification Code to Email...</span>
             ) : (
               <>
-                <span>Verify Mobile & Create Account</span>
+                <span>Verify Email & Create Account</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -711,21 +785,18 @@ export default function StudentSignupPage() {
 
             <div className="text-center mb-5">
               <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-2 text-xl shadow-inner">
-                <KeyRound className="w-6 h-6 text-indigo-600" />
+                <Mail className="w-6 h-6 text-indigo-600" />
               </div>
-              <h3 className="text-lg font-black text-slate-900">Verify Mobile OTP</h3>
+              <h3 className="text-lg font-black text-slate-900">Verify Email OTP</h3>
               <p className="text-xs text-slate-500 mt-1">
-                Enter the code sent to <strong className="text-slate-700">+91 {phone}</strong>
+                Enter the 4-digit code sent to <strong className="text-slate-700">{email}</strong>
               </p>
             </div>
 
             {demoOtp && (
-              <div
-                onClick={() => setOtp(demoOtp)}
-                className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold flex items-center justify-between cursor-pointer hover:bg-amber-100 transition-all"
-              >
-                <span>Verification Code: <strong>{demoOtp}</strong></span>
-                <span className="text-[10px] text-amber-700 uppercase font-black underline">Auto-Fill ↵</span>
+              <div className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs text-center">
+                <span className="block text-[11px] text-amber-700 font-semibold mb-0.5">Dev Testing OTP Code:</span>
+                <span className="text-xl font-black font-mono tracking-widest text-amber-900">{demoOtp}</span>
               </div>
             )}
 
@@ -740,23 +811,23 @@ export default function StudentSignupPage() {
               <div>
                 <input
                   type="text"
-                  maxLength={6}
+                  maxLength={4}
                   autoFocus
                   required
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                   placeholder="• • • •"
-                  className="w-full text-center py-2.5 text-2xl tracking-[0.4em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 bg-slate-50/50"
+                  className="w-full text-center py-2.5 text-2xl tracking-[0.5em] font-black rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 bg-slate-50/50"
                 />
               </div>
 
               <button
                 type="submit"
-                disabled={otpLoading}
+                disabled={otpLoading || otp.trim().length < 4}
                 className="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 {otpLoading ? (
-                  <span>Verifying OTP...</span>
+                  <span>Verifying Code...</span>
                 ) : (
                   <>
                     <span>Confirm & Start Learning</span>
@@ -777,7 +848,7 @@ export default function StudentSignupPage() {
                     className="text-xs font-bold text-indigo-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw className="w-3 h-3" />
-                    <span>Resend OTP Code</span>
+                    <span>Resend Email OTP</span>
                   </button>
                 )}
               </div>
