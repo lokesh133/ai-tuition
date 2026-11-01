@@ -126,8 +126,34 @@ function cleanAndPhoneticizeHindi(text: string, lang = 'hi'): string {
     .replace(/❌/g, ' गलत ')
     .replace(/🎯|📝|⭐|💡|👍|👏/g, ' ')
     .replace(/^(Sharma Sir|Neha Mam|Riya Didi|Kabir Bhaiya):\s*/i, '')
-    .replace(/\s+/g, ' ')
     .trim();
+
+  // 1. Remove syllable breakdowns with hyphens inside brackets: e.g. (र-ब्बि-श), (फॉ-लो-इंग), (ru-bbish)
+  cleaned = cleaned.replace(/\s*\([^)]*[-–—][^)]*\)/g, '');
+
+  // 2. Remove Devanagari pronunciation directly following an English word: e.g. Rubbish (रबिश)
+  cleaned = cleaned.replace(/([a-zA-Z]+)\s*\([\u0900-\u097F\s]+\)/g, '$1');
+
+  // 3. Remove bullets and list markers
+  cleaned = cleaned.replace(/^[ \t]*[•▪▫◦●○★☆✓✔‣\-\*]\s*/gm, '');
+  cleaned = cleaned.replace(/[•▪▫◦●○★☆✓✔‣]/g, ' ');
+
+  // 4. Slashes between non-digit words -> 'या' / 'or'
+  while (/([a-zA-Z\u0900-\u097F]+)\s*\/\s*([a-zA-Z\u0900-\u097F]+)/.test(cleaned)) {
+    cleaned = cleaned.replace(/([a-zA-Z\u0900-\u097F]+)\s*\/\s*([a-zA-Z\u0900-\u097F]+)/g, lang === 'en' || lang === 'en-IN' ? '$1 or $2' : '$1 या $2');
+  }
+
+  // 5. Word meanings with '=': e.g. Word = Meaning -> 'का अर्थ है' / 'means'
+  cleaned = cleaned.replace(/([a-zA-Z\u0900-\u097F]{2,})\s*=\s*([a-zA-Z\u0900-\u097F]{2,})/g, lang === 'en' || lang === 'en-IN' ? '$1 means $2' : '$1 का अर्थ है $2');
+
+  // 6. Math equations with '=': e.g. 50 cm + 20 cm = 70 cm
+  cleaned = cleaned.replace(/([0-9\u0966-\u096Fcm\s\+\-\*\/]+)\s*=\s*([0-9\u0966-\u096F])/gi, (m, left, right) => {
+    return `${left} ${lang === 'en' || lang === 'en-IN' ? 'equals' : 'बराबर'} ${right}`;
+  });
+
+  // 7. Remove brackets/parentheses characters so TTS never says 'bracket open/close'
+  cleaned = cleaned.replace(/[()\[\]{}]/g, ', ');
+  cleaned = cleaned.replace(/\s+/g, ' ');
 
   // If requesting English voice or language is English, do not translate English words into Hindi phonetics
   if (lang !== 'en' && lang !== 'en-IN') {

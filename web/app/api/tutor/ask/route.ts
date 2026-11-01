@@ -549,7 +549,20 @@ CRITICAL MANDATE - ZERO HARDCODED / ZERO STATIC DATA:
        formula="[Accurate, complete step-by-step working and final answer directly for this question]"
        annotation="[Clear explanation in simple English explaining the concept and why this answer is correct]"
      />
-4. FORMATTING RULES:
+4. MULTI-PAGE UNIFIED STITCHING MANDATE:
+   - If multiple images/pages are provided (e.g. 2, 3, 4 or more pages):
+     a) Treat all pages as ONE continuous chapter/worksheet from start to finish. Combine all into a single cohesive session.
+     b) STITCH SPLIT QUESTIONS ACROSS PAGES: If a question, passage, sentence, or poem starts on one page and ends on another (e.g. half question on Page 2 and remainder on Page 3), COMBINE and STITCH them together into a single, complete question. NEVER output broken or cut-off questions.
+     c) MATCH QUESTIONS & ANSWERS ACROSS PAGES: If questions appear on one page and solutions/answer keys appear on another page, match and merge each question with its complete answer in the same card.
+     d) UNIFIED SEQUENTIAL ORDER: Number all questions sequentially (Q1, Q2, Q3...) across all pages in one single whiteboard presentation.
+     e) CONSOLIDATED WORD MEANINGS: Combine all vocabulary across all pages into one neat Word Meanings card.
+5. TEACHER ORAL EXPLANATION RULES (FOR ANNOTATION & SPEECH):
+   - In 'annotation', the teacher speaks aloud to a young student! Never write dry symbols like '=', '/', bullets '•', or pronunciation syllables like '(ru-bbish)'.
+   - Speak naturally:
+     Bad: "• Rubbish (ru-bbish) / Trash = Garbage"
+     Good: "Rubbish or Trash means garbage or waste. And Following means coming after or chasing."
+   - In 'formula', format word meanings clearly with ':' (e.g. "Rubbish / Trash : Garbage").
+6. FORMATTING RULES:
    - ZERO fake math equations for theory/languages.
    - Tone: Friendly, encouraging school teacher speaking in simple English.`;
       } else {
@@ -588,7 +601,26 @@ CRITICAL MANDATE - ZERO STATIC DATA (100% असली व लाइव डे�
        formula="[100% सही व चरणबद्ध हल, रफ़ कार्य या पूरा उत्तर]"
        annotation="[हिंग्लिश में सरल व स्पष्ट व्याख्या कि यह उत्तर क्यों सही है]"
      />
-4. नियम:
+4. मल्टीपल पेजों का सम्पूर्ण एकीकरण व निरंतर संयोजन (MULTI-PAGE UNIFIED STITCHING MANDATE):
+   - यदि छात्र ने 2, 3, 4 या अधिक पेज/इमेजेस अपलोड की हैं:
+     क) संयुक्त लगातार पाठ (Single Continuous Session):
+        सभी अपलोड किए गए पेजों को अलग-अलग टुकड़ों की तरह नहीं, बल्कि एक ही पाठ या अभ्यास के क्रमिक पृष्ठों के रूप में मिलाकर एक ही सम्पूर्ण व्हाइटबोर्ड सत्र में प्रस्तुत करें।
+     ख) पन्नों के बीच आधे-अधूरे प्रश्नों का संयोजन (Bridge Split Questions Across Pages):
+        यदि कोई सवाल, वाक्य, कविता की पंक्तियाँ या इबारती सवाल एक पेज के अंत में आधा शुरू होता है और अगले पेज के शुरू में समाप्त होता है (उदा. आधा सवाल पेज 2 पर और आधा सवाल पेज 3 पर), तो दोनों हिस्सों को आपस में जोड़कर (stitch/merge करके) एक सम्पूर्ण प्रश्न बनाएं! अधूरा या कटा हुआ प्रश्न कभी न छोड़ें।
+     ग) प्रश्नों और उत्तरों का मिलान (Match Questions to Answers across Pages):
+        यदि प्रश्न एक पेज पर छपे हैं और उनके उत्तर/विकल्प/संकेत दूसरे पेज पर हैं, तो संबंधित प्रश्न और उत्तर को एक साथ मिलाकर एक ही व्हाइटबोर्ड कार्ड में पूरा हल प्रस्तुत करें।
+     घ) क्रमबद्ध प्रश्न सूची (Unified Sequential Numbering):
+        सभी पेजों के सभी प्रश्नों को क्रमवार (Q1, Q2, Q3, Q4, Q5...) एक ही व्हाइटबोर्ड पर व्यवस्थित करें। <detected_question> टैग में भी सभी प्रश्नों को क्रमवार जोड़ें।
+     ङ) शब्दार्थ एकत्रीकरण (Consolidated Word Meanings):
+        सभी अपलोड किए गए पेजों के कठिन शब्दों को एक साथ मिलाकर एक संयुक्त शब्दार्थ कार्ड बनाएं।
+5. शिक्षक व्याख्या व मौखिक बोल के नियम (TEACHER ORAL EXPLANATION RULES FOR ANNOTATION & SPEECH):
+   - 'annotation' में शिक्षक सीधे बच्चे से प्यार से बोलकर समझाता है!
+   - व्याख्या में कभी भी '=', '/', बुलेट '•', या उच्चारण कोष्ठक जैसे '(र-ब्बि-श)' न लिखें!
+   - प्राकृतिक व सरल भाषा में बोलें:
+     गलत: "• Rubbish (र-ब्बि-श) / Trash = कचरा / कबाड़"
+     सही: "बेटा, Rubbish या Trash का अर्थ होता है कचरा या कबाड़। और Following का अर्थ है पीछे-पीछे आना या पीछा करना।"
+   - 'formula' में शब्दार्थ को सुंदर सूची की तरह लिखें (उदा. "Rubbish / Trash : कचरा / कबाड़")।
+6. नियम:
    - भाषा या थ्योरी में फालतू गणित के चिह्न न लगाएं।
    - टोन: बहुत ही प्यारा, धैर्यवान भारतीय स्कूल शिक्षक ("शाबाश बेटा!", "कॉपी में लिख लो").`;
       }

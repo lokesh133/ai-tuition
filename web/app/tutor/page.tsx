@@ -428,6 +428,77 @@ export default function TuitionClassroomStudio() {
   const [isAcademicSelectorOpen, setIsAcademicSelectorOpen] = useState<boolean>(false);
   const [isStudentMenuOpen, setIsStudentMenuOpen] = useState<boolean>(false);
 
+  const sanitizeSpeechForTeacher = (text: string, lang: 'hi' | 'en' = 'hi') => {
+    if (!text) return '';
+
+    let s = text
+      .replace(/<[^>]*>/g, '')
+      .replace(/[*_#`~]/g, '')
+      .replace(/WhatsApp\s*Image[^\s]+\.(jpe?g|png)/gi, 'आपकी कॉपी')
+      .replace(/[a-zA-Z0-9_\-]+\.(jpe?g|png|pdf)/gi, 'आपका पेज')
+      .replace(/✅/g, lang === 'en' ? ' correct ' : ' सही ')
+      .replace(/❌/g, lang === 'en' ? ' incorrect ' : ' गलत ')
+      .replace(/🎯|📝|⭐|💡|👍|👏/g, ' ');
+
+    // 1. Remove syllable breakdowns with hyphens inside brackets: e.g. (र-ब्बि-श), (फॉ-लो-इंग), (ru-bbish)
+    s = s.replace(/\s*\([^)]*[-–—][^)]*\)/g, '');
+
+    // 2. Remove Devanagari pronunciation directly following an English word: e.g. Rubbish (रबिश)
+    s = s.replace(/([a-zA-Z]+)\s*\([\u0900-\u097F\s]+\)/g, '$1');
+
+    // 3. Remove bullets and list markers
+    s = s.replace(/^[ \t]*[•▪▫◦●○★☆✓✔‣\-\*]\s*/gm, '');
+    s = s.replace(/[•▪▫◦●○★☆✓✔‣]/g, ' ');
+
+    // 4. Fractions & Units
+    s = s
+      .replace(/1\/2/g, lang === 'en' ? ' half ' : ' आधा ')
+      .replace(/1\/4/g, lang === 'en' ? ' quarter ' : ' चौथाई ')
+      .replace(/3\/4/g, lang === 'en' ? ' three fourths ' : ' तीन चौथाई ')
+      .replace(/\b1\s*kg\b/gi, lang === 'en' ? ' 1 kilogram ' : ' एक किलोग्राम ')
+      .replace(/\b2\s*kg\b/gi, lang === 'en' ? ' 2 kilograms ' : ' दो किलोग्राम ')
+      .replace(/\b([0-9]+)\s*kg\b/gi, lang === 'en' ? ' $1 kilograms ' : ' $1 किलोग्राम ')
+      .replace(/\b([0-9]+)\s*g\b/gi, lang === 'en' ? ' $1 grams ' : ' $1 ग्राम ')
+      .replace(/\b([0-9]+)\s*km\/h\b/gi, lang === 'en' ? ' $1 km per hour ' : ' $1 किलोमीटर प्रति घंटा ')
+      .replace(/\b([0-9]+)\s*km\b/gi, lang === 'en' ? ' $1 kilometers ' : ' $1 किलोमीटर ')
+      .replace(/\b([0-9]+)\s*m\b/gi, lang === 'en' ? ' $1 meters ' : ' $1 मीटर ')
+      .replace(/\b([0-9]+)\s*cm\b/gi, lang === 'en' ? ' $1 centimeters ' : ' $1 सेंटीमीटर ');
+
+    // 5. Slashes between non-digit words -> 'या' / 'or'
+    while (/([a-zA-Z\u0900-\u097F]+)\s*\/\s*([a-zA-Z\u0900-\u097F]+)/.test(s)) {
+      s = s.replace(/([a-zA-Z\u0900-\u097F]+)\s*\/\s*([a-zA-Z\u0900-\u097F]+)/g, lang === 'en' ? '$1 or $2' : '$1 या $2');
+    }
+
+    // Slashes in numeric division/fractions
+    s = s.replace(/([0-9\u0966-\u096F]+)\s*\/\s*([0-9\u0966-\u096F]+)/g, lang === 'en' ? '$1 divided by $2' : '$1 बटा $2');
+
+    // 6. Equal sign: word meanings vs math
+    // Word meanings: between words (e.g. Word = Meaning) -> 'का अर्थ है' / 'means'
+    s = s.replace(/([a-zA-Z\u0900-\u097F]{2,})\s*=\s*([a-zA-Z\u0900-\u097F]{2,})/g, lang === 'en' ? '$1 means $2' : '$1 का अर्थ है $2');
+
+    // Math equations: e.g. 100 cm + 50 cm = 150 cm or 5 = 5
+    s = s.replace(/([0-9\u0966-\u096Fcm\s\+\-\*\/]+)\s*=\s*([0-9\u0966-\u096F])/gi, (m, left, right) => {
+      return `${left} ${lang === 'en' ? 'equals' : 'बराबर'} ${right}`;
+    });
+
+    // Any remaining '=' sign
+    s = s.replace(/=/g, lang === 'en' ? ' equals ' : ' बराबर ');
+    s = s.replace(/≠/g, lang === 'en' ? ' is not equal to ' : ' बराबर नहीं है ');
+    s = s.replace(/×/g, lang === 'en' ? ' multiplied by ' : ' गुणा ');
+    s = s.replace(/÷/g, lang === 'en' ? ' divided by ' : ' भाग ');
+
+    // 7. Remove brackets/parentheses characters so TTS never pronounces 'bracket open' or stutters
+    s = s.replace(/[()\[\]{}]/g, ', ');
+
+    // 8. Normalize spacing and punctuation
+    s = s.replace(/\n+/g, '। ');
+    s = s.replace(/\s*,\s*,+/g, ',');
+    s = s.replace(/\s*([,।!?])\s*/g, '$1 ');
+    s = s.replace(/[ \t]+/g, ' ').trim();
+
+    return s;
+  };
+
   const cleanSpeechText = (text: string) => {
     if (!text) return '';
     // 1. Cut off formula/step-by-step dumps from visual speech bubble (teacher speaks it by voice)
@@ -446,6 +517,8 @@ export default function TuitionClassroomStudio() {
       .replace(/__/g, '')
       .replace(/\\/g, '')
       .trim();
+
+    clean = sanitizeSpeechForTeacher(clean, medium === 'english' ? 'en' : 'hi');
 
     // 3. Clean up trailing colons or dashes into Hindi full stop
     clean = clean.replace(/[:\-–]\s*$/, '।');
@@ -2929,22 +3002,7 @@ export default function TuitionClassroomStudio() {
       setSpeakingQuestionId(questionId);
     }
 
-    const clean = text
-      .replace(/<[^>]*>/g, '')
-      .replace(/[*_#`~]/g, '')
-      .replace(/≠/g, ' बराबर नहीं है ')
-      .replace(/×/g, ' गुणा ')
-      .replace(/÷/g, ' भाग ')
-      .replace(/1\/2/g, ' आधा ')
-      .replace(/1\/4/g, ' चौथाई ')
-      .replace(/3\/4/g, ' तीन चौथाई ')
-      .replace(/\b1\s*kg\b/gi, ' एक किलोग्राम ')
-      .replace(/\b2\s*kg\b/gi, ' दो किलोग्राम ')
-      .replace(/\b([0-9]+)\s*kg\b/gi, '$1 किलोग्राम ')
-      .replace(/\b([0-9]+)\s*g\b/gi, '$1 ग्राम ')
-      .replace(/\b([0-9]+)\s*m\b/gi, '$1 मीटर ')
-      .replace(/\b([0-9]+)\s*cm\b/gi, '$1 सेंटीमीटर ')
-      .trim();
+    const clean = sanitizeSpeechForTeacher(text, medium === 'english' ? 'en' : 'hi');
 
     try {
       const audioUrl = `/api/tutor/tts?text=${encodeURIComponent(clean)}&lang=${medium === 'hindi' ? 'hi' : 'en'}`;
@@ -5575,7 +5633,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           learning_language: medium === 'english' ? 'en' : 'hi',
           teacher_id: currentTeacher.id,
           question:
-            'कृपया इस वर्कशीट या पेज को ध्यान से पूरा पढ़ें। इसमें दिए गए सभी प्रश्न (अभ्यास, खाली स्थान, सही-गलत, सवाल) को पहचानें। बिना किसी फालतू इंट्रो या समरी कार्ड के, सीधे हर सवाल (Q1, Q2, Q3...) का सटीक हल और उत्तर व्हाइटबोर्ड पर साफ़-सुथरे तरीके से समझाएं। सभी सवालों को <detected_question> में भी जोड़ें।',
+            totalCount > 1
+              ? `छात्र ने कुल ${totalCount} पृष्ठ (Page 1 से Page ${totalCount}) अपलोड किए हैं जो एक ही पाठ, अभ्यास या वर्कशीट के लगातार पृष्ठ हैं। कृपया इन सभी पृष्ठों को एक साथ मिलाकर (combine / stitch करके) एक संपूर्ण पाठ व अभ्यास सत्र बनाएं:
+1. यदि कोई सवाल, वाक्य या कविता एक पृष्ठ पर आधा शुरू होकर अगले पृष्ठ पर पूरा होता है (उदा. आधा सवाल पेज 2 पर और शेष आधा पेज 3 पर), तो दोनों हिस्सों को आपस में जोड़कर (stitch) एक पूरा प्रश्न बनाएं।
+2. यदि अभ्यास/प्रश्न एक पृष्ठ पर हैं और उनके उत्तर, विकल्प या संकेत दूसरे पृष्ठ पर हैं, तो उन्हें मिलाकर प्रत्येक सवाल का पूरा हल व उत्तर व्हाइटबोर्ड पर प्रस्तुत करें।
+3. सभी पेजों के कठिन शब्दार्थ को एक संयुक्त 'कठिन शब्दार्थ' में रखें और शिक्षक व्याख्या में प्राकृतिक भाषा बोलें (बिना '=' या '/' बोले)।
+4. सभी सवालों को Q1, Q2, Q3... क्रम में साफ़-सुथरे तरीके से व्हाइटबोर्ड पर समझाएं और <detected_question> में भी जोड़ें।`
+              : 'कृपया इस वर्कशीट या पेज को ध्यान से पूरा पढ़ें। इसमें दिए गए सभी प्रश्न (अभ्यास, खाली स्थान, सही-गलत, सवाल) को पहचानें। बिना किसी फालतू इंट्रो या समरी कार्ड के, सीधे हर सवाल (Q1, Q2, Q3...) का सटीक हल और उत्तर व्हाइटबोर्ड पर साफ़-सुथरे तरीके से समझाएं। सभी सवालों को <detected_question> में भी जोड़ें।',
           image_url: activeDoc.url,
           images: additionalB64,
           file_name: activeDoc.name,
@@ -5637,20 +5701,28 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           const cleanDocTitle = activeDoc.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
           const pageTitle = data.detected_chapter?.title
             ? `अध्याय: ${data.detected_chapter.title}`
-            : `WORKSHEET: ${cleanDocTitle}`;
+            : totalCount > 1
+              ? `संयुक्त वर्कशीट (${totalCount} पृष्ठ): ${cleanDocTitle}`
+              : `WORKSHEET: ${cleanDocTitle}`;
           setWhiteboardHeading(pageTitle);
           setWhiteboardSteps(cleaned);
           setRevealedSteps(cleaned.length);
           setActiveTargetQuestion('');
 
+          const newBatchMap: Record<string, any> = {};
+          const batchSessionData = {
+            whiteboardSteps: cleaned,
+            detectedQuestions: data.detected_questions || [],
+            detectedChapter: data.detected_chapter || null,
+            heading: pageTitle,
+          };
+          newlyReadFiles.forEach((f) => {
+            newBatchMap[f.id] = batchSessionData;
+          });
+
           setPageDataMap((prev) => ({
             ...prev,
-            [activeDoc.id]: {
-              whiteboardSteps: cleaned,
-              detectedQuestions: data.detected_questions || [],
-              detectedChapter: data.detected_chapter || null,
-              heading: pageTitle,
-            },
+            ...newBatchMap,
           }));
         }
         if (data.detected_questions && Array.isArray(data.detected_questions) && data.detected_questions.length > 0) {
@@ -6224,7 +6296,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <FileText className="w-3 h-3 text-blue-600" />
                     <span className="hidden sm:inline">{medium === 'english' ? 'Document' : 'वर्कशीट'}</span>
                     <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-200/60 text-blue-800 font-black">
-                      {isPdfWorksheet ? `${pdfCurrentPage}/${pdfTotalPages}` : '1/1'}
+                      {isPdfWorksheet ? `${pdfCurrentPage}/${pdfTotalPages}` : `${Math.max(1, uploadedFiles.findIndex((f) => f.id === activeFileId) + 1)}/${Math.max(1, uploadedFiles.length)}`}
                     </span>
                   </button>
                 )}
