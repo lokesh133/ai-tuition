@@ -8,6 +8,7 @@ import {
   MicOff,
   Volume2,
   VolumeX,
+  Square,
   Camera,
   Upload,
   Sparkles,
@@ -2764,6 +2765,7 @@ export default function TuitionClassroomStudio() {
   // Input & Mic Bar
   const [inputText, setInputText] = useState<string>('');
   const recognitionRef = useRef<any>(null);
+  const lastSpokenTranscriptRef = useRef<string>('');
 
   // STUDY HISTORY & TEACHER MEMORY (Real tuition log)
   const [studyHistory, setStudyHistory] = useState<StudyHistoryItem[]>([
@@ -3023,7 +3025,7 @@ export default function TuitionClassroomStudio() {
     }
   }, []);
 
-  // Mic Speech Recognition
+  // Mic Speech Recognition with Real-Time Spoken Words & Instant Stop & Solve
   const toggleMic = () => {
     if (typeof window === 'undefined') return;
 
@@ -3031,14 +3033,21 @@ export default function TuitionClassroomStudio() {
     stopAudio();
 
     if (isListening) {
-      recognitionRef.current?.stop();
+      // User tapped Stop!
       setIsListening(false);
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      const finalQuery = (lastSpokenTranscriptRef.current || inputText).trim();
+      if (finalQuery && finalQuery !== 'Listening to your question...' && !finalQuery.includes('सुन रहे हैं')) {
+        handleStudentQuery(finalQuery);
+      }
       return;
     }
 
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
-      alert('ब्राउज़र में माइक उपलब्ध नहीं है। Chrome इस्तेमाल करें।');
+      alert('ब्राउज़र में माइक उपलब्ध नहीं है। कृपया Chrome इस्तेमाल करें।');
       return;
     }
 
@@ -3046,33 +3055,48 @@ export default function TuitionClassroomStudio() {
       const rec = new SpeechRec();
       recognitionRef.current = rec;
       rec.lang = medium === 'english' ? 'en-IN' : 'hi-IN';
-      rec.interimResults = false;
+      rec.interimResults = true;
+      rec.continuous = true;
+      lastSpokenTranscriptRef.current = '';
+      setInputText('');
 
       rec.onstart = () => {
         setIsListening(true);
-        setInputText(medium === 'english' ? 'Listening to your question...' : 'शर्मा सर सुन रहे हैं...');
       };
+
       rec.onresult = (e: any) => {
-        const transcript = e.results?.[0]?.[0]?.transcript || '';
+        let transcript = '';
+        for (let i = 0; i < e.results.length; i++) {
+          transcript += e.results[i][0].transcript;
+        }
         if (transcript) {
+          transcript = transcript.trim();
+          lastSpokenTranscriptRef.current = transcript;
           setInputText(transcript);
-          handleStudentQuery(transcript);
         }
       };
-      rec.onerror = () => {
+
+      rec.onerror = (err: any) => {
+        console.warn('Speech rec error:', err);
         setIsListening(false);
-        setInputText('');
       };
+
       rec.onend = () => {
         setIsListening(false);
+        const finalQuery = (lastSpokenTranscriptRef.current || inputText).trim();
+        if (finalQuery && finalQuery !== 'Listening to your question...' && !finalQuery.includes('सुन रहे हैं')) {
+          handleStudentQuery(finalQuery);
+        }
       };
+
       rec.start();
     } catch (e) {
+      console.warn('Speech rec start error:', e);
       setIsListening(false);
     }
   };
 
-  // Dedicated Voice Answer Speech Recognition for Mock Test (Hindi & English Voice-First)
+    // Dedicated Voice Answer Speech Recognition for Mock Test (Hindi & English Voice-First)
   const toggleMockAnswerMic = () => {
     if (typeof window === 'undefined') return;
     stopAudio();
@@ -6020,7 +6044,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* RULED SCHOOL NOTEBOOK PAPER AREA (INTERNAL SMOOTH SCROLL) */}
               <div
-                className="p-2.5 sm:p-5 pb-24 sm:pb-8 flex-1 min-h-0 overflow-y-auto relative font-sans"
+                className="p-2.5 sm:p-5 pb-24 sm:pb-8 flex-1 min-h-0 overflow-y-auto overscroll-contain relative font-sans touch-pan-y"
                 style={{
                   background:
                     'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 28px)',
@@ -7066,20 +7090,24 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 onClick={toggleMic}
                 className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white shadow-md transition-all shrink-0 cursor-pointer ${
                   isListening
-                    ? 'bg-red-500 hover:bg-red-600 animate-pulse ring-4 ring-red-300'
+                    ? 'bg-red-600 hover:bg-red-700 animate-pulse ring-4 ring-red-300 scale-105'
                     : 'bg-blue-600 hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-blue-500/30'
                 }`}
-                title={isListening ? 'माइक बंद करें' : 'माइक से बोलकर सवाल पूछें'}
+                title={isListening ? 'बोलना रोकें व हल देखें (Stop & Solve)' : 'माइक से बोलकर सवाल पूछें'}
               >
                 {isListening ? (
-                  <MicOff className="w-5 h-5 text-white" />
+                  <Square className="w-4 h-4 fill-white text-white" />
                 ) : (
                   <Mic className="w-5 h-5 text-white" />
                 )}
               </button>
 
-              {/* Rounded Input Bar with Camera, Gallery & Send Button */}
-              <div className="flex-1 bg-white border border-slate-200/90 rounded-full px-3.5 py-1.5 shadow-md flex items-center gap-2 transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+              {/* Rounded Input Bar with Real-Time Speech Display & Stop/Send Controls */}
+              <div className={`flex-1 bg-white border rounded-full px-3.5 py-1.5 shadow-md flex items-center gap-2 transition-all ${
+                isListening
+                  ? 'border-red-400 ring-2 ring-red-100 bg-red-50/20'
+                  : 'border-slate-200/90 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100'
+              }`}>
                 <input
                   ref={inputRef}
                   type="text"
@@ -7090,46 +7118,65 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       handleStudentQuery(inputText);
                     }
                   }}
-                  placeholder={`${currentTeacher.name} से सवाल पूछें...`}
+                  placeholder={
+                    isListening
+                      ? (medium === 'english' ? '🎙️ Listening... Speak your doubt!' : '🎙️ बोलिए बेटा, सुन रहा हूँ... (शब्द यहाँ दिखेंगे)')
+                      : `${currentTeacher.name} से सवाल पूछें...`
+                  }
                   className="flex-1 bg-transparent text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none font-medium"
                 />
 
-                {/* 1. Camera Capture Button */}
-                <button
-                  type="button"
-                  onClick={startWebcamCapture}
-                  className="p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
-                  title="कैमरा से फोटो खींचें (Capture Photo with Camera)"
-                >
-                  <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="hidden md:inline">कैमरा फोटो</span>
-                </button>
+                {/* While Listening: Show dedicated 'रोकें व हल देखें' Button */}
+                {isListening ? (
+                  <button
+                    type="button"
+                    onClick={toggleMic}
+                    className="px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-red-500/30 animate-pulse shrink-0 cursor-pointer"
+                    title="बोलना रोकें और तुरंत हल देखें"
+                  >
+                    <Square className="w-3 h-3 fill-white text-white" />
+                    <span className="text-[11px]">{medium === 'english' ? 'Stop & Solve' : 'रोकें व हल देखें'}</span>
+                  </button>
+                ) : (
+                  <>
+                    {/* 1. Camera Capture Button */}
+                    <button
+                      type="button"
+                      onClick={startWebcamCapture}
+                      className="p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
+                      title="कैमरा से फोटो खींचें (Capture Photo with Camera)"
+                    >
+                      <Camera className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="hidden md:inline">कैमरा फोटो</span>
+                    </button>
 
-                {/* 2. Image / File Upload Button */}
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
-                  title="गैलरी या स्टोरेज से फोटो / PDF अपलोड करें (Upload Image or PDF)"
-                >
-                  <Upload className="w-4 h-4 text-blue-600 shrink-0" />
-                  <span className="hidden md:inline">फोटो अपलोड</span>
-                </button>
+                    {/* 2. Image / File Upload Button */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-300 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs hover:scale-102 active:scale-98 shrink-0 cursor-pointer"
+                      title="गैलरी या स्टोरेज से फोटो / PDF अपलोड करें (Upload Image or PDF)"
+                    >
+                      <Upload className="w-4 h-4 text-blue-600 shrink-0" />
+                      <span className="hidden md:inline">फोटो अपलोड</span>
+                    </button>
 
-                {/* Send button */}
-                <button
-                  type="button"
-                  onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
-                  disabled={!inputText.trim()}
-                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
-                    inputText.trim()
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30 hover:scale-105 active:scale-95'
-                      : 'bg-blue-400 text-white opacity-60 cursor-not-allowed'
-                  }`}
-                  title="सवाल भेजें"
-                >
-                  <Send className="w-4 h-4 text-white" />
-                </button>
+                    {/* Send button */}
+                    <button
+                      type="button"
+                      onClick={() => handleStudentQuery(inputText || inputRef.current?.value)}
+                      disabled={!inputText.trim()}
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                        inputText.trim()
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30 hover:scale-105 active:scale-95'
+                          : 'bg-blue-400 text-white opacity-60 cursor-not-allowed'
+                      }`}
+                      title="सवाल भेजें"
+                    >
+                      <Send className="w-4 h-4 text-white" />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
