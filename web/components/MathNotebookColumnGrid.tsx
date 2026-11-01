@@ -790,20 +790,20 @@ export default function MathNotebookColumnGrid({
         ) : (
           /* 2. Column Grid Table for Addition, Subtraction, Multiplication */
           <div className="w-full">
-            {/* Top Indicator / Transfer Arrow Banner (CLEAN FULL-WIDTH HEADER, NEVER OVERLAPS OR CUTS DIGITS) */}
+            {/* Top Indicator / Transfer Arrow Banner (CLEAN FULL-WIDTH HEADER, NEVER OVERLAPS OR CUTS DIGITS ON MOBILE) */}
             {showTopRow && (
-              <div className="mb-3 px-2 py-1.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-center">
-                <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-xs shadow-2xs inline-flex items-center gap-1 shrink-0 ${
+              <div className="mb-3 px-2 py-1.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-center max-w-full">
+                <span className={`px-2 sm:px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-xs shadow-2xs inline-flex items-center gap-1 shrink-0 ${
                   data.operation === '-'
                     ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
                     : 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
                 }`}>
                   {data.operation === '-'
-                    ? '🔄 ऊपर उधार (Borrow) की संख्याएँ'
-                    : '➕ ऊपर हासिल (Carry) की संख्याएँ'}
+                    ? '🔄 ऊपर उधार (Borrow)'
+                    : '➕ ऊपर हासिल (Carry)'}
                 </span>
                 {data.transferArrowText && (
-                  <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 inline-flex items-center text-center">
+                  <span className="text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 inline-flex items-center text-center max-w-full break-words">
                     {data.transferArrowText}
                   </span>
                 )}

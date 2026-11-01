@@ -899,7 +899,7 @@ export default function TuitionClassroomStudio() {
     } else if (targetFile) {
       setIsCheckingHomework(true);
       setWhiteboardSteps([]);
-      const heading = `पेज #${pageNumber} स्कैन: ${targetFile.name}`;
+      const heading = `पेज #${pageNumber} हल`;
       setWhiteboardHeading(heading);
       const scanMsg = `बेटा, मैं पेज नंबर ${pageNumber} को ध्यान से पढ़कर इसके सभी सवाल व्हाइटबोर्ड पर ला रहा हूँ!`;
       setSpeechText(scanMsg);
@@ -1006,7 +1006,8 @@ export default function TuitionClassroomStudio() {
           setRevealedSteps(cleaned.length);
           setDetectedQuestions(data.detected_questions || []);
           setDetectedChapter(data.detected_chapter || null);
-          const finalHeading = `वर्कशीट हल: ${data.detected_chapter?.title || cleanName}`;
+          const cleanChapterTitle = cleanHeadingText(data.detected_chapter?.title || cleanName);
+          const finalHeading = `वर्कशीट हल: ${cleanChapterTitle.replace(/^(वर्कशीट हल|अध्याय|पाठ)\s*[:\-–]?\s*/i, '')}`;
           setWhiteboardHeading(finalHeading);
 
           if (data.detected_subject) {
@@ -2280,11 +2281,32 @@ export default function TuitionClassroomStudio() {
     return res;
   };
 
+  const cleanHeadingText = (text?: string): string => {
+    if (!text) return 'अभ्यास व प्रश्नोत्तर (Step-by-Step Solutions)';
+    let sanitized = text
+      .replace(/[?¿]+/g, '')
+      .replace(/\(\s*\)/g, '')
+      .replace(/(?:WhatsApp Image|IMG[-_]|Scan[-_]|photo[-_]|Screenshot)[^.\n]*/gi, '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+    if (!sanitized || sanitized.length < 3 || /^[\s:.\-,]+$/.test(sanitized)) {
+      return 'अभ्यास व प्रश्नोत्तर (Step-by-Step Solutions)';
+    }
+    return sanitized;
+  };
+
   const getDisplayWhiteboardHeading = (heading: string) => {
     if (!heading) return medium === 'english' ? "Today's Tuition Class (Ready to Teach)" : 'आज की ट्यूशन क्लास (Ready to Teach)';
 
+    // Strip raw question marks (encoding errors like ???????)
+    let clean = heading.replace(/[?¿]+/g, '').replace(/\(\s*\)/g, '').replace(/[-_]/g, ' ').trim();
+    if (!clean || clean.length < 3 || /^[\s:.\-,]+$/.test(clean) || clean === 'वर्कशीट हल:' || clean === 'WORKSHEET:') {
+      return medium === 'english' ? 'Worksheet: Questions & Step-by-Step Solutions' : 'वर्कशीट हल: अभ्यास व प्रश्नोत्तर';
+    }
+
     // Strip raw camera/whatsapp/screenshot filenames for kid-friendly polish
-    let clean = heading.replace(/(?:WhatsApp Image|IMG[-_]|Scan[-_]|photo[-_]|Screenshot)[^.\n]+\.(?:jpe?g|png|webp|pdf)/gi, 'वर्कशीट अभ्यास');
+    clean = clean.replace(/(?:WhatsApp Image|IMG[-_]|Scan[-_]|photo[-_]|Screenshot)[^.\n]+\.(?:jpe?g|png|webp|pdf)/gi, 'वर्कशीट अभ्यास');
     clean = clean.replace(/(:\s*[^:\n]+\.(?:jpe?g|png|webp|pdf))/gi, '');
     clean = clean.replace(/पेज #([0-9]+)\s*हल:\s*/i, 'पेज #$1: ');
 
@@ -5613,8 +5635,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     const totalCount = newlyReadFiles.length;
     const msg =
       totalCount > 1
-        ? `बेटा, मैंने आपकी ${totalCount} फाइलें प्राप्त कर ली हैं। मैं इन्हें ध्यान से पढ़कर व्हाइटबोर्ड पर समझा रहा हूँ!`
-        : `बेटा, मैंने आपकी बुक या कॉपी का पेज "${activeDoc.name}" देख लिया है। मैं इसे ध्यान से पढ़कर व्हाइटबोर्ड पर समझा रहा हूँ!`;
+        ? `बेटा, मैंने आपकी ${totalCount} वर्कशीट प्राप्त कर ली हैं। मैं इन्हें एक साथ जोड़कर पूरा पाठ और सभी सवाल समझा रहा हूँ! अगर कोई सवाल अगले पेज पर है तो आप अगला पेज या पाठ भी जोड़ सकते हैं!`
+        : `बेटा, मैंने आपकी वर्कशीट देख ली है। मैं इसके सभी सवाल व्हाइटबोर्ड पर समझा रहा हूँ! अगर कोई आधा सवाल अगले पेज पर है या उत्तर पाठ में है, तो आप अगला पेज या पूरा पाठ भी जोड़ सकते हैं!`;
 
     setSpeechText(msg);
     speakText(msg);
@@ -5653,7 +5675,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
       if (res.ok) {
         const data = await res.json();
-        const reply = data.reply || `पेज "${activeDoc.name}" का हल व्हाइटबोर्ड पर आ गया है बेटा!`;
+        const reply = data.reply || (totalCount > 1 ? `आपकी सभी ${totalCount} वर्कशीट का हल व्हाइटबोर्ड पर आ गया है बेटा!` : 'आपकी वर्कशीट का हल व्हाइटबोर्ड पर आ गया है बेटा!');
         setSpeechText(reply);
         speakText(reply);
 
@@ -5698,12 +5720,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         if (data.whiteboard_steps && data.whiteboard_steps.length > 0) {
           setActiveMathAnim(null);
           const cleaned = filterFillerWhiteboardSteps(data.whiteboard_steps);
-          const cleanDocTitle = activeDoc.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-          const pageTitle = data.detected_chapter?.title
+          const cleanDocTitle = cleanWorksheetDisplayName(activeDoc.name);
+          let rawHeading = data.detected_chapter?.title
             ? `अध्याय: ${data.detected_chapter.title}`
             : totalCount > 1
-              ? `संयुक्त वर्कशीट (${totalCount} पृष्ठ): ${cleanDocTitle}`
-              : `WORKSHEET: ${cleanDocTitle}`;
+              ? `कार्यपुस्तिका सेट (${totalCount} पृष्ठ)`
+              : `वर्कशीट: ${cleanDocTitle}`;
+          const pageTitle = cleanHeadingText(rawHeading);
           setWhiteboardHeading(pageTitle);
           setWhiteboardSteps(cleaned);
           setRevealedSteps(cleaned.length);
@@ -6381,6 +6404,49 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 </button>
               </div>
 
+              {/* MULTI-PAGE FOLDER / BOOKLET NAVIGATION STRIP */}
+              {uploadedFiles.length > 1 && (
+                <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-amber-50 dark:from-slate-800 dark:via-indigo-950/40 dark:to-slate-800 border-b border-indigo-100 dark:border-slate-700 px-3 py-2 flex items-center justify-between gap-2 overflow-x-auto shrink-0 shadow-2xs">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-sm">📁</span>
+                    <span className="text-xs font-black text-indigo-950 dark:text-indigo-200">
+                      {medium === 'english' ? 'Booklet Set' : 'कार्यपुस्तिका सेट'} ({uploadedFiles.length} {medium === 'english' ? 'Pages' : 'पेज'}):
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+                    {uploadedFiles.map((f, idx) => {
+                      const isCurrent = f.id === activeFileId;
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => handleSwitchPage(f.id)}
+                          className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 ${
+                            isCurrent
+                              ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-300'
+                              : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-blue-50 border border-slate-200 dark:border-slate-600'
+                          }`}
+                        >
+                          <span>📄</span>
+                          <span>{medium === 'english' ? `Page #${idx + 1}` : `पृष्ठ #${idx + 1}`}</span>
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
+                      title="अगला पेज, उत्तरमाला या पूरा पाठ जोड़ें"
+                    >
+                      <span>➕</span>
+                      <span>{medium === 'english' ? '+ Add Next Page' : '+ अगला पेज / पाठ जोड़ें'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* RULED SCHOOL NOTEBOOK PAPER AREA (INTERNAL SMOOTH SCROLL) */}
               <div
                 className="p-2.5 sm:p-5 pb-24 sm:pb-8 flex-1 min-h-0 overflow-y-auto overscroll-contain relative font-sans touch-pan-y"
@@ -6397,8 +6463,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <h2 className="text-base sm:text-lg font-black text-rose-600 tracking-wider">
                       {isCheckingHomework
                         ? 'दस्तावेज़ स्कैनिंग...'
-                        : detectedChapter
-                        ? `WORKSHEET: ${detectedChapter.title}`
+                        : detectedChapter?.title && !/[?¿]{2,}/.test(detectedChapter.title) && detectedChapter.title.replace(/[?¿]/g, '').trim().length > 2
+                        ? `WORKSHEET: ${detectedChapter.title.replace(/[?¿]/g, '').trim()}`
                         : whiteboardHeading && !whiteboardHeading.includes('.jpeg') && !whiteboardHeading.includes('.jpg') && !whiteboardHeading.includes('सुरक्षित')
                         ? getDisplayWhiteboardHeading(whiteboardHeading)
                         : uploadedFiles.length > 0
@@ -6408,6 +6474,33 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                         : 'आज की ट्यूशन क्लास (Live Whiteboard)'}
                     </h2>
                   </div>
+
+                  {/* INCOMPLETE QUESTION / MISSING ANSWER HELPER BANNER */}
+                  {uploadedFiles.length > 0 && !isCheckingHomework && (
+                    <div className="my-1.5 p-2 sm:p-2.5 bg-amber-50/90 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800 rounded-xl flex items-center justify-between gap-2.5 text-xs">
+                      <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 min-w-0">
+                        <span className="text-lg shrink-0">💡</span>
+                        <div className="leading-tight truncate sm:whitespace-normal">
+                          <span className="font-bold text-amber-950 dark:text-amber-100">
+                            {medium === 'english' ? 'Half question or answer in chapter? ' : 'आधा सवाल अगले पेज पर या उत्तर पाठ में है? '}
+                          </span>
+                          <span className="hidden sm:inline text-[11px] text-amber-800/90 dark:text-amber-300/90">
+                            {medium === 'english'
+                              ? 'Upload the next page or full chapter so teacher can find and explain the full answer!'
+                              : 'आप अगला पेज, पूरा पाठ या उत्तरमाला भी जोड़ सकते हैं ताकि सही उत्तर समझाया जा सके।'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-[11px] shrink-0 cursor-pointer shadow-xs transition-all flex items-center gap-1"
+                      >
+                        <span>📸</span>
+                        <span>{medium === 'english' ? '+ Next Page' : '+ पेज/पाठ जोड़ें'}</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Section Title */}
                   <div>
@@ -6438,7 +6531,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       </div>
                       <h4 className="text-sm font-black text-slate-800">
                         {uploadedFileName
-                          ? `"${uploadedFileName}" के सभी सवाल पढ़े जा रहे हैं... ✍️`
+                          ? 'आपकी वर्कशीट के सभी सवाल पढ़े जा रहे हैं... ✍️'
                           : `${currentTeacher.name} कॉपी में स्टेप-बाय-स्टेप हल लिख रहे हैं... ✍️`}
                       </h4>
                       <p className="text-xs text-slate-500 max-w-sm">
