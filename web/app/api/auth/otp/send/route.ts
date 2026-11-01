@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
 
     const targetEmail = (email || (identifier && identifier.includes('@') ? identifier : '') || '').trim().toLowerCase();
     const rawPhone = (phone || (identifier && !identifier.includes('@') ? identifier : '') || '').toString().trim();
+    const cleanPhone = rawPhone.replace(/\D/g, '');
 
     if (purpose !== 'SIGNUP' && purpose !== 'FORGOT_PASSWORD' && purpose !== 'LOGIN') {
       return NextResponse.json(
@@ -18,36 +19,69 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate email format if provided
+    if (targetEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
+      return NextResponse.json(
+        { success: false, message: 'Please enter a valid email address (e.g. name@gmail.com).' },
+        { status: 400 }
+      );
+    }
+
+    // Validate phone format if provided
+    if (cleanPhone && (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone))) {
+      return NextResponse.json(
+        { success: false, message: 'Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).' },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================
+    // 0. STRICT PRE-CHECK FOR SIGNUP (PREVENT DUPLICATES)
+    // ==========================================
+    if (purpose === 'SIGNUP') {
+      if (cleanPhone) {
+        const existingByPhone = await findStudentByPhone(cleanPhone);
+        if (existingByPhone) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'यह मोबाइल नंबर पहले से रजिस्टर्ड है। कृपया सीधे लॉगिन करें। (This mobile number is already registered. Please Login instead.)',
+            },
+            { status: 409 }
+          );
+        }
+      }
+
+      if (targetEmail) {
+        const existingByEmail = await findStudentByEmail(targetEmail);
+        if (existingByEmail) {
+          return NextResponse.json(
+            {
+              success: false,
+              message: 'यह ईमेल आईडी पहले से रजिस्टर्ड है। कृपया सीधे लॉगिन करें। (This email is already registered. Please Login instead.)',
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
     // ==========================================
     // 1. EMAIL OTP DISPATCH (100% FREE & FAST)
     // ==========================================
     if (targetEmail) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) {
-        return NextResponse.json(
-          { success: false, message: 'Please enter a valid email address (e.g. name@gmail.com).' },
-          { status: 400 }
-        );
-      }
-
       const existingStudent = await findStudentByEmail(targetEmail);
 
       if (purpose === 'LOGIN' && !existingStudent) {
         return NextResponse.json(
-          { success: false, message: 'This email is not registered. Please Sign Up first.' },
+          { success: false, message: 'यह ईमेल रजिस्टर्ड नहीं है। कृपया पहले साइन-अप करें। (This email is not registered. Please Sign Up first.)' },
           { status: 404 }
-        );
-      }
-
-      if (purpose === 'SIGNUP' && existingStudent) {
-        return NextResponse.json(
-          { success: false, message: 'This email is already registered. Please Login instead.' },
-          { status: 409 }
         );
       }
 
       if (purpose === 'FORGOT_PASSWORD' && !existingStudent) {
         return NextResponse.json(
-          { success: false, message: 'No registered student account found with this email. Please Sign Up first.' },
+          { success: false, message: 'इस ईमेल से कोई खाता नहीं मिला। कृपया पहले साइन-अप करें। (No registered account found with this email. Please Sign Up first.)' },
           { status: 404 }
         );
       }
@@ -55,7 +89,7 @@ export async function POST(req: NextRequest) {
       const { otp } = generateAndSaveOtp(targetEmail, purpose);
 
       // Send real email via SMTP
-      const emailResult = await sendOtpEmail(targetEmail, otp, existingStudent?.name);
+      await sendOtpEmail(targetEmail, otp, existingStudent?.name);
 
       return NextResponse.json({
         success: true,
@@ -68,17 +102,9 @@ export async function POST(req: NextRequest) {
     // ==========================================
     // 2. MOBILE PHONE OTP DISPATCH
     // ==========================================
-    if (!rawPhone) {
+    if (!cleanPhone) {
       return NextResponse.json(
         { success: false, message: 'Please provide either a mobile number or an email address.' },
-        { status: 400 }
-      );
-    }
-
-    const cleanPhone = rawPhone.replace(/\D/g, '');
-    if (cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
-      return NextResponse.json(
-        { success: false, message: 'Please enter a valid 10-digit Indian mobile number (starting with 6, 7, 8, or 9).' },
         { status: 400 }
       );
     }
@@ -87,21 +113,14 @@ export async function POST(req: NextRequest) {
 
     if (purpose === 'LOGIN' && !existingStudent) {
       return NextResponse.json(
-        { success: false, message: 'This mobile number is not registered. Please Sign Up first.' },
+        { success: false, message: 'यह मोबाइल नंबर रजिस्टर्ड नहीं है। कृपया पहले साइन-अप करें। (This mobile number is not registered. Please Sign Up first.)' },
         { status: 404 }
-      );
-    }
-
-    if (purpose === 'SIGNUP' && existingStudent) {
-      return NextResponse.json(
-        { success: false, message: 'This mobile number is already registered. Please Login instead.' },
-        { status: 409 }
       );
     }
 
     if (purpose === 'FORGOT_PASSWORD' && !existingStudent) {
       return NextResponse.json(
-        { success: false, message: 'No registered student account found with this mobile number. Please Sign Up first.' },
+        { success: false, message: 'इस मोबाइल नंबर से कोई खाता नहीं मिला। कृपया पहले साइन-अप करें। (No registered account found with this mobile number. Please Sign Up first.)' },
         { status: 404 }
       );
     }

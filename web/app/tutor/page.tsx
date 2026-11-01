@@ -6793,16 +6793,25 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       );
                                     })()}
 
-                                    {/* Correct Answer Pill if present in text */}
+                                    {/* Correct Answer Pill / Card */}
                                     {(() => {
                                       const ansMatch = stepItem.formula?.match(/(?:सही उत्तर|Correct Answer|उत्तर|अंतिम उत्तर)\s*[:=]\s*([^\n]+)/i);
                                       if (ansMatch) {
                                         return (
                                           <div className="pt-1">
-                                            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-emerald-600 text-white font-bold text-sm shadow-xs">
-                                              <Check className="w-4 h-4 stroke-[3]" />
-                                              सही उत्तर: {ansMatch[1].replace(/✅/g, '').trim()}
-                                            </span>
+                                            <div className="flex items-start gap-2.5 p-3.5 sm:px-4 sm:py-3 rounded-2xl bg-emerald-600 text-white shadow-sm leading-relaxed max-w-full">
+                                              <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                                                <Check className="w-3.5 h-3.5 stroke-[3] text-white" />
+                                              </span>
+                                              <div className="text-xs sm:text-sm font-semibold flex-1">
+                                                <span className="font-black text-emerald-100 mr-1.5">
+                                                  {medium === 'english' ? 'Correct Answer:' : 'सही उत्तर:'}
+                                                </span>
+                                                <span className="text-white font-medium">
+                                                  {ansMatch[1].replace(/✅/g, '').trim()}
+                                                </span>
+                                              </div>
+                                            </div>
                                           </div>
                                         );
                                       }

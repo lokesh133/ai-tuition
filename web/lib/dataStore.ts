@@ -111,6 +111,35 @@ export async function createStudent(student: {
   schoolName?: string;
   isSubscribed?: boolean;
 }): Promise<Student> {
+  const cleanPhone = student.phone ? student.phone.replace(/\D/g, '') : null;
+  const cleanEmail = student.email ? student.email.trim().toLowerCase() : null;
+
+  if (cleanPhone) {
+    const existing = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone, role: 'STUDENT' },
+          { phone: student.phone, role: 'STUDENT' },
+        ],
+      },
+    });
+    if (existing) {
+      throw new Error('यह मोबाइल नंबर पहले से रजिस्टर्ड है। (This mobile number is already registered.)');
+    }
+  }
+
+  if (cleanEmail) {
+    const existing = await prisma.user.findFirst({
+      where: {
+        email: { equals: cleanEmail, mode: 'insensitive' },
+        role: 'STUDENT',
+      },
+    });
+    if (existing) {
+      throw new Error('यह ईमेल आईडी पहले से रजिस्टर्ड है। (This email is already registered.)');
+    }
+  }
+
   const created = await prisma.user.create({
     data: {
       name: student.name,
@@ -143,8 +172,14 @@ export async function createStudent(student: {
 
 export async function findStudentByPhone(phone: string): Promise<Student | null> {
   try {
+    const cleanPhone = phone.replace(/\D/g, '');
     const u = await prisma.user.findFirst({
-      where: { phone, role: 'STUDENT' },
+      where: {
+        OR: [
+          { phone: cleanPhone, role: 'STUDENT' },
+          { phone, role: 'STUDENT' },
+        ],
+      },
     });
     if (!u) return null;
     return {
@@ -170,7 +205,10 @@ export async function findStudentByEmail(email: string): Promise<Student | null>
   try {
     const cleanEmail = email.trim().toLowerCase();
     const u = await prisma.user.findFirst({
-      where: { email: cleanEmail, role: 'STUDENT' },
+      where: {
+        email: { equals: cleanEmail, mode: 'insensitive' },
+        role: 'STUDENT',
+      },
     });
     if (!u) return null;
     return {

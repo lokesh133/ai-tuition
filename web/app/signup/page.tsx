@@ -287,6 +287,7 @@ export default function StudentSignupPage() {
     if (!validateForm()) return;
 
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim().replace(/\D/g, '');
     setLoading(true);
     setError(null);
 
@@ -294,7 +295,11 @@ export default function StudentSignupPage() {
       const checkRes = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, purpose: 'SIGNUP' }),
+        body: JSON.stringify({
+          email: cleanEmail,
+          phone: cleanPhone,
+          purpose: 'SIGNUP',
+        }),
       });
 
       const checkData = await checkRes.json();
@@ -328,13 +333,18 @@ export default function StudentSignupPage() {
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
     const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phone.trim().replace(/\D/g, '');
     setOtpLoading(true);
 
     try {
       const res = await fetch('/api/auth/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, purpose: 'SIGNUP' }),
+        body: JSON.stringify({
+          email: cleanEmail,
+          phone: cleanPhone,
+          purpose: 'SIGNUP',
+        }),
       });
       const data = await res.json();
       if (data.success) {
