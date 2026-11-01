@@ -5774,6 +5774,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         ref={fileInputRef}
         onChange={handlePhotoUpload}
         accept="image/*,application/pdf"
+        multiple
         className="hidden"
         aria-label="Upload Worksheet or Textbook"
       />
