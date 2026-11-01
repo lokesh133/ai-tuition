@@ -854,7 +854,7 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
           </div>
 
           {/* Authentic Clean School Notebook Grid (Standard Education Workbook Aesthetic) */}
-          <div className="relative rounded-2xl border-2 border-indigo-100 dark:border-slate-800 bg-[#fbfdff] dark:bg-slate-900/90 p-5 sm:p-6 shadow-sm overflow-hidden">
+          <div className="relative rounded-2xl border-2 border-indigo-100 dark:border-slate-800 bg-[#fbfdff] dark:bg-slate-900/90 p-3 sm:p-6 shadow-sm overflow-x-auto">
             {/* Subtle Notebook Blue Horizontal Ruled Lines Pattern */}
             <div
               className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-10"
@@ -867,7 +867,7 @@ export const VisualMathDiagramCard: React.FC<VisualMathDiagramCardProps> = ({
             {/* Notebook Red Margin Line on Far Left */}
             <div className="absolute top-0 bottom-0 left-4 sm:left-6 w-0.5 bg-rose-400/40 pointer-events-none" />
 
-            <div className="relative z-10 pl-4 sm:pl-6 max-w-lg mx-auto font-mono text-base sm:text-lg font-black">
+            <div className="relative z-10 pl-2 sm:pl-6 min-w-max mx-auto font-mono text-base sm:text-lg font-black">
               {/* Unit Headers */}
               <div className="grid grid-cols-2 text-center pb-2 border-b-2 border-slate-800 dark:border-slate-200 text-xs sm:text-sm font-sans text-indigo-900 dark:text-indigo-200 font-extrabold uppercase tracking-wide">
                 <div className="border-r-2 border-slate-300 dark:border-slate-700 pb-1">

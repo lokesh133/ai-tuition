@@ -789,179 +789,180 @@ export default function MathNotebookColumnGrid({
           </div>
         ) : (
           /* 2. Column Grid Table for Addition, Subtraction, Multiplication */
-          <div className="flex justify-center overflow-x-auto py-2">
-            <div className="inline-block font-mono text-center select-none min-w-[280px]">
-              {/* Unit Headers Row (if units present) */}
-              {data.unit2 ? (
-                <div className="grid grid-cols-2 gap-3 text-sm font-black pb-1.5 border-b-2 border-slate-700 dark:border-slate-300">
-                  <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800 tracking-wider">
-                    {data.unit1}
-                  </div>
-                  <div className="px-3 py-1 bg-amber-50 dark:bg-amber-950/60 rounded-lg text-amber-800 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800 tracking-wider">
-                    {data.unit2}
-                  </div>
-                </div>
-              ) : null}
+          <div className="w-full">
+            {/* Top Indicator / Transfer Arrow Banner (CLEAN FULL-WIDTH HEADER, NEVER OVERLAPS OR CUTS DIGITS) */}
+            {showTopRow && (
+              <div className="mb-3 px-2 py-1.5 bg-slate-50/90 dark:bg-slate-800/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-center">
+                <span className={`px-2.5 py-1 rounded-full font-bold text-[10px] sm:text-xs shadow-2xs inline-flex items-center gap-1 shrink-0 ${
+                  data.operation === '-'
+                    ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
+                    : 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
+                }`}>
+                  {data.operation === '-'
+                    ? '🔄 ऊपर उधार (Borrow) की संख्याएँ'
+                    : '➕ ऊपर हासिल (Carry) की संख्याएँ'}
+                </span>
+                {data.transferArrowText && (
+                  <span className="text-[10px] sm:text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700 inline-flex items-center text-center">
+                    {data.transferArrowText}
+                  </span>
+                )}
+              </div>
+            )}
 
-              {/* Borrow / Carry Row (ONLY SHOWN WHEN CARRY/BORROW ACTUALLY OCCURS!) */}
-              {showTopRow && (
-                <div className="relative pt-2.5 pb-1 border-b border-dashed border-slate-200 dark:border-slate-800">
-                  {/* Indicator tag on top with transfer direction arrow */}
-                  <div className="text-[10px] font-black uppercase tracking-wider mb-1.5 flex items-center justify-center gap-1.5">
-                    <span className={`px-2.5 py-0.5 rounded-full font-bold shadow-2xs ${
-                      data.operation === '-'
-                        ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-700'
-                        : 'bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700'
-                    }`}>
-                      {data.operation === '-'
-                        ? '🔄 ऊपर उधार (Borrow) की संख्याएँ'
-                        : '➕ ऊपर हासिल (Carry) की संख्याएँ'}
-                    </span>
-                    {data.transferArrowText && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
-                        {data.transferArrowText}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 text-xs`}>
-                    {/* Unit 1 Borrows / Carries */}
-                    <div className="flex justify-center items-center gap-3 tracking-widest">
-                      {(data.operation === '-' ? data.borrows1 || [] : data.carries1 || []).map((b, i) => {
-                        const isActive = b && b !== '—' && b.trim() !== '';
-                        if (!isActive) {
-                          return <div key={i} className="inline-block w-6 text-center select-none opacity-0">-</div>;
-                        }
-                        return (
-                          <div key={i} className="inline-flex items-center justify-center w-6">
-                            <span
-                              className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full font-black text-xs shadow-sm ${
-                                data.operation === '-'
-                                  ? 'bg-rose-500 text-white border border-rose-600 ring-2 ring-rose-200 dark:ring-rose-900'
-                                  : 'bg-blue-600 text-white border border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900'
-                              }`}
-                            >
-                              {b}
-                            </span>
-                          </div>
-                        );
-                      })}
+            {/* Scrollable Grid Container - Safe Natural Left-to-Right Scrolling (Never Clips Leftmost Data on Mobile) */}
+            <div className="w-full overflow-x-auto py-2 overscroll-x-contain">
+              <div className="min-w-max mx-auto font-mono text-center select-none px-2 sm:px-4">
+                {/* Unit Headers Row (if units present) */}
+                {data.unit2 ? (
+                  <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm font-black pb-1.5 border-b-2 border-slate-700 dark:border-slate-300">
+                    <div className="px-2 sm:px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg text-indigo-800 dark:text-indigo-200 border border-indigo-200/80 dark:border-indigo-800 tracking-wider text-center">
+                      {data.unit1}
                     </div>
+                    <div className="px-2 sm:px-3 py-1 bg-amber-50 dark:bg-amber-950/60 rounded-lg text-amber-800 dark:text-amber-200 border border-amber-200/80 dark:border-amber-800 tracking-wider text-center">
+                      {data.unit2}
+                    </div>
+                  </div>
+                ) : null}
 
-                    {/* Unit 2 Borrows / Carries */}
-                    {data.unit2 ? (
-                      <div className="flex justify-center items-center gap-3 tracking-widest border-l border-slate-200 dark:border-slate-800 pl-2">
-                        {(data.operation === '-' ? data.borrows2 || [] : data.carries2 || []).map((b, i) => {
+                {/* Borrow / Carry Row (SPACIOUS DEDICATED ROW WITH ZERO OVERLAP ON 2-DIGIT NUMBERS) */}
+                {showTopRow && (
+                  <div className="pt-2 pb-2.5 border-b border-dashed border-slate-300 dark:border-slate-700 overflow-visible">
+                    <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-4 text-xs overflow-visible`}>
+                      {/* Unit 1 Borrows / Carries */}
+                      <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 overflow-visible">
+                        {(data.operation === '-' ? data.borrows1 || [] : data.carries1 || []).map((b, i) => {
                           const isActive = b && b !== '—' && b.trim() !== '';
                           if (!isActive) {
-                            return <div key={i} className="inline-block w-6 text-center select-none opacity-0">-</div>;
+                            return <div key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center select-none opacity-0">-</div>;
                           }
                           return (
-                            <div key={i} className="inline-flex items-center justify-center w-6">
+                            <div key={i} className="inline-flex items-center justify-center min-w-[28px] sm:min-w-[34px] overflow-visible">
                               <span
-                                className={`inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full font-black text-xs shadow-sm ${
+                                className={`inline-flex items-center justify-center min-w-[26px] h-6 sm:h-7 px-1.5 rounded-full font-black text-xs sm:text-sm shadow-sm shrink-0 ${
                                   data.operation === '-'
                                     ? 'bg-rose-500 text-white border border-rose-600 ring-2 ring-rose-200 dark:ring-rose-900'
                                     : 'bg-blue-600 text-white border border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900'
-                                }`}
-                              >
+                                }`}>
                                 {b}
                               </span>
                             </div>
                           );
                         })}
                       </div>
-                    ) : null}
-                  </div>
-                </div>
-              )}
 
-              {/* Row 1: Minuend / Multiplicand / First Operand */}
-              <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 text-lg sm:text-xl font-bold py-1.5`}>
-                <div className="flex justify-center items-center gap-3 tracking-widest text-slate-800 dark:text-slate-100">
-                  {data.row1_unit1.map((d, i) => {
-                    const isStruck = data.operation === '-' && data.borrows1 && data.borrows1[i] && data.borrows1[i] !== '—';
-                    return (
-                      <span
-                        key={i}
-                        className={`inline-block w-6 text-center ${
-                          isStruck
-                            ? 'line-through decoration-rose-500 decoration-[2.5px] text-slate-400 dark:text-slate-500 font-semibold'
-                            : ''
-                        }`}
-                      >
-                        {d}
-                      </span>
-                    );
-                  })}
-                </div>
-                {data.unit2 ? (
-                  <div className="flex justify-center items-center gap-3 tracking-widest text-slate-800 dark:text-slate-100 border-l border-slate-300 dark:border-slate-700 pl-2">
-                    {data.row1_unit2.map((d, i) => {
-                      const isStruck = data.operation === '-' && data.borrows2 && data.borrows2[i] && data.borrows2[i] !== '—';
+                      {/* Unit 2 Borrows / Carries */}
+                      {data.unit2 ? (
+                        <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 border-l-2 border-slate-300 dark:border-slate-700 pl-2 sm:pl-3 overflow-visible">
+                          {(data.operation === '-' ? data.borrows2 || [] : data.carries2 || []).map((b, i) => {
+                            const isActive = b && b !== '—' && b.trim() !== '';
+                            if (!isActive) {
+                              return <div key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center select-none opacity-0">-</div>;
+                            }
+                            return (
+                              <div key={i} className="inline-flex items-center justify-center min-w-[28px] sm:min-w-[34px] overflow-visible">
+                                <span
+                                  className={`inline-flex items-center justify-center min-w-[26px] h-6 sm:h-7 px-1.5 rounded-full font-black text-xs sm:text-sm shadow-sm shrink-0 ${
+                                    data.operation === '-'
+                                      ? 'bg-rose-500 text-white border border-rose-600 ring-2 ring-rose-200 dark:ring-rose-900'
+                                      : 'bg-blue-600 text-white border border-blue-700 ring-2 ring-blue-200 dark:ring-blue-900'
+                                  }`}>
+                                  {b}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+
+                {/* Row 1: Minuend / Multiplicand / First Operand */}
+                <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-4 text-lg sm:text-xl font-bold py-1.5`}>
+                  <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 text-slate-800 dark:text-slate-100">
+                    {data.row1_unit1.map((d, i) => {
+                      const isStruck = data.operation === '-' && data.borrows1 && data.borrows1[i] && data.borrows1[i] !== '—';
                       return (
                         <span
                           key={i}
-                          className={`inline-block w-6 text-center ${
+                          className={`inline-block min-w-[28px] sm:min-w-[34px] text-center ${
                             isStruck
                               ? 'line-through decoration-rose-500 decoration-[2.5px] text-slate-400 dark:text-slate-500 font-semibold'
                               : ''
-                          }`}
-                        >
+                          }`}>
                           {d}
                         </span>
                       );
                     })}
                   </div>
-                ) : null}
-              </div>
-
-              {/* Row 2: Subtrahend / Multiplier with Operation Sign */}
-              <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 text-lg sm:text-xl font-bold py-1 relative`}>
-                <div className="flex justify-center items-center gap-3 tracking-widest text-slate-800 dark:text-slate-100 relative">
-                  <span className={`absolute -left-3 font-black text-xl ${
-                    data.operation === '-' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                  }`}>
-                    {data.operation}
-                  </span>
-                  {data.row2_unit1.map((d, i) => (
-                    <span key={i} className="inline-block w-6 text-center">
-                      {d}
-                    </span>
-                  ))}
+                  {data.unit2 ? (
+                    <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 text-slate-800 dark:text-slate-100 border-l-2 border-slate-300 dark:border-slate-700 pl-2 sm:pl-3">
+                      {data.row1_unit2.map((d, i) => {
+                        const isStruck = data.operation === '-' && data.borrows2 && data.borrows2[i] && data.borrows2[i] !== '—';
+                        return (
+                          <span
+                            key={i}
+                            className={`inline-block min-w-[28px] sm:min-w-[34px] text-center ${
+                              isStruck
+                                ? 'line-through decoration-rose-500 decoration-[2.5px] text-slate-400 dark:text-slate-500 font-semibold'
+                                : ''
+                            }`}>
+                            {d}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
-                {data.unit2 ? (
-                  <div className="flex justify-center items-center gap-3 tracking-widest text-slate-800 dark:text-slate-100 border-l border-slate-300 dark:border-slate-700 pl-2">
-                    {data.row2_unit2.map((d, i) => (
-                      <span key={i} className="inline-block w-6 text-center">
+
+                {/* Row 2: Subtrahend / Multiplier with Operation Sign */}
+                <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-4 text-lg sm:text-xl font-bold py-1 relative`}>
+                  <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 text-slate-800 dark:text-slate-100 relative">
+                    <span className={`absolute -left-5 font-black text-xl sm:text-2xl ${
+                      data.operation === '-' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                    }`}>
+                      {data.operation}
+                    </span>
+                    {data.row2_unit1.map((d, i) => (
+                      <span key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center">
                         {d}
                       </span>
                     ))}
                   </div>
-                ) : null}
-              </div>
-
-              {/* Dividing Double Line */}
-              <div className="border-b-2 border-t-2 border-slate-800 dark:border-slate-200 my-1.5 h-1"></div>
-
-              {/* Answer Row */}
-              <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 text-xl sm:text-2xl font-black py-1 text-emerald-600 dark:text-emerald-400`}>
-                <div className="flex justify-center items-center gap-3 tracking-widest">
-                  {data.ans_unit1.map((d, i) => (
-                    <span key={i} className="inline-block w-6 text-center">
-                      {d}
-                    </span>
-                  ))}
+                  {data.unit2 ? (
+                    <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 text-slate-800 dark:text-slate-100 border-l-2 border-slate-300 dark:border-slate-700 pl-2 sm:pl-3">
+                      {data.row2_unit2.map((d, i) => (
+                        <span key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-                {data.unit2 ? (
-                  <div className="flex justify-center items-center gap-3 tracking-widest border-l border-slate-300 dark:border-slate-700 pl-2">
-                    {data.ans_unit2.map((d, i) => (
-                      <span key={i} className="inline-block w-6 text-center">
+
+                {/* Dividing Double Line */}
+                <div className="border-b-2 border-t-2 border-slate-800 dark:border-slate-200 my-1.5 h-1"></div>
+
+                {/* Answer Row */}
+                <div className={`grid ${data.unit2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 sm:gap-4 text-xl sm:text-2xl font-black py-1 text-emerald-600 dark:text-emerald-400`}>
+                  <div className="flex justify-center items-center gap-1.5 sm:gap-2.5">
+                    {data.ans_unit1.map((d, i) => (
+                      <span key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center">
                         {d}
                       </span>
                     ))}
                   </div>
-                ) : null}
+                  {data.unit2 ? (
+                    <div className="flex justify-center items-center gap-1.5 sm:gap-2.5 border-l-2 border-slate-300 dark:border-slate-700 pl-2 sm:pl-3">
+                      {data.ans_unit2.map((d, i) => (
+                        <span key={i} className="inline-block min-w-[28px] sm:min-w-[34px] text-center">
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
