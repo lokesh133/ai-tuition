@@ -6891,37 +6891,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 5. BOTTOM DEDICATED CHAT & MIC DOCK */}
-          <div className="shrink-0 pt-1.5 pb-1 flex flex-col items-center justify-center w-full relative">
-            {/* 📱 Mobile Question Navigator (Docked Above Input - Clean & No Duplicate) */}
-            {uploadedFiles.length > 0 && detectedQuestions.length > 1 && (
-              <div className="w-full max-w-2xl px-2 mb-1.5 sm:hidden z-20">
-                <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 text-white rounded-xl py-1.5 px-3 flex items-center justify-between shadow-lg">
-                  <button
-                    type="button"
-                    onClick={handlePrevQuestion}
-                    disabled={isCheckingHomework}
-                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold flex items-center gap-1 transition-all disabled:opacity-30 cursor-pointer"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    <span>{medium === 'english' ? 'Prev' : 'पिछला'}</span>
-                  </button>
-
-                  <span className="text-xs font-black text-amber-300">
-                    {medium === 'english' ? 'Question' : 'सवाल'} {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={handleNextQuestion}
-                    disabled={isCheckingHomework}
-                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-xs font-black flex items-center gap-1 shadow-md transition-all disabled:opacity-30 cursor-pointer"
-                  >
-                    <span>{medium === 'english' ? 'Next' : 'अगला'}</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            )}
+          <div className="shrink-0 pt-1.5 pb-2 flex flex-col items-center justify-center w-full relative">
             <div className="relative flex items-center gap-2 sm:gap-2.5 w-full max-w-2xl px-1 sm:px-0">
               {/* 👨‍🏫 Live Teacher Doubt Explanation Card (FLOATING POPUP ABOVE DOCK) */}
               {teacherDoubtPopup && teacherDoubtPopup.isOpen && (
