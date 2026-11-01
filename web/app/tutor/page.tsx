@@ -2092,7 +2092,7 @@ export default function TuitionClassroomStudio() {
       .replace(/कुल क्षमता में से तय की गई दूरी को घटा दिया।?\s*कॉपी में साफ़-साफ़ लिखो बेटा।?/gi,
         'Subtracted the distance covered from the total capacity. Write this down neatly in your notebook!')
       .replace(/बेटा,?\s*याद रखना 3\/4 मीटर मतलब 75 सेंटीमीटर होता है।?\s*पहले तीनों टुकड़ों को जोड़ा,?\s*फिर कुल लंबाई से घटा दिया।?/gi,
-        'Remember: 3/4 metre equals 75 centimetres. First we added the three cut pieces, then subtracted from the total ribbon length.')
+        'Remember: 3/4 metre equals 75 centimetres. First we added the three cut pieces, then subtracted from the total ribbon length.')
       .replace(/शाबाश!?\s*जब भी\s*(?:मीटर|metres)\s*को\s*(?:सेंटीमीटर|centimetres)\s*में\s*बदलना\s*हो,?\s*बस\s*संख्या\s*के\s*आगे\s*दो\s*शून्य\s*\(100\s*से\s*गुणा\)\s*लगा\s*देते\s*हैं!?/gi,
         'Well done! Whenever you convert metres into centimetres, simply multiply the number by 100 (add two zeroes)!')
       .replace(/जब भी\s*(?:मीटर|metres)\s*को\s*(?:सेंटीमीटर|centimetres)\s*में\s*बदलना\s*हो,?\s*बस\s*संख्या\s*के\s*आगे\s*दो\s*शून्य\s*\(100\s*से\s*गुणा\)\s*लगा\s*देते\s*हैं!?/gi,
@@ -4949,7 +4949,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     return list;
   };
 
-  // Save & Evaluate student's typed Mock Test answer
+  // Save & Evaluate student's typed or spoken Mock Test answer automatically via AI
   const handleSaveAndEvaluateMock = async (qIdx: number) => {
     const questionsList = getMockQuestionsList();
     const activeQ = questionsList[qIdx];
@@ -4960,7 +4960,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     stopAudio();
     setIsEvaluatingMock(true);
 
-    const maxMarks = mockQuestionMarks[qIdx] || 10;
+    const maxMarks = 10;
     try {
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
@@ -4979,20 +4979,86 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       if (res.ok) {
         const data = await res.json();
         if (data.evaluation) {
-          const scaledScore = Math.min(maxMarks, Math.round(((data.evaluation.score || 8) / 10) * maxMarks));
+          const evalRes = data.evaluation;
+          const score = typeof evalRes.score === 'number' ? Math.min(maxMarks, Math.max(0, evalRes.score)) : 8;
+          const percentage = evalRes.percentage || Math.round((score / maxMarks) * 100);
+          const mistakes = Array.isArray(evalRes.mistakes) && evalRes.mistakes.length > 0
+            ? evalRes.mistakes
+            : evalRes.mistakes ? [evalRes.mistakes] : [];
+          const improvements = Array.isArray(evalRes.improvements) && evalRes.improvements.length > 0
+            ? evalRes.improvements
+            : Array.isArray(evalRes.missingPoints) && evalRes.missingPoints.length > 0
+            ? evalRes.missingPoints
+            : [];
+          const solution = evalRes.solution || evalRes.idealAnswer || activeQ.idealAnswer || '';
+          const badge = evalRes.badge || (percentage >= 90 ? '🌟 उत्कृष्ट प्रदर्शन!' : percentage >= 70 ? '⭐ शानदार प्रयास!' : '💡 अच्छा अभ्यास!');
+
           const adjustedEval = {
-            ...data.evaluation,
-            score: scaledScore,
+            ...evalRes,
+            score,
             totalMarks: maxMarks,
-            percentage: Math.round((scaledScore / maxMarks) * 100),
+            percentage,
+            badge,
+            mistakes,
+            improvements,
+            solution,
+            feedback: evalRes.feedback || evalRes.teacherPraise || `स्कोर: ${score}/${maxMarks} अंक (${percentage}%)`,
           };
+
           setMockEvaluations((prev) => ({
             ...prev,
             [qIdx]: adjustedEval,
           }));
-          const praise = data.evaluation.teacherPraise || `शाबाश बेटा! आपका स्कोर ${scaledScore}/${maxMarks} है।`;
+
+          const praise = evalRes.teacherPraise || (medium === 'english'
+            ? `Well done! You scored ${score}/${maxMarks} marks.`
+            : `शाबाश बेटा! आपका स्कोर ${score}/${maxMarks} नंबर है।`);
           setSpeechText(praise);
           speakText(praise);
+
+          // 💾 Automatically save evaluation record to student reports history
+          try {
+            const studentId = studentProfile?.phone || studentProfile?.id || 'guest_student';
+            const cleanQTitle = (activeQ.question || 'सवाल').replace(/^\d+[\.\)\s]+/, '').slice(0, 50);
+            const testRecord = {
+              id: `mock-${Date.now()}-${qIdx}`,
+              title: `मॉक टेस्ट: ${cleanQTitle}`,
+              date: new Date().toISOString().split('T')[0],
+              subjectId: activeSubject?.id || 'general',
+              subjectName: activeSubject?.name || 'मॉक टेस्ट',
+              teacherName: currentTeacher.name,
+              score,
+              totalMarks: maxMarks,
+              percentage,
+              badge,
+              question: activeQ.question,
+              studentAnswer: studentAns,
+              mistakes,
+              improvements,
+              solution,
+              timestamp: Date.now(),
+            };
+
+            // Sync with backend student records
+            fetch('/api/student/records', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                phone: studentProfile?.phone || '',
+                studentId: studentId,
+                newTestRecord: testRecord,
+              }),
+            }).catch((e) => console.warn('Could not sync test record to server:', e));
+
+            // Sync with localStorage test history
+            const histKey = 'vidya_sunday_test_history_v1';
+            const oldHistRaw = localStorage.getItem(histKey);
+            const oldHist = oldHistRaw ? JSON.parse(oldHistRaw) : [];
+            const newHist = [testRecord, ...(Array.isArray(oldHist) ? oldHist : [])].slice(0, 50);
+            localStorage.setItem(histKey, JSON.stringify(newHist));
+          } catch (recErr) {
+            console.warn('Error saving mock test record:', recErr);
+          }
         }
       }
     } catch (err) {
@@ -5002,47 +5068,57 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     }
   };
 
-  // Manual Marks Awarding: Allows teacher/student to give custom numbers/marks directly
-  const handleSaveManualMarks = (qIdx: number) => {
-    const raw = mockManualScore[qIdx];
-    const scoreVal = parseFloat(raw);
-    const maxMarks = mockQuestionMarks[qIdx] || 10;
-    if (isNaN(scoreVal)) return;
+  // WhatsApp Share Mock Test Report directly to parents/student
+  const handleShareMockReportWhatsApp = (qIdx: number) => {
+    const questionsList = getMockQuestionsList();
+    const activeQ = questionsList[qIdx];
+    const evalData = mockEvaluations[qIdx];
+    const studentAns = (mockAnswers[qIdx] || '').trim();
+    if (!activeQ || !evalData) return;
 
-    const finalScore = Math.max(0, Math.min(maxMarks, scoreVal));
-    const percentage = Math.round((finalScore / maxMarks) * 100);
-    const grade =
-      percentage >= 90
-        ? '🌟 उत्कृष्ट (100% सटीक)'
-        : percentage >= 70
-        ? '⭐ बहुत अच्छा'
-        : percentage >= 40
-        ? '👍 ठीक प्रयास'
-        : '💡 और अभ्यास करें';
+    const studentName = studentProfile?.name || 'विद्यार्थी';
+    const grade = studentProfile?.classGrade || 'कक्षा 4';
+    const score = evalData.score ?? 8;
+    const total = evalData.totalMarks || 10;
+    const pct = evalData.percentage || Math.round((score / total) * 100);
+    const badge = evalData.badge || '⭐ शानदार प्रयास';
 
-    setMockEvaluations((prev) => ({
-      ...prev,
-      [qIdx]: {
-        score: finalScore,
-        totalMarks: maxMarks,
-        percentage,
-        grade,
-        badge: percentage >= 75 ? '⭐ शानदार स्कोर!' : '📝 अच्छा अभ्यास!',
-        feedback: `शिक्षक द्वारा दिए गए अंक: ${finalScore}/${maxMarks} (${grade})`,
-        teacherPraise: `शाबाश बेटा! शिक्षक द्वारा सवाल ${qIdx + 1} में ${finalScore}/${maxMarks} अंक दर्ज किए गए।`,
-      },
-    }));
-    setIsManualGradingOpen(false);
-    const msg = `शाबाश बेटा! सवाल ${qIdx + 1} के लिए ${finalScore}/${maxMarks} नंबर दर्ज कर दिए गए हैं।`;
-    setSpeechText(msg);
-    speakText(msg);
+    const mistakesText =
+      Array.isArray(evalData.mistakes) && evalData.mistakes.length > 0
+        ? evalData.mistakes.map((m: string) => `• ${m}`).join('\n')
+        : '• कोई बड़ी गलती नहीं मिली। उत्तर बिल्कुल सही है।';
+
+    const improvementsText =
+      Array.isArray(evalData.improvements) && evalData.improvements.length > 0
+        ? evalData.improvements.map((imp: string) => `• ${imp}`).join('\n')
+        : '• नियमित अभ्यास जारी रखें।';
+
+    const solutionText = evalData.solution || evalData.idealAnswer || activeQ.idealAnswer || '';
+
+    const reportMsg =
+      `📋 *विद्या AI ट्यूशन - मॉक टेस्ट मूल्यांकन रिपोर्ट*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `👤 *विद्यार्थी:* ${studentName} (${grade})\n` +
+      `📚 *विषय:* ${activeSubject?.name || 'ट्यूशन अभ्यास'}\n` +
+      `❓ *सवाल:* ${activeQ.question}\n` +
+      `✍️ *छात्र का उत्तर:* "${studentAns}"\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🎯 *प्राप्तांक (AI Marks):* ${score} / ${total} अंक (${pct}%)\n` +
+      `🏅 *ग्रेड:* ${badge}\n\n` +
+      `⚠️ *कहाँ गलती हुई (Mistakes):*\n${mistakesText}\n\n` +
+      `💡 *क्या सुधार करना है (Improvements):*\n${improvementsText}\n\n` +
+      (solutionText ? `📝 *आदर्श व सही हल (Model Solution):*\n${solutionText}\n\n` : '') +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `🤖 *AI शिक्षक:* ${currentTeacher.name} | Vidya AI Tuition`;
+
+    const phone = (studentProfile?.phone || '').replace(/\D/g, '');
+    const waUrl = phone
+      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(reportMsg)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(reportMsg)}`;
+
+    window.open(waUrl, '_blank');
   };
 
-  // =========================================================================
-  // 🔒 FROZEN / FIXED CONFIGURATION - DO NOT CHANGE! (स्थिर कॉन्फ़िगरेशन - इसे कभी न बदलें)
-  // Verified: Uploads, reads and parses homework and textbook pages with 100% precision.
-  // Daily Limit: 20 pages/day per student (saves tokens while typed questions remain unlimited).
-  // =========================================================================
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
@@ -6169,27 +6245,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     </div>
                                   )}
                                 </div>
-                                <div className="shrink-0 flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-2xs">
-                                  <span className="text-[10px] font-bold text-slate-500 pl-1">पूर्णांक:</span>
-                                  {[2, 5, 10].map((mk) => (
-                                    <button
-                                      key={mk}
-                                      type="button"
-                                      onClick={() =>
-                                        setMockQuestionMarks((prev) => ({
-                                          ...prev,
-                                          [activeMockQIdx]: mk,
-                                        }))
-                                      }
-                                      className={`px-1.5 py-0.5 rounded text-[10px] font-black cursor-pointer transition-all ${
-                                        (mockQuestionMarks[activeMockQIdx] || 10) === mk
-                                          ? 'bg-blue-600 text-white'
-                                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                                      }`}
-                                    >
-                                      {mk}M
-                                    </button>
-                                  ))}
+                                <div className="shrink-0 flex items-center gap-1.5 bg-blue-50/90 border border-blue-200 rounded-lg px-2.5 py-1 shadow-2xs">
+                                  <span className="text-[11px] font-black text-blue-800">🎯 पूर्णांक: 10 अंक</span>
+                                  <span className="text-[9px] font-bold text-blue-600 bg-white px-1.5 py-0.5 rounded border border-blue-200">AI चेकिंग</span>
                                 </div>
                               </div>
 
@@ -6420,19 +6478,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                     <span>हल जमा करें और AI नंबर देखें</span>
                                   </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsManualGradingOpen((o) => !o)}
-                                    className={`px-3.5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer border transition-all ${
-                                      isManualGradingOpen
-                                        ? 'bg-amber-100 text-amber-900 border-amber-300 ring-2 ring-amber-300'
-                                        : 'bg-white hover:bg-amber-50 text-amber-800 border-amber-300'
-                                    }`}
-                                    title="खुद या शिक्षक द्वारा सीधे नंबर दें"
-                                  >
-                                    <span>✍️</span>
-                                    <span>खुद / शिक्षक द्वारा नंबर दें</span>
-                                  </button>
+                                  
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -6460,102 +6506,135 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                 </div>
                               </div>
 
-                              {/* Manual Grading / Score Entry Panel */}
-                              {isManualGradingOpen && (
-                                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-3 animate-in fade-in slide-in-from-top-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-black text-amber-950 text-xs sm:text-sm flex items-center gap-1.5">
-                                      <span>✍️</span>
-                                      <span>सवाल {activeMockQIdx + 1} के लिए प्राप्तांक (Marks) दर्ज करें</span>
-                                    </span>
-                                    <span className="text-[11px] font-bold text-amber-800 bg-white px-2 py-0.5 rounded-full border border-amber-200">
-                                      कुल पूर्णांक: {mockQuestionMarks[activeMockQIdx] || 10}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <div className="flex items-center gap-1.5 bg-white border border-amber-300 rounded-xl px-3 py-1.5 shadow-2xs">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max={mockQuestionMarks[activeMockQIdx] || 10}
-                                        step="0.5"
-                                        placeholder="अंक"
-                                        value={mockManualScore[activeMockQIdx] ?? ''}
-                                        onChange={(e) =>
-                                          setMockManualScore((prev) => ({
-                                            ...prev,
-                                            [activeMockQIdx]: e.target.value,
-                                          }))
-                                        }
-                                        className="w-16 text-center font-black text-base text-slate-800 focus:outline-hidden"
-                                      />
-                                      <span className="text-xs font-bold text-slate-500">
-                                        / {mockQuestionMarks[activeMockQIdx] || 10}
+                              {/* Evaluation Scorecard & Mistake/Improvement Solution Display */}
+                              {evalData && (
+                                <div className="mt-4 rounded-2xl bg-gradient-to-b from-white via-emerald-50/30 to-blue-50/20 border-2 border-emerald-300 p-4 sm:p-6 space-y-4 shadow-md animate-in fade-in slide-in-from-top-2">
+                                  {/* 1. Header with Score & Badge */}
+                                  <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-emerald-200">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex flex-col items-center justify-center font-black shadow-md shadow-emerald-500/25">
+                                        <span className="text-base leading-none">{evalData.score ?? 8}</span>
+                                        <span className="text-[10px] opacity-80 leading-none">/{evalData.totalMarks || 10}</span>
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-black text-slate-900 text-base sm:text-lg">
+                                            🎯 AI प्राप्तांक (Score)
+                                          </span>
+                                          <span className="text-xs font-black text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 rounded-full">
+                                            {evalData.percentage || Math.round(((evalData.score || 8) / 10) * 100)}%
+                                          </span>
+                                        </div>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                          AI शिक्षक द्वारा स्वचालित मूल्यांकन (Automatic Evaluation)
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-xs sm:text-sm font-black text-emerald-700 bg-white px-3 py-1.5 rounded-xl border border-emerald-200 shadow-2xs">
+                                        {evalData.badge || '⭐ शानदार प्रयास'}
                                       </span>
                                     </div>
+                                  </div>
 
-                                    {/* Quick Preset Buttons */}
-                                    <div className="flex items-center gap-1">
-                                      {[
-                                        { label: 'पूरे अंक', val: mockQuestionMarks[activeMockQIdx] || 10 },
-                                        { label: '80%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.8) },
-                                        { label: '50%', val: Math.round((mockQuestionMarks[activeMockQIdx] || 10) * 0.5) },
-                                        { label: '0 अंक', val: 0 },
-                                      ].map((preset) => (
-                                        <button
-                                          key={preset.label}
-                                          type="button"
-                                          onClick={() =>
-                                            setMockManualScore((prev) => ({
-                                              ...prev,
-                                              [activeMockQIdx]: String(preset.val),
-                                            }))
-                                          }
-                                          className="px-2 py-1 text-[11px] font-bold bg-white hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-lg cursor-pointer transition-all"
-                                        >
-                                          {preset.label} ({preset.val})
-                                        </button>
-                                      ))}
+                                  {/* Teacher Audio Message */}
+                                  {evalData.teacherPraise && (
+                                    <div className="p-3 rounded-xl bg-blue-50/80 border border-blue-200 flex items-start gap-2.5 text-xs sm:text-sm text-blue-950 font-semibold">
+                                      <span className="text-lg shrink-0">👩‍🏫</span>
+                                      <div>
+                                        <span className="text-[11px] text-blue-700 block font-bold">
+                                          {currentTeacher.name} का संदेश:
+                                        </span>
+                                        <span>{evalData.teacherPraise}</span>
+                                      </div>
                                     </div>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSaveManualMarks(activeMockQIdx)}
-                                      disabled={mockManualScore[activeMockQIdx] === undefined || mockManualScore[activeMockQIdx] === ''}
-                                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white font-black text-xs flex items-center gap-1.5 shadow cursor-pointer transition-all"
-                                    >
-                                      <span>💾</span>
-                                      <span>नंबर सेव करें</span>
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Evaluation Scorecard & Answer Diagram */}
-                              {evalData && (
-                                <div className="mt-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-black text-emerald-900 text-sm sm:text-base">
-                                      🎯 स्कोर: {evalData.score} / {evalData.totalMarks || 10} अंक
-                                    </span>
-                                    <span className="text-xs font-bold text-emerald-700 bg-white px-2.5 py-0.5 rounded-full border border-emerald-200 shadow-2xs">
-                                      {evalData.grade || 'बहुत बढ़िया'}
-                                    </span>
-                                  </div>
-                                  {evalData.feedback && (
-                                    <p className="text-xs sm:text-sm text-emerald-950 font-medium">
-                                      {evalData.feedback}
-                                    </p>
                                   )}
+
+                                  {/* 2. कहाँ गलती हुई (Mistakes) */}
+                                  <div className="p-3.5 sm:p-4 rounded-xl bg-rose-50/80 border border-rose-200 space-y-2">
+                                    <div className="flex items-center gap-2 text-rose-900 font-black text-xs sm:text-sm">
+                                      <span className="text-base">⚠️</span>
+                                      <span>कहाँ गलती हुई (Mistake Analysis):</span>
+                                    </div>
+                                    {Array.isArray(evalData.mistakes) && evalData.mistakes.length > 0 ? (
+                                      <ul className="space-y-1.5 pl-5 list-disc text-xs sm:text-sm text-rose-950 font-medium">
+                                        {evalData.mistakes.map((m: string, mIdx: number) => (
+                                          <li key={mIdx}>{m}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs sm:text-sm text-emerald-800 font-bold flex items-center gap-1.5">
+                                        <span>✅</span>
+                                        <span>कोई गलती नहीं हुई! आपका उत्तर बिल्कुल सही है।</span>
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* 3. क्या सुधार करना है (Improvements) */}
+                                  <div className="p-3.5 sm:p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-2">
+                                    <div className="flex items-center gap-2 text-amber-900 font-black text-xs sm:text-sm">
+                                      <span className="text-base">💡</span>
+                                      <span>क्या सुधार करना है (Tips to Improve):</span>
+                                    </div>
+                                    {Array.isArray(evalData.improvements) && evalData.improvements.length > 0 ? (
+                                      <ul className="space-y-1.5 pl-5 list-disc text-xs sm:text-sm text-amber-950 font-medium">
+                                        {evalData.improvements.map((imp: string, impIdx: number) => (
+                                          <li key={impIdx}>{imp}</li>
+                                        ))}
+                                      </ul>
+                                    ) : Array.isArray(evalData.missingPoints) && evalData.missingPoints.length > 0 ? (
+                                      <ul className="space-y-1.5 pl-5 list-disc text-xs sm:text-sm text-amber-950 font-medium">
+                                        {evalData.missingPoints.map((mp: string, mpIdx: number) => (
+                                          <li key={mpIdx}>{mp}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="text-xs sm:text-sm text-amber-900 font-medium">
+                                        आगे भी इसी तरह पूरे उत्तर और साफ़ लिखावट के साथ अभ्यास करते रहें।
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* 4. सही हल व आदर्श उत्तर (Step-by-Step Solution) */}
+                                  {(evalData.solution || evalData.idealAnswer || currentQ.idealAnswer) && (
+                                    <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-50/90 border border-emerald-300 space-y-2">
+                                      <div className="flex items-center gap-2 text-emerald-950 font-black text-xs sm:text-sm">
+                                        <span className="text-base">📝</span>
+                                        <span>सही हल व आदर्श उत्तर (Model Solution):</span>
+                                      </div>
+                                      <div className="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-line bg-white/90 p-3 rounded-lg border border-emerald-200">
+                                        {evalData.solution || evalData.idealAnswer || currentQ.idealAnswer}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Question Diagram if applicable */}
                                   {isDiagramQ && (
-                                    <div className="pt-2">
+                                    <div className="pt-1">
                                       <VisualMathDiagramCard
                                         question={currentQ.question}
-                                        answer={currentQ.idealAnswer || evalData.feedback || ''}
+                                        answer={evalData.solution || currentQ.idealAnswer || ''}
                                         medium={medium}
                                       />
                                     </div>
                                   )}
+
+                                  {/* 5. Report Saved & WhatsApp Share Button */}
+                                  <div className="pt-2 flex items-center justify-between flex-wrap gap-3">
+                                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-white px-3 py-1.5 rounded-xl border border-emerald-200">
+                                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                      <span>टेस्ट रिपोर्ट कार्ड में नंबर सुरक्षित हो गए हैं ✅</span>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleShareMockReportWhatsApp(activeMockQIdx)}
+                                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs sm:text-sm flex items-center gap-2 shadow-md shadow-emerald-600/20 cursor-pointer transition-all active:scale-95"
+                                    >
+                                      <span>📲</span>
+                                      <span>WhatsApp पर रिपोर्ट शेयर करें</span>
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>

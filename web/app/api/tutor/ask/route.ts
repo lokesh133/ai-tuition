@@ -164,39 +164,36 @@ export async function POST(req: NextRequest) {
       const targetQuestion = (question || reqJson?.question || '').trim();
       const idealAnswer = (reqJson?.ideal_answer || '').trim();
 
-      const evalPrompt = `You are ${teacherName}, an expert school teacher evaluating a primary or middle school student's typed answer in a Mock Test.
+      const evalPrompt = `You are ${teacherName}, an expert school teacher evaluating a primary or middle school student's answer in a Mock Test.
 QUESTION: "${targetQuestion}"
 IDEAL / MODEL ANSWER: "${idealAnswer || 'Evaluate based on standard textbook syllabus and curriculum facts'}"
-STUDENT'S TYPED ANSWER: "${studentAnswer}"
+STUDENT'S ANSWER: "${studentAnswer}"
 
 CRITICAL EVALUATION RULES:
-1. SCORE & PERCENTAGE:
+1. AUTOMATIC SCORE & PERCENTAGE:
    - Grade out of 10 based on accuracy, key factual points, and completeness.
    - If answer is completely accurate: 9 or 10.
    - If partially accurate: 6 to 8.
    - If missing most key details: 3 to 5.
-2. STRENGTHS (क्या अच्छा किया):
-   - List 1 to 3 specific points the student wrote well in simple ${learningLanguage === 'en' ? 'English' : 'Hinglish'}.
-3. MISTAKES (कहाँ गलती हुई):
-   - List 1 or 2 specific misunderstandings or factual errors, or [] if none.
-4. SPELLING CHECK (स्पेलिंग की गलतियाँ):
-   - Scan every word typed by the student.
-   - If student misspelled any words, list them as objects: [{"wrong": "mispelled", "correct": "correct"}]
-   - If no spelling errors, return empty list [].
-5. MISSING POINTS (कहाँ और क्या जोड़ना है):
-   - Specific keywords, phrases, or facts the student must add to get a perfect 10/10 marks.
-6. IDEAL COMPLETE ANSWER:
-   - Provide the complete, unabridged, perfect answer for their notebook.
-7. TEACHER PRAISE:
-   - A warm, encouraging 1-sentence message spoken by ${teacherName} in ${learningLanguage === 'en' ? 'English' : 'Hinglish'}.
-8. MATHEMATICAL POWERS & NOTATION TOLERANCE:
-   - When checking math problems, recognize that students might type powers as c2, c^2, c², 52, 5^2, or 5² (e.g. "c2 = a2+b2" means c² = a² + b² and "52=32+22" means 5² = 3² + 2² or 5² = 3² + 4² for Pythagorean triplets).
-   - NEVER count mathematical expressions, variables (like a2, b2, c2, x2, cm, m2), equations, or symbols (^, ², ³, √, π, °) as spelling mistakes!
-   - In "strengths", appreciate their method and formula steps. In "mistakes", explain calculation steps clearly.
-9. MULTIPLE CHOICE QUESTIONS (MCQ / 4 OPTIONS):
-   - If question is an MCQ with options (a), (b), (c), (d), and student's answer contains or selects the correct option (e.g. "(c) 180000 g" or "c" or "180000 g"), award 10/10 with congratulations!
-10. NUMBER PYRAMID & BOX PUZZLES (पिरामिड पहेली):
-   - If question is a number pyramid puzzle, verify whether student filled the empty boxes correctly (rule: upper box = sum of two below). If correct, award 10/10!
+   - If completely off-topic or empty: 0 to 2.
+2. MISTAKES (कहाँ गलती हुई):
+   - Clear, child-friendly explanation of where the student made a mistake or what essential information was missing.
+   - If score is 10/10, say: "कोई गलती नहीं हुई! आपका उत्तर बिल्कुल सही व सटीक है।"
+   - Provide as array of 1-3 concise strings in ${learningLanguage === 'en' ? 'English' : 'Hindi'}.
+3. IMPROVEMENTS (क्या सुधार करना है):
+   - Specific, encouraging guidance on how to improve the answer to get full 10/10 marks next time (e.g. adding key terms, calculation steps, neat points).
+   - Provide as array of 1-3 concise strings in ${learningLanguage === 'en' ? 'English' : 'Hindi'}.
+4. COMPLETE STEP-BY-STEP SOLUTION (सही हल व आदर्श उत्तर):
+   - Provide the complete, unabridged, perfect solution / model answer in ${learningLanguage === 'en' ? 'English' : 'Hindi'} for their school notebook.
+5. TEACHER PRAISE:
+   - A warm, loving 1-sentence spoken message by ${teacherName} in ${learningLanguage === 'en' ? 'English' : 'Hindi'}.
+6. MATHEMATICAL POWERS & NOTATION TOLERANCE:
+   - Recognize powers like c2, c^2, c², 52, 5^2, or 5². Recognize metric units (cm, m, km, kg, g).
+   - NEVER count mathematical expressions, formulas, or variables as spelling mistakes.
+7. MULTIPLE CHOICE QUESTIONS (MCQ / 4 OPTIONS):
+   - If question is an MCQ, and student selects the correct option letter or text, award 10/10 with congratulations!
+8. NUMBER PYRAMID & PUZZLES:
+   - If question is a math pyramid/box puzzle, verify whether student filled the empty boxes correctly. If correct, award 10/10!
 
 Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tags:
 <eval_result>
@@ -205,66 +202,67 @@ Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tag
   "totalMarks": 10,
   "percentage": 80,
   "badge": "⭐ शानदार प्रयास!",
-  "strengths": ["Meadow was big and pleasant point is correctly written."],
-  "mistakes": ["Omitted the stream with steep bank."],
-  "spellingMistakes": [
-    { "wrong": "peasant", "correct": "pleasant" }
-  ],
-  "missingPoints": ["Add mention of pine trees and steep bank for full marks."],
-  "idealAnswer": "...",
-  "teacherPraise": "Shabash beta! Bahut acchi koshish ki hai aapne!"
+  "strengths": ["उत्तर का मुख्य विचार सही लिखा है।"],
+  "mistakes": ["आपने केवल एक मुख्य कारण लिखा, दूसरा कारण छूट गया।"],
+  "improvements": ["पूरे 10 अंक पाने के लिए उत्तर में दोनों मुख्य कारणों का उल्लेख करें।"],
+  "spellingMistakes": [],
+  "missingPoints": ["दूसरा मुख्य बिंदु भी शामिल करें।"],
+  "solution": "आदर्श व पूर्ण सही हल यहाँ लिखें...",
+  "idealAnswer": "आदर्श व पूर्ण सही हल यहाँ लिखें...",
+  "teacherPraise": "शाबाश बेटा! आपका प्रयास बहुत अच्छा रहा। थोड़ी और तैयारी से पूरे 10/10 मिलेंगे!"
 }
 </eval_result>`;
 
-      if (GEMINI_API_KEY) {
-        try {
-          const parts = [{ text: evalPrompt }];
-          const candidateModels = [
-            'gemini-3.6-flash',
-            'gemini-3.5-flash-lite',
-            'gemini-flash-lite-latest',
-            'gemini-3-flash-preview',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash',
-          ];
+      const apiKeys = getGeminiApiKeys();
+      const candidateModels = [
+        'gemini-3.5-flash-lite',
+        'gemini-3.5-flash',
+        'gemini-3.6-flash',
+        'gemini-flash-lite-latest',
+        'gemini-3-flash-preview',
+        'gemini-2.5-flash',
+        'gemini-2.0-flash',
+      ];
 
-          for (const modelName of candidateModels) {
-            try {
-              const geminiRes = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
-                {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ parts }],
-                    generationConfig: {
-                      temperature: 0.1,
-                      maxOutputTokens: 2000,
-                    },
-                  }),
-                }
-              );
-
-              if (geminiRes.ok) {
-                const geminiData = await geminiRes.json();
-                const rawReply = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                const match = /<eval_result>([\s\S]*?)<\/eval_result>/i.exec(rawReply);
-                if (match && match[1]) {
-                  const parsed = JSON.parse(match[1].trim());
-                  return NextResponse.json({
-                    success: true,
-                    evaluation: parsed,
-                    reply: parsed.teacherPraise,
-                  });
-                }
+      for (const modelName of candidateModels) {
+        for (const activeKey of apiKeys) {
+          if (!activeKey) continue;
+          try {
+            const parts = [{ text: evalPrompt }];
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${activeKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts }],
+                  generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 2000,
+                  },
+                }),
               }
-            } catch (err) {
-              console.error(`Gemini eval model ${modelName} error:`, err);
+            );
+
+            if (geminiRes.ok) {
+              const geminiData = await geminiRes.json();
+              const rawReply = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              const match = /<eval_result>([\s\S]*?)<\/eval_result>/i.exec(rawReply);
+              if (match && match[1]) {
+                const parsed = JSON.parse(match[1].trim());
+                if (!parsed.solution && parsed.idealAnswer) parsed.solution = parsed.idealAnswer;
+                if (!parsed.idealAnswer && parsed.solution) parsed.idealAnswer = parsed.solution;
+                if (!parsed.improvements && parsed.missingPoints) parsed.improvements = parsed.missingPoints;
+                return NextResponse.json({
+                  success: true,
+                  evaluation: parsed,
+                  reply: parsed.teacherPraise,
+                });
+              }
             }
+          } catch (err) {
+            console.error(`Gemini eval model ${modelName} error:`, err);
           }
-        } catch (e) {
-          console.error('Gemini eval error:', e);
         }
       }
 
@@ -277,7 +275,7 @@ Output STRICTLY a JSON object enclosed inside <eval_result>...</eval_result> tag
       });
     }
 
-        // 💡 Dedicated Quick Doubt Solving Mode (Kid-friendly Conversational Teacher Answer)
+    // 💡 Dedicated Quick Doubt Solving Mode (Kid-friendly Conversational Teacher Answer)
     if (mode === 'doubt_solving') {
       const activeTeacherName =
         teacherId === 'pooja' || teacherId === 'pooja_mam' ? 'Pooja Mam' :
@@ -1600,10 +1598,12 @@ function getFallbackEvaluation(
     percentage,
     badge,
     strengths,
-    mistakes,
+    mistakes: mistakes.length > 0 ? mistakes : [learningLanguage === 'en' ? 'No mistakes found! Great job.' : 'कोई गलती नहीं हुई! आपका उत्तर बहुत अच्छा है।'],
     spellingMistakes,
     missingPoints,
-    idealAnswer: idealAnswer || 'Standard textbook complete answer.',
+    improvements: missingPoints,
+    solution: idealAnswer || (learningLanguage === 'en' ? 'Standard textbook complete answer.' : 'पाठ्यपुस्तक के अनुसार आदर्श व पूर्ण उत्तर।'),
+    idealAnswer: idealAnswer || (learningLanguage === 'en' ? 'Standard textbook complete answer.' : 'पाठ्यपुस्तक के अनुसार आदर्श व पूर्ण उत्तर।'),
     teacherPraise,
   };
 }
