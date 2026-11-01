@@ -5018,14 +5018,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
           // 💾 Automatically save evaluation record to student reports history
           try {
-            const studentId = studentProfile?.phone || studentProfile?.id || 'guest_student';
+            const studentId = studentUser?.phone || studentUser?.id || 'guest_student';
             const cleanQTitle = (activeQ.question || 'सवाल').replace(/^\d+[\.\)\s]+/, '').slice(0, 50);
             const testRecord = {
               id: `mock-${Date.now()}-${qIdx}`,
               title: `मॉक टेस्ट: ${cleanQTitle}`,
               date: new Date().toISOString().split('T')[0],
-              subjectId: activeSubject?.id || 'general',
-              subjectName: activeSubject?.name || 'मॉक टेस्ट',
+              subjectId: selectedSubject?.id || 'general',
+              subjectName: selectedSubject?.name || 'मॉक टेस्ट',
               teacherName: currentTeacher.name,
               score,
               totalMarks: maxMarks,
@@ -5044,7 +5044,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                phone: studentProfile?.phone || '',
+                phone: studentUser?.phone || '',
                 studentId: studentId,
                 newTestRecord: testRecord,
               }),
@@ -5076,8 +5076,8 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     const studentAns = (mockAnswers[qIdx] || '').trim();
     if (!activeQ || !evalData) return;
 
-    const studentName = studentProfile?.name || 'विद्यार्थी';
-    const grade = studentProfile?.classGrade || 'कक्षा 4';
+    const studentName = currentStudentName || studentUser?.name || 'विद्यार्थी';
+    const grade = studentUser?.classGrade || 'कक्षा 4';
     const score = evalData.score ?? 8;
     const total = evalData.totalMarks || 10;
     const pct = evalData.percentage || Math.round((score / total) * 100);
@@ -5099,7 +5099,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       `📋 *विद्या AI ट्यूशन - मॉक टेस्ट मूल्यांकन रिपोर्ट*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `👤 *विद्यार्थी:* ${studentName} (${grade})\n` +
-      `📚 *विषय:* ${activeSubject?.name || 'ट्यूशन अभ्यास'}\n` +
+      `📚 *विषय:* ${selectedSubject?.name || 'ट्यूशन अभ्यास'}\n` +
       `❓ *सवाल:* ${activeQ.question}\n` +
       `✍️ *छात्र का उत्तर:* "${studentAns}"\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -5111,7 +5111,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `🤖 *AI शिक्षक:* ${currentTeacher.name} | Vidya AI Tuition`;
 
-    const phone = (studentProfile?.phone || '').replace(/\D/g, '');
+    const phone = (studentUser?.phone || '').replace(/\D/g, '');
     const waUrl = phone
       ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(reportMsg)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(reportMsg)}`;
