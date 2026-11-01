@@ -26,7 +26,7 @@ export default function WeeklyTestSeriesPage() {
         // 1. Read from localStorage
         if (typeof window !== 'undefined') {
           try {
-            const rawUser = localStorage.getItem('ai_tuition_student_user');
+            const rawUser = localStorage.getItem('student_user') || localStorage.getItem('ai_tuition_student_user');
             if (rawUser) {
               sUser = JSON.parse(rawUser);
               setStudentUser(sUser);
@@ -47,7 +47,7 @@ export default function WeeklyTestSeriesPage() {
               }
             }
 
-            const rawHist = localStorage.getItem('vidya_worksheet_history_v1');
+            const rawHist = localStorage.getItem('ai_tuition_worksheet_records') || localStorage.getItem('vidya_worksheet_history_v1');
             if (rawHist) {
               const hist = JSON.parse(rawHist);
               if (Array.isArray(hist)) {
@@ -59,30 +59,37 @@ export default function WeeklyTestSeriesPage() {
           }
         }
 
-        // 2. Fetch latest student record from API if phone exists
-        if (phone) {
-          try {
-            const res = await fetch(`/api/student/records?phone=${phone}`);
-            if (res.ok) {
-              const json = await res.json();
-              if (json.success && json.record) {
-                const rec = json.record;
-                if (rec.currentSession) {
-                  if (Array.isArray(rec.currentSession.uploadedFiles) && rec.currentSession.uploadedFiles.length > 0) {
-                    setUploadedFiles(rec.currentSession.uploadedFiles);
-                  }
-                  if (rec.currentSession.pageDataMap && Object.keys(rec.currentSession.pageDataMap).length > 0) {
-                    setPageDataMap((prev) => ({ ...prev, ...rec.currentSession.pageDataMap }));
-                  }
+        // 2. Fetch latest student record from API (phone or general fallback)
+        try {
+          const fetchUrl = phone
+            ? `/api/student/records?phone=${encodeURIComponent(phone)}`
+            : '/api/student/records?phone=general';
+          const res = await fetch(fetchUrl);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success) {
+              const h = json.worksheetHistory || json.record?.worksheetHistory;
+              if (Array.isArray(h) && h.length > 0) {
+                setWorksheetHistory((prev) => {
+                  const map = new Map<string, any>();
+                  prev.forEach((r) => { if (r.id) map.set(r.id, r); });
+                  h.forEach((r: any) => { if (r.id) map.set(r.id, r); });
+                  return Array.from(map.values());
+                });
+              }
+              const curr = json.record?.currentSession || json.currentSession;
+              if (curr) {
+                if (Array.isArray(curr.uploadedFiles) && curr.uploadedFiles.length > 0) {
+                  setUploadedFiles(curr.uploadedFiles);
                 }
-                if (Array.isArray(rec.worksheetHistory) && rec.worksheetHistory.length > 0) {
-                  setWorksheetHistory(rec.worksheetHistory);
+                if (curr.pageDataMap && Object.keys(curr.pageDataMap).length > 0) {
+                  setPageDataMap((prev) => ({ ...prev, ...curr.pageDataMap }));
                 }
               }
             }
-          } catch (apiErr) {
-            console.error('API fetch error for student records:', apiErr);
           }
+        } catch (apiErr) {
+          console.error('API fetch error for student records:', apiErr);
         }
       } finally {
         setIsLoading(false);
