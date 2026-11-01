@@ -2730,6 +2730,29 @@ export default function TuitionClassroomStudio() {
 
   const [isCheckingHomework, setIsCheckingHomework] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
+
+  const handleCancelUpload = () => {
+    if (uploadAbortControllerRef.current) {
+      try {
+        uploadAbortControllerRef.current.abort();
+      } catch {}
+      uploadAbortControllerRef.current = null;
+    }
+    stopAudio();
+    setIsCheckingHomework(false);
+    setUploadedFiles([]);
+    setActiveFileId(null);
+    setWhiteboardSteps([]);
+    setDetectedQuestions([]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    const cancelMsg = medium === 'english'
+      ? 'Upload cancelled. What would you like to study next?'
+      : 'अपलोड रद्द कर दिया गया है बेटा। आप जो भी पढ़ना चाहते हैं, नीचे माइक से पूछें!';
+    setSpeechText(cancelMsg);
+    speakText(cancelMsg);
+  };
 
   // Interactive Practice Question State
   const [activeQuestionIdx, setActiveQuestionIdx] = useState<number>(0);
@@ -3853,6 +3876,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               body: JSON.stringify({
                 phone: u.phone,
                 studentId: u.id,
+                deleteRecordId: recordId,
                 worksheetHistory: updated,
               }),
             }).catch(() => {});
@@ -3865,12 +3889,18 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     });
   };
 
-  // Clear all records from history
+  // Clear all records permanently from history & server
   const handleClearAllWorksheetRecords = () => {
-    if (typeof window !== 'undefined' && window.confirm('क्या आप सचमुच पूरा पुराना रिकॉर्ड साफ करना चाहते हैं?')) {
+    if (typeof window !== 'undefined' && window.confirm('क्या आप सचमुच पूरा पुराना रिकॉर्ड साफ करना चाहते हैं? यह सभी पुराने अपलोड हमेशा के लिए हटा देगा।')) {
       setWorksheetHistory([]);
+      setUploadedFiles([]);
+      setActiveFileId(null);
+      setWhiteboardSteps([]);
+      setDetectedQuestions([]);
       try {
         localStorage.removeItem('ai_tuition_worksheet_records');
+        localStorage.removeItem('ai_tuition_saved_whiteboard_state');
+        localStorage.removeItem('student_current_session');
         const savedUser = localStorage.getItem('student_user');
         if (savedUser) {
           const u = JSON.parse(savedUser);
@@ -3881,6 +3911,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               body: JSON.stringify({
                 phone: u.phone,
                 studentId: u.id,
+                clearAll: true,
                 worksheetHistory: [],
               }),
             }).catch(() => {});
@@ -5240,10 +5271,14 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     setSpeechText(msg);
     speakText(msg);
 
+    const abortCtrl = new AbortController();
+    uploadAbortControllerRef.current = abortCtrl;
+
     try {
       const additionalB64 = newlyReadFiles.slice(1).map((f) => ({ url: f.url }));
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
+        signal: abortCtrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'worksheet',
@@ -6043,6 +6078,16 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       <p className="text-xs text-slate-500 max-w-sm">
                         बस कुछ सेकंड प्रतीक्षा करें बेटा, सारे सवाल और हल स्कूल कॉपी विधि से तैयार हो रहे हैं!
                       </p>
+
+                      {/* Cancel Upload Button */}
+                      <button
+                        type="button"
+                        onClick={handleCancelUpload}
+                        className="mt-3 px-5 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 font-black text-xs sm:text-sm border-2 border-rose-300 shadow-sm flex items-center gap-2 transition-all cursor-pointer active:scale-95"
+                      >
+                        <X className="w-4 h-4 text-rose-600" />
+                        <span>{medium === 'english' ? 'Cancel Upload ✕' : 'अपलोड रद्द करें (Cancel) ✕'}</span>
+                      </button>
                     </div>
                   )}
 

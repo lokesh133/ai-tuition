@@ -311,7 +311,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { phone, studentId, id, worksheetHistory, testHistory, currentSession, newTestRecord, newWorksheetRecord } = body;
+    const { phone, studentId, id, worksheetHistory, testHistory, currentSession, newTestRecord, newWorksheetRecord, clearAll, clearHistory, deleteRecordId } = body;
 
     const filePath = getRecordFilePath(phone, studentId || id);
     if (!filePath) {
@@ -330,8 +330,75 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    // Update full worksheetHistory if provided, but NEVER wipe if incoming is empty and existing is not
-    if (Array.isArray(worksheetHistory) && worksheetHistory.length > 0) {
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    const cleanId = (studentId || id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const identifier = cleanPhone || cleanId;
+
+    // Handle complete history clearing
+    if (clearAll || clearHistory || (Array.isArray(worksheetHistory) && worksheetHistory.length === 0 && !newWorksheetRecord)) {
+      existing.worksheetHistory = [];
+      existing.uploads = [];
+      existing.currentSession = null;
+
+      // Delete student's uploaded files on disk
+      if (identifier) {
+        const studentDir = path.join(UPLOADS_BASE_DIR, identifier);
+        if (fs.existsSync(studentDir)) {
+          try {
+            const files = fs.readdirSync(studentDir);
+            for (const f of files) {
+              try { fs.unlinkSync(path.join(studentDir, f)); } catch {}
+            }
+          } catch {}
+        }
+      }
+
+      // Remove student records from uploads_log.jsonl
+      if (fs.existsSync(UPLOADS_LOG_FILE)) {
+        try {
+          const raw = fs.readFileSync(UPLOADS_LOG_FILE, 'utf-8');
+          const lines = raw.trim().split('\n').filter(Boolean);
+          const remaining = lines.filter((l) => {
+            try {
+              const item = JSON.parse(l);
+              const itemPhone = (item.studentPhone || '').replace(/\D/g, '');
+              const itemId = (item.studentId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+              if (
+                (cleanPhone && itemPhone === cleanPhone) ||
+                (cleanId && itemId === cleanId) ||
+                (cleanPhone && itemId.includes(cleanPhone))
+              ) {
+                return false;
+              }
+              return true;
+            } catch {
+              return true;
+            }
+          });
+          fs.writeFileSync(UPLOADS_LOG_FILE, remaining.join('\n') + (remaining.length > 0 ? '\n' : ''), 'utf-8');
+          uploadsLogCache = { mtimeMs: 0, lines: [] };
+        } catch {}
+      }
+    } else if (deleteRecordId) {
+      existing.worksheetHistory = (existing.worksheetHistory || []).filter((r: any) => r.id !== deleteRecordId);
+      existing.uploads = (existing.uploads || []).filter((u: any) => u.id !== deleteRecordId);
+      if (fs.existsSync(UPLOADS_LOG_FILE)) {
+        try {
+          const raw = fs.readFileSync(UPLOADS_LOG_FILE, 'utf-8');
+          const lines = raw.trim().split('\n').filter(Boolean);
+          const remaining = lines.filter((l) => {
+            try {
+              const item = JSON.parse(l);
+              return item.id !== deleteRecordId && item.savedRelativePath !== deleteRecordId;
+            } catch {
+              return true;
+            }
+          });
+          fs.writeFileSync(UPLOADS_LOG_FILE, remaining.join('\n') + (remaining.length > 0 ? '\n' : ''), 'utf-8');
+          uploadsLogCache = { mtimeMs: 0, lines: [] };
+        } catch {}
+      }
+    } else if (Array.isArray(worksheetHistory) && worksheetHistory.length > 0) {
       const existingMap = new Map((existing.worksheetHistory || []).map((w: any) => [w.id, w]));
       worksheetHistory.forEach((w: any) => existingMap.set(w.id, w));
       existing.worksheetHistory = Array.from(existingMap.values()).slice(0, 100);
