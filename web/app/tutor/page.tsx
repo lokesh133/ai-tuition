@@ -5025,7 +5025,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
               title: `मॉक टेस्ट: ${cleanQTitle}`,
               date: new Date().toISOString().split('T')[0],
               subjectId: selectedSubject?.id || 'general',
-              subjectName: selectedSubject?.name || 'मॉक टेस्ट',
+              subjectName: selectedSubject?.subjectHindi || selectedSubject?.subject || 'मॉक टेस्ट',
               teacherName: currentTeacher.name,
               score,
               totalMarks: maxMarks,
@@ -5099,7 +5099,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
       `📋 *विद्या AI ट्यूशन - मॉक टेस्ट मूल्यांकन रिपोर्ट*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `👤 *विद्यार्थी:* ${studentName} (${grade})\n` +
-      `📚 *विषय:* ${selectedSubject?.name || 'ट्यूशन अभ्यास'}\n` +
+      `📚 *विषय:* ${selectedSubject?.subjectHindi || selectedSubject?.subject || 'ट्यूशन अभ्यास'}\n` +
       `❓ *सवाल:* ${activeQ.question}\n` +
       `✍️ *छात्र का उत्तर:* "${studentAns}"\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
