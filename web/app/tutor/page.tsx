@@ -5472,9 +5472,12 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
   }
 
   return (
-    <div className={`h-screen max-h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
-      isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f4f7fb] text-slate-900'
-    }`}>
+    <div
+      style={{ height: 'var(--app-height, 100dvh)', maxHeight: 'var(--app-height, 100dvh)' }}
+      className={`h-screen h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-[#f4f7fb] text-slate-900'
+      }`}
+    >
       {/* Hidden file inputs for upload and camera */}
       <input
         type="file"
@@ -5873,7 +5876,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         </aside>
 
         {/* MAIN WORKSPACE CONTENT - PERFECT FIT WITH ZERO PAGE SCROLL */}
-        <main className="flex-1 min-h-0 p-1.5 sm:p-2 lg:px-2.5 lg:py-1.5 pb-1 max-w-[1550px] mx-auto w-full flex flex-col gap-1.5 overflow-hidden">
+        <main className="flex-1 min-h-0 p-1 sm:p-2 lg:px-2.5 lg:py-1.5 max-w-[1550px] mx-auto w-full flex flex-col gap-1 overflow-hidden">
           {/* 4. FULL-WIDTH SMART WHITEBOARD WORKSPACE */}
           <div className="flex-1 min-h-0 w-full flex flex-col items-stretch">
             {/* FULL WIDTH SMART WHITEBOARD */}
@@ -6017,7 +6020,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
               {/* RULED SCHOOL NOTEBOOK PAPER AREA (INTERNAL SMOOTH SCROLL) */}
               <div
-                className="p-2.5 sm:p-5 pb-16 sm:pb-8 flex-1 min-h-0 overflow-y-auto relative font-sans"
+                className="p-2.5 sm:p-5 pb-24 sm:pb-8 flex-1 min-h-0 overflow-y-auto relative font-sans"
                 style={{
                   background:
                     'repeating-linear-gradient(transparent, transparent 27px, #f1f5f9 28px)',
@@ -6981,7 +6984,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           </div>
 
           {/* 5. BOTTOM DEDICATED CHAT & MIC DOCK */}
-          <div className="shrink-0 pt-1.5 pb-2 flex flex-col items-center justify-center w-full relative">
+          <div
+            style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 8px))' }}
+            className="shrink-0 pt-1 pb-1 sm:pb-2 flex flex-col items-center justify-center w-full relative z-20 bg-transparent"
+          >
             <div className="relative flex items-center gap-2 sm:gap-2.5 w-full max-w-2xl px-1 sm:px-0">
               {/* 👨‍🏫 Live Teacher Doubt Explanation Card (FLOATING POPUP ABOVE DOCK) */}
               {teacherDoubtPopup && teacherDoubtPopup.isOpen && (
