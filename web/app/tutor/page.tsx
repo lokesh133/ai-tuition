@@ -2870,7 +2870,7 @@ export default function TuitionClassroomStudio() {
   };
 
   // High-Fidelity Text-To-Speech with Real Google Cloud Hindi Voice
-  const speakText = (text: string, onEnded?: () => void, forcePlay = false) => {
+  const speakText = (text: string, onEnded?: () => void, forcePlay = false, questionId?: number | null) => {
     if (!text || !text.trim()) return;
     if (isAudioMuted) {
       if (forcePlay) {
@@ -2883,6 +2883,9 @@ export default function TuitionClassroomStudio() {
     // Stop any currently playing audio immediately and grab unique session ID
     stopAudio();
     const sessionId = audioPlaySessionRef.current;
+    if (typeof questionId === 'number') {
+      setSpeakingQuestionId(questionId);
+    }
 
     const clean = text
       .replace(/<[^>]*>/g, '')
@@ -2914,6 +2917,9 @@ export default function TuitionClassroomStudio() {
           return;
         }
         setIsSpeaking(true);
+        if (typeof questionId === 'number') {
+          setSpeakingQuestionId(questionId);
+        }
       };
       audio.onended = () => {
         if (audioPlaySessionRef.current !== sessionId) return;
@@ -6707,26 +6713,26 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          if (isSpeaking && speakingQuestionId === qNumber) {
+                                          const isThisSpeaking = isSpeaking && (speakingQuestionId === qNumber || (speakingQuestionId === null && qNumber === 1));
+                                          if (isThisSpeaking) {
                                             stopAudio();
-                                            setSpeakingQuestionId(null);
                                           } else {
                                             stopAudio();
                                             setSpeakingQuestionId(qNumber);
                                             const fullSpeech = medium === 'english'
                                               ? `Question ${qNumber}: ${cleanSpeechText(rawQ)}. Solution: ${cleanSpeechText(stepItem.formula)}. ${cleanSpeechText(renderExplanationText(stepItem.annotation || ''))}`
                                               : `प्रश्न ${qNumber}: ${cleanSpeechText(rawQ)}। हल: ${cleanSpeechText(stepItem.formula)}। ${cleanSpeechText(stepItem.annotation || '')}`;
-                                            speakText(fullSpeech);
+                                            speakText(fullSpeech, undefined, false, qNumber);
                                           }
                                         }}
                                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                                          isSpeaking && speakingQuestionId === qNumber
+                                          isSpeaking && (speakingQuestionId === qNumber || (speakingQuestionId === null && qNumber === 1))
                                             ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse ring-2 ring-rose-300'
                                             : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
                                         }`}
-                                        title={isSpeaking && speakingQuestionId === qNumber ? (medium === 'english' ? 'Stop explanation' : 'बोलना रोकें') : (medium === 'english' ? 'Explain this solution' : 'टीचर से समझें')}
+                                        title={isSpeaking && (speakingQuestionId === qNumber || (speakingQuestionId === null && qNumber === 1)) ? (medium === 'english' ? 'Stop explanation' : 'बोलना रोकें') : (medium === 'english' ? 'Explain this solution' : 'टीचर से समझें')}
                                       >
-                                        {isSpeaking && speakingQuestionId === qNumber ? (
+                                        {isSpeaking && (speakingQuestionId === qNumber || (speakingQuestionId === null && qNumber === 1)) ? (
                                           <>
                                             <VolumeX className="w-3.5 h-3.5 text-white" />
                                             <span className="font-black">{medium === 'english' ? 'Stop' : 'रोकें'}</span>
