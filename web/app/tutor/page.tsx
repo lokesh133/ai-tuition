@@ -5787,18 +5787,32 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   <h3 className="text-xs sm:text-sm font-black text-slate-900 whitespace-nowrap">
                     Smart Whiteboard
                   </h3>
+                  {/* Upload Worksheet Button */}
                   <button
                     type="button"
-                    onClick={() => setIsWorksheetModalOpen(true)}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/90 shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
-                    title={medium === 'english' ? 'View Worksheet Document' : 'वर्कशीट देखें'}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                    title={medium === 'english' ? 'Upload Worksheet / Photo / PDF' : 'वर्कशीट या फोटो अपलोड करें'}
                   >
-                    <FileText className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{medium === 'english' ? 'Worksheet' : 'वर्कशीट'}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-200/60 text-blue-800 font-black">
-                      {uploadedFiles.length > 0 ? (isPdfWorksheet ? `Page ${pdfCurrentPage}/${pdfTotalPages}` : '1/1') : (medium === 'english' ? 'Upload' : 'अपलोड')}
-                    </span>
+                    <Upload className="w-3.5 h-3.5 text-white" />
+                    <span>{medium === 'english' ? 'Upload Worksheet' : 'अपलोड वर्कशीट'}</span>
                   </button>
+
+                  {/* View Active Worksheet Document (if uploaded) */}
+                  {uploadedFiles.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsWorksheetModalOpen(true)}
+                      className="px-2 py-1 rounded-lg text-[11px] font-bold bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200/90 shadow-2xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                      title={medium === 'english' ? 'View Worksheet Document' : 'वर्कशीट देखें'}
+                    >
+                      <FileText className="w-3 h-3 text-blue-600" />
+                      <span className="hidden sm:inline">{medium === 'english' ? 'Document' : 'वर्कशीट'}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-200/60 text-blue-800 font-black">
+                        {isPdfWorksheet ? `${pdfCurrentPage}/${pdfTotalPages}` : '1/1'}
+                      </span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Action Pills in clean single row */}
@@ -5925,25 +5939,15 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     </button>
                   )}
 
-                  {/* Next Question */}
-                  <button
-                    type="button"
-                    onClick={handleNextQuestion}
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-all flex items-center gap-0.5 cursor-pointer shrink-0"
-                    title={medium === 'english' ? 'Next Question' : 'अगला सवाल'}
-                  >
-                    <span>{medium === 'english' ? 'Next' : 'अगला'}</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-
-                  {/* Compact Reset Icon */}
+                  {/* Reset Button (व्हाइटबोर्ड रीसेट) */}
                   <button
                     type="button"
                     onClick={handleFullPageReset}
-                    className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer shrink-0"
-                    title="व्हाइटबोर्ड रीसेट करें"
+                    className="px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                    title={medium === 'english' ? 'Reset Whiteboard' : 'व्हाइटबोर्ड रीसेट करें'}
                   >
-                    <RotateCcw className="w-3 h-3" />
+                    <RotateCcw className="w-3 h-3 text-rose-600" />
+                    <span>{medium === 'english' ? 'Reset' : 'रीसेट'}</span>
                   </button>
                 </div>
               </div>
