@@ -5894,32 +5894,19 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   </button>
                 )}
 
-                {/* 3. Segmented Mode Control: Book / Notebook / Mock Test */}
+                {/* 3. Segmented Mode Control: Book / Mock Test */}
                 <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 shrink-0">
                   <button
                     type="button"
                     onClick={() => setWhiteboardDisplayTab('book')}
                     className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      whiteboardDisplayTab === 'book'
+                      whiteboardDisplayTab !== 'mock'
                         ? 'bg-white text-blue-700 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <BookOpen className="w-3 h-3" />
                     <span>{medium === 'english' ? 'Book' : 'किताब'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setWhiteboardDisplayTab('notebook')}
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                      whiteboardDisplayTab === 'notebook'
-                        ? 'bg-white text-blue-700 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <FileText className="w-3 h-3" />
-                    <span>{medium === 'english' ? 'Notebook' : 'कॉपी'}</span>
                   </button>
 
                   <button
@@ -5973,48 +5960,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                   </button>
                 )}
 
-                {/* 5. Teacher Speak */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isSpeaking) {
-                      stopAudio();
-                      setSpeakingQuestionId(null);
-                    } else {
-                      const activeQ = whiteboardSteps[0]?.question || whiteboardSteps[0]?.step || activeTargetQuestion || '';
-                      const activeFormula = whiteboardSteps[0]?.formula || '';
-                      const activeAnnotation = whiteboardSteps[0]?.annotation || '';
-                      const speech = activeFormula
-                        ? `नमस्ते बेटा! ${currentTeacher.name} यहाँ! आइए सवाल को समझते हैं: ${cleanSpeechText(activeQ)}। ${cleanSpeechText(activeFormula)}। ${cleanSpeechText(activeAnnotation)}`
-                        : `नमस्ते बेटा! ${currentTeacher.name} यहाँ! आप जो भी सवाल समझना चाहते हैं, नीचे माइक से पूछें या अपनी कॉपी की फोटो अपलोड करें!`;
-                      speakText(speech);
-                    }
-                  }}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs shrink-0 ${
-                    isSpeaking && !speakingQuestionId
-                      ? 'bg-rose-50 text-rose-700 border border-rose-300 animate-pulse'
-                      : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200'
-                  }`}
-                  title="टीचर पूरी वर्कशीट और सवाल बोलकर समझाएंगे"
-                >
-                  <Volume2 className={`w-3 h-3 ${isSpeaking && !speakingQuestionId ? 'text-rose-600' : 'text-indigo-600'}`} />
-                  <span className="hidden sm:inline">{isSpeaking && !speakingQuestionId ? (medium === 'english' ? 'Stop' : 'रुकें') : (medium === 'english' ? 'Explain' : 'टीचर से समझें')}</span>
-                  <span className="sm:hidden">{medium === 'english' ? 'Speak' : 'बोलें'}</span>
-                </button>
-
-                {/* 6. AI Solve Button */}
-                {uploadedFiles.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleAnalyzeActiveWorksheet()}
-                    disabled={isCheckingHomework}
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 cursor-pointer shadow-2xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0"
-                    title="AI से इस कॉपी को स्कैन करें और सभी सवाल-उत्तर निकालें"
-                  >
-                    <Sparkles className="w-3 h-3 text-emerald-600" />
-                    <span>{isCheckingHomework ? (medium === 'english' ? 'Scanning...' : 'स्कैन...') : (medium === 'english' ? 'AI Solve' : 'AI हल')}</span>
-                  </button>
-                )}
+                
 
                 {/* 7. Reset Button (व्हाइटबोर्ड रीसेट) */}
                 <button
@@ -6761,10 +6707,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                       <button
                                         type="button"
                                         onClick={() => {
-                                          if (speakingQuestionId === qNumber && isSpeaking) {
+                                          if (isSpeaking && speakingQuestionId === qNumber) {
                                             stopAudio();
                                             setSpeakingQuestionId(null);
                                           } else {
+                                            stopAudio();
                                             setSpeakingQuestionId(qNumber);
                                             const fullSpeech = medium === 'english'
                                               ? `Question ${qNumber}: ${cleanSpeechText(rawQ)}. Solution: ${cleanSpeechText(stepItem.formula)}. ${cleanSpeechText(renderExplanationText(stepItem.annotation || ''))}`
@@ -6773,14 +6720,23 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                                           }
                                         }}
                                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs ${
-                                          speakingQuestionId === qNumber && isSpeaking
-                                            ? 'bg-rose-500 text-white animate-pulse'
+                                          isSpeaking && speakingQuestionId === qNumber
+                                            ? 'bg-rose-600 hover:bg-rose-700 text-white animate-pulse ring-2 ring-rose-300'
                                             : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
                                         }`}
-                                        title="टीचर इस सवाल का पूरा हल बोलकर समझाएंगे"
+                                        title={isSpeaking && speakingQuestionId === qNumber ? (medium === 'english' ? 'Stop explanation' : 'बोलना रोकें') : (medium === 'english' ? 'Explain this solution' : 'टीचर से समझें')}
                                       >
-                                        <Volume2 className={`w-3.5 h-3.5 ${speakingQuestionId === qNumber && isSpeaking ? 'text-white' : 'text-indigo-600'}`} />
-                                        <span>{speakingQuestionId === qNumber && isSpeaking ? (medium === 'english' ? 'Stop Speaking' : 'बोलना रोकें') : (medium === 'english' ? '👨‍🏫 Explain' : '👨‍🏫 टीचर से समझें')}</span>
+                                        {isSpeaking && speakingQuestionId === qNumber ? (
+                                          <>
+                                            <VolumeX className="w-3.5 h-3.5 text-white" />
+                                            <span className="font-black">{medium === 'english' ? 'Stop' : 'रोकें'}</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                                            <span>{medium === 'english' ? 'Explain' : 'टीचर से समझें'}</span>
+                                          </>
+                                        )}
                                       </button>
                                     </div>
 
