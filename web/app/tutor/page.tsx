@@ -39,6 +39,7 @@ import {
   Plus,
   ChevronDown,
   Eye,
+  EyeOff,
   Bell,
   Crown,
   Maximize2,
@@ -597,9 +598,10 @@ export default function TuitionClassroomStudio() {
   // 🔒 Child Safe Lock Screen (बाल सुरक्षा लॉक) States
   const [isChildLockActive, setIsChildLockActive] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
-  const [unlockChallenge, setUnlockChallenge] = useState<{ n1: number; n2: number; ans: number }>({ n1: 7, n2: 6, ans: 42 });
   const [unlockInput, setUnlockInput] = useState('');
   const [unlockError, setUnlockError] = useState(false);
+  const [unlockLoading, setUnlockLoading] = useState(false);
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
 
   // Live Camera / Webcam Capture States
   const [isWebcamModalOpen, setIsWebcamModalOpen] = useState<boolean>(false);
@@ -3960,9 +3962,9 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           const normF = (s.formula || '').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]/g, '');
           return (
             (normQ.length > 5 && (normQ.includes(normQuery.slice(0, 12)) || normQuery.includes(normQ.slice(0, 12)))) ||
-            (normQuery.includes('दादा') && (normQ.includes('दादा') || normF.includes('दादा'))) ||
-            (normQuery.includes('लॉकडाउन') && (normQ.includes('लॉकडाउन') || normF.includes('लॉकडाउन'))) ||
-            (normQuery.includes('कोरोना') && (normQ.includes('कोरोना') || normF.includes('कोरोना'))) ||
+            ((normQuery.includes('दादा') || normQuery.includes('dada')) && (normQ.includes('दादा') || normF.includes('दादा') || normQ.includes('dada'))) ||
+            ((normQuery.includes('लॉकडाउन') || normQuery.includes('lockdown')) && (normQ.includes('लॉकडाउन') || normF.includes('लॉकडाउन') || normQ.includes('lockdown'))) ||
+            ((normQuery.includes('कोरोना') || normQuery.includes('corona')) && (normQ.includes('कोरोना') || normF.includes('कोरोना') || normQ.includes('corona'))) ||
             (normQuery.includes('pipe') && normQ.includes('pipe')) ||
             (normQuery.includes('पाइप') && normQ.includes('पाइप')) ||
             (normQuery.includes('कपड़ा') && normQ.includes('कपड़ा')) ||
@@ -4056,6 +4058,24 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
     // D. If query is any other doubt, call AI Tutor ask API WITHOUT clearing the whiteboard!
     try {
       setIsListening(false);
+
+      // Instant loading indicator so student sees immediate feedback!
+      const loadingMsg = medium === 'english'
+        ? `${currentTeacher.name} is thinking and preparing your explanation...`
+        : `${currentTeacher.name} आपका सवाल समझ रही हैं और जवाब तैयार कर रही हैं...`;
+
+      setTeacherDoubtPopup({
+        isOpen: true,
+        question: qTrim,
+        answer: '⏳ ' + loadingMsg,
+      });
+
+      // Prepare active worksheet context summary so AI knows the exact lesson/questions
+      const wsContext = whiteboardSteps
+        .slice(0, 8)
+        .map((s, idx) => `सवाल ${idx + 1}: ${s.question || ''} | हल: ${s.formula || ''}`)
+        .join('\n');
+
       const res = await fetch('/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4066,12 +4086,13 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
           learning_language: medium === 'english' ? 'en' : 'hi',
           board,
           className,
+          worksheet_context: wsContext || (detectedChapter ? `Chapter: ${detectedChapter}` : ''),
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const reply = data.reply || (medium === 'english' ? 'Great question! Let me explain this clearly for you.' : 'बहुत अच्छा सवाल है बेटा! चलिए मैं आपको इसे समझाता हूँ।');
+        const reply = data.reply || (medium === 'english' ? 'Great question! Let me explain this clearly for you.' : 'बहुत अच्छा सवाल है बेटा! चलिए मैं आपको इसे समझाती हूँ।');
         setSpeechText(reply);
         speakText(reply);
         setTeacherDoubtPopup({
@@ -5658,7 +5679,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 }`}
               >
                 <Edit3 className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>{medium === 'english' ? 'Rough Work' : 'रफ़ काम'}</span>
+                <span>Rough Work</span>
               </button>
 
               {/* 6. Student Report Card */}
@@ -5829,9 +5850,6 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     <button
                       type="button"
                       onClick={() => {
-                        const n1 = Math.floor(Math.random() * 8) + 4;
-                        const n2 = Math.floor(Math.random() * 8) + 3;
-                        setUnlockChallenge({ n1, n2, ans: n1 * n2 });
                         setUnlockInput('');
                         setUnlockError(false);
                         setShowUnlockModal(true);
@@ -5863,17 +5881,6 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                       <span className="sm:hidden">🔒</span>
                     </button>
                   )}
-
-                  {/* Rough Work (रफ़ काम) Scratchpad Button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsScratchpadOpen(true)}
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300/80 shadow-2xs flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                    title={medium === 'english' ? 'Open Rough Work Scratchpad' : 'रफ़ काम / रफ़ कॉपी खोलें'}
-                  >
-                    <Edit3 className="w-3 h-3 text-amber-700" />
-                    <span>{medium === 'english' ? 'Rough Work' : 'रफ़ काम'}</span>
-                  </button>
 
                   {/* Teacher Speak */}
                   <button
@@ -6876,10 +6883,10 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
 
           {/* 5. BOTTOM DEDICATED CHAT & MIC DOCK */}
           <div className="shrink-0 pt-1.5 pb-1 flex flex-col items-center justify-center w-full relative">
-            {/* ?? Mobile Question Navigator (Docked Above Input - No Overlap!) */}
+            {/* 📱 Mobile Question Navigator (Docked Above Input - Clean & No Duplicate) */}
             {uploadedFiles.length > 0 && detectedQuestions.length > 1 && (
-              <div className="w-full max-w-2xl px-2 mb-1.5 sm:hidden">
-                <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 text-white rounded-xl py-1 px-3 flex items-center justify-between shadow-lg">
+              <div className="w-full max-w-2xl px-2 mb-1.5 sm:hidden z-20">
+                <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700/80 text-white rounded-xl py-1.5 px-3 flex items-center justify-between shadow-lg">
                   <button
                     type="button"
                     onClick={handlePrevQuestion}
@@ -6887,11 +6894,11 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 text-xs font-bold flex items-center gap-1 transition-all disabled:opacity-30 cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
-                    <span>?????</span>
+                    <span>{medium === 'english' ? 'Prev' : 'पिछला'}</span>
                   </button>
 
                   <span className="text-xs font-black text-amber-300">
-                    ???? {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
+                    {medium === 'english' ? 'Question' : 'सवाल'} {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
                   </span>
 
                   <button
@@ -6900,7 +6907,7 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                     disabled={isCheckingHomework}
                     className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-xs font-black flex items-center gap-1 shadow-md transition-all disabled:opacity-30 cursor-pointer"
                   >
-                    <span>????</span>
+                    <span>{medium === 'english' ? 'Next' : 'अगला'}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -7099,6 +7106,129 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
         isDarkMode={isDarkMode}
       />
 
+      
+      {/* 🔒 CHILD LOCK PASSWORD UNLOCK MODAL */}
+      {showUnlockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative max-w-sm w-full bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
+            <button
+              type="button"
+              onClick={() => {
+                setShowUnlockModal(false);
+                setUnlockError(false);
+                setUnlockInput('');
+              }}
+              className="absolute right-4 top-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Lock className="w-7 h-7" />
+              </div>
+              <h3 className="text-lg font-black text-slate-900">
+                चाइल्ड लॉक अनलॉक करें
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                सुरक्षा हेतु अपना <strong className="text-slate-800">लॉगिन पासवर्ड या PIN</strong> दर्ज करें
+              </p>
+            </div>
+
+            {unlockError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2 animate-in shake">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>गलत पासवर्ड! कृपया सही लॉगिन पासवर्ड दर्ज करें।</span>
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setUnlockLoading(true);
+                setUnlockError(false);
+
+                try {
+                  const savedUserStr = localStorage.getItem('student_user');
+                  const u = savedUserStr ? JSON.parse(savedUserStr) : studentUser;
+
+                  const res = await fetch('/api/auth/student/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      studentId: u?.id,
+                      phone: u?.phone,
+                      email: u?.email,
+                      password: unlockInput.trim(),
+                    }),
+                  });
+
+                  const data = await res.json();
+                  if (res.ok && data.success) {
+                    setIsChildLockActive(false);
+                    setShowUnlockModal(false);
+                    setUnlockInput('');
+                    setUnlockError(false);
+                    if (typeof document !== 'undefined' && document.fullscreenElement) {
+                      document.exitFullscreen().catch(() => {});
+                    }
+                    speakText('चाइल्ड लॉक सफलतापूर्वक अनलॉक हो गया है!');
+                  } else {
+                    setUnlockError(true);
+                    speakText('गलत पासवर्ड! केवल अभिभावक ही अनलॉक कर सकते हैं।');
+                  }
+                } catch (err) {
+                  setUnlockError(true);
+                } finally {
+                  setUnlockLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  लॉगिन पासवर्ड / PIN
+                </label>
+                <div className="relative">
+                  <input
+                    type={showUnlockPassword ? 'text' : 'password'}
+                    autoFocus
+                    required
+                    value={unlockInput}
+                    onChange={(e) => setUnlockInput(e.target.value)}
+                    placeholder="अपना पासवर्ड दर्ज करें"
+                    className="w-full pl-4 pr-10 py-3 rounded-2xl border-2 border-slate-200 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-100 text-sm font-bold text-slate-900 bg-slate-50/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowUnlockPassword(!showUnlockPassword)}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showUnlockPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={unlockLoading || !unlockInput.trim()}
+                className="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-sm shadow-md shadow-rose-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                {unlockLoading ? (
+                  <span>जांच रहे हैं...</span>
+                ) : (
+                  <>
+                    <span>अनलॉक करें (Unlock)</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 📸 LIVE WEBCAM CAPTURE MODAL (LAPTOP & DESKTOP CAMERA VIEW) */}
       {isWebcamModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
@@ -7248,39 +7378,6 @@ Our master was a good, kind man. He gave us nice food, a clean place to sleep, a
                 व्हाइटबोर्ड पर रहें (Keep Practicing)
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* 📱 MOBILE FLOATING QUESTION SWITCHER PILL */}
-      {uploadedFiles.length > 0 && detectedQuestions.length > 1 && (
-        <div className="fixed bottom-3 inset-x-3 z-40 sm:hidden">
-          <div className="bg-slate-900/95 backdrop-blur-md border border-white/20 text-white rounded-2xl p-2 px-3.5 flex items-center justify-between shadow-2xl">
-            <button
-              type="button"
-              onClick={handlePrevQuestion}
-              disabled={isCheckingHomework}
-              className="px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold flex items-center gap-1 active:scale-95 transition-all"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>पिछला</span>
-            </button>
-
-            <div className="text-center">
-              <span className="text-[11px] font-black text-amber-300 block">
-                सवाल {effectiveQuestionIdx !== -1 ? effectiveQuestionIdx + 1 : 1} / {detectedQuestions.length}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleNextQuestion}
-              disabled={isCheckingHomework}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-black flex items-center gap-1 shadow-md active:scale-95 transition-all"
-            >
-              <span>अगला</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
       )}

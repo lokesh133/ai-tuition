@@ -1,51 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findStudentByPhone } from '@/lib/dataStore';
+import { findStudentByIdentifier, findStudentById } from '@/lib/dataStore';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { phone, password } = body;
+    const { phone, email, identifier, studentId, password } = body;
 
-    if (!phone || !password) {
+    const rawTarget = (email || phone || identifier || '').toString().trim();
+    const cleanPassword = (password || '').toString().trim();
+
+    if (!cleanPassword) {
       return NextResponse.json(
-        { success: false, message: 'कृपया मोबाइल नंबर और पासवर्ड दर्ज करें।' },
+        { success: false, message: 'कृपया अपना पासवर्ड दर्ज करें।' },
         { status: 400 }
       );
     }
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
-    const student = await findStudentByPhone(cleanPhone);
+    let student = null;
+    if (studentId) {
+      student = await findStudentById(studentId);
+    }
+    if (!student && rawTarget) {
+      student = await findStudentByIdentifier(rawTarget);
+    }
 
     if (!student) {
       return NextResponse.json(
-        { success: false, message: 'यह मोबाइल नंबर रजिस्टर्ड नहीं है। कृपया पहले साइन अप करें।' },
+        { success: false, message: 'खाता नहीं मिला। कृपया पहले साइन अप करें।' },
         { status: 404 }
       );
     }
 
-    if (student.password && student.password !== password.trim()) {
+    if (student.password && student.password !== cleanPassword) {
       return NextResponse.json(
-        { success: false, message: 'गलत पासवर्ड! कृपया पुनः प्रयास करें।' },
+        { success: false, message: 'गलत पासवर्ड! केवल अभिभावक ही अनलॉक कर सकते हैं।' },
         { status: 401 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: `नमस्ते ${student.name}, AI Tutor में आपका स्वागत है!`,
+      message: `सत्यापन सफल!`,
       student: {
         id: student.id,
         name: student.name,
         phone: student.phone,
+        email: student.email,
         classGrade: student.classGrade,
         board: student.board,
         isSubscribed: student.isSubscribed,
       },
     });
   } catch (error: any) {
-    console.error('Student login error:', error);
+    console.error('Student password verify error:', error);
     return NextResponse.json(
-      { success: false, message: 'लॉगिन में त्रुटि हुई।' },
+      { success: false, message: 'सत्यापन में त्रुटि हुई।' },
       { status: 500 }
     );
   }
